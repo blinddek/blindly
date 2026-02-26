@@ -228,3 +228,13 @@ export async function updateBlindlyOrderNotes(
   if (error) return { error: error.message };
   return { success: true };
 }
+
+// ─── Import & Product Sync ─────────────────────────────────
+
+export async function syncProductsFromRanges() {
+  const { syncShopProducts } = await import("@/lib/blinds/import");
+  const count = await syncShopProducts();
+  revalidatePath("/shop");
+  revalidatePath("/admin");
+  return { success: true, products_synced: count };
+}

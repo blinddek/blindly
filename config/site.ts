@@ -100,7 +100,7 @@ export const siteConfig: SiteConfig = {
   description: "Premium custom window blinds — configured to your exact specifications.",
   domain: "blindly.co.za",
   tier: "commerce",
-  locale: { default: "en", supported: ["en"] },
+  locale: { default: "en", supported: ["en", "af"] },
   currency: "ZAR",
   timezone: "Africa/Johannesburg",
   brand: {
@@ -117,7 +117,7 @@ export const siteConfig: SiteConfig = {
     shop: true,
     lms: false,
     newsletter: true,
-    i18n: false,
+    i18n: true,
     customerAuth: true,
     portal: true,
     darkMode: true,

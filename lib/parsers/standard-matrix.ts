@@ -2,6 +2,82 @@ import type { StandardMatrixResult } from "@/types/blinds";
 import type { WorkSheet } from "xlsx";
 import * as XLSX from "xlsx";
 
+interface WidthHeader {
+  headerRowIdx: number;
+  widths: number[];
+  widthStartCol: number;
+}
+
+/** Check if numeric columns are strictly increasing. */
+function isStrictlyIncreasing(cols: { val: number }[]): boolean {
+  for (let i = 1; i < cols.length; i++) {
+    if (cols[i].val <= cols[i - 1].val) return false;
+  }
+  return true;
+}
+
+/** Find the width header row — a row with 5+ sequential increasing numbers. */
+function findWidthHeaders(raw: unknown[][]): WidthHeader | null {
+  for (let r = 0; r < Math.min(raw.length, 15); r++) {
+    const row = raw[r];
+    if (!row) continue;
+
+    const numericCols: { col: number; val: number }[] = [];
+    for (let c = 0; c < row.length; c++) {
+      const val = Number.parseFloat(String(row[c] ?? ""));
+      if (!Number.isNaN(val) && val >= 20 && val <= 1000) {
+        numericCols.push({ col: c, val });
+      }
+    }
+
+    if (numericCols.length >= 5 && isStrictlyIncreasing(numericCols)) {
+      return {
+        headerRowIdx: r,
+        widthStartCol: numericCols[0].col,
+        widths: numericCols.map((n) => n.val),
+      };
+    }
+  }
+  return null;
+}
+
+/** Extract prices from a row at the given width column positions. */
+function extractRowPrices(
+  row: unknown[],
+  widthStartCol: number,
+  count: number
+): number[] {
+  const prices: number[] = [];
+  for (let c = widthStartCol; c < widthStartCol + count; c++) {
+    const val = Number.parseFloat(String(row[c] ?? ""));
+    prices.push(Number.isNaN(val) ? 0 : val);
+  }
+  return prices;
+}
+
+/** Find the drop value in a row by scanning leftward from widthStartCol. */
+function findDropValue(
+  row: unknown[],
+  widthStartCol: number
+): number | null {
+  for (let c = widthStartCol - 1; c >= 0; c--) {
+    const val = Number.parseFloat(String(row[c] ?? ""));
+    if (!Number.isNaN(val) && val >= 20 && val <= 1000) {
+      return val;
+    }
+  }
+  return null;
+}
+
+/** Check if a row is a "VALANCE" pricing row. */
+function isValanceRow(row: unknown[], widthStartCol: number): boolean {
+  return row
+    .slice(0, widthStartCol)
+    .map((c) => String(c ?? "").toLowerCase())
+    .join(" ")
+    .includes("valance");
+}
+
 /**
  * Parses standard price matrix sheets (Venetian + most Roller ranges).
  * Layout: width headers in a top row, drop values in first numeric column,
@@ -13,42 +89,8 @@ export function parseStandardMatrix(
 ): StandardMatrixResult {
   const raw: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-  // 1. Find the width header row — a row with multiple sequential numbers
-  let headerRowIdx = -1;
-  let widths: number[] = [];
-  let widthStartCol = -1;
-
-  for (let r = 0; r < Math.min(raw.length, 15); r++) {
-    const row = raw[r];
-    if (!row) continue;
-
-    const numericCols: { col: number; val: number }[] = [];
-    for (let c = 0; c < row.length; c++) {
-      const val = parseFloat(String(row[c] ?? ""));
-      if (!isNaN(val) && val >= 20 && val <= 1000) {
-        numericCols.push({ col: c, val });
-      }
-    }
-
-    // Width headers have 5+ sequential increasing numbers
-    if (numericCols.length >= 5) {
-      let isSequential = true;
-      for (let i = 1; i < numericCols.length; i++) {
-        if (numericCols[i].val <= numericCols[i - 1].val) {
-          isSequential = false;
-          break;
-        }
-      }
-      if (isSequential) {
-        headerRowIdx = r;
-        widthStartCol = numericCols[0].col;
-        widths = numericCols.map((n) => n.val);
-        break;
-      }
-    }
-  }
-
-  if (headerRowIdx === -1) {
+  const header = findWidthHeaders(raw);
+  if (!header) {
     return {
       sheet_name: sheetName,
       widths: [],
@@ -61,7 +103,7 @@ export function parseStandardMatrix(
     };
   }
 
-  // 2. Parse data rows (drop values + prices)
+  const { headerRowIdx, widths, widthStartCol } = header;
   const drops: number[] = [];
   const prices: number[][] = [];
   let valancePrices: number[] | null = null;
@@ -74,42 +116,16 @@ export function parseStandardMatrix(
     const cell0 = String(row[0] ?? "").trim();
     if (cell0.length === 1 && /^[A-Z]$/i.test(cell0)) continue;
 
-    // Check for VALANCE row
-    const rowText = row
-      .slice(0, widthStartCol)
-      .map((c) => String(c ?? "").toLowerCase())
-      .join(" ");
-    if (rowText.includes("valance")) {
-      const vPrices: number[] = [];
-      for (let c = widthStartCol; c < widthStartCol + widths.length; c++) {
-        const val = parseFloat(String(row[c] ?? ""));
-        vPrices.push(isNaN(val) ? 0 : val);
-      }
-      valancePrices = vPrices;
+    if (isValanceRow(row, widthStartCol)) {
+      valancePrices = extractRowPrices(row, widthStartCol, widths.length);
       continue;
     }
 
-    // Find drop value — first numeric cell before widthStartCol, or at widthStartCol - 1
-    let dropVal: number | null = null;
-    for (let c = widthStartCol - 1; c >= 0; c--) {
-      const val = parseFloat(String(row[c] ?? ""));
-      if (!isNaN(val) && val >= 20 && val <= 1000) {
-        dropVal = val;
-        break;
-      }
-    }
-
+    const dropVal = findDropValue(row, widthStartCol);
     if (dropVal === null) continue;
 
-    // Parse prices for this row
-    const rowPrices: number[] = [];
-    for (let c = widthStartCol; c < widthStartCol + widths.length; c++) {
-      const val = parseFloat(String(row[c] ?? ""));
-      rowPrices.push(isNaN(val) ? 0 : val);
-    }
-
     drops.push(dropVal);
-    prices.push(rowPrices);
+    prices.push(extractRowPrices(row, widthStartCol, widths.length));
   }
 
   const totalPrices = prices.reduce(
