@@ -1,0 +1,106 @@
+"use client";
+
+import { cn } from "@/lib/utils";
+import type { TypeOption, RangeOption } from "./blind-configurator";
+
+interface Props {
+  types: TypeOption[];
+  ranges: RangeOption[];
+  typeId: string;
+  rangeId: string;
+  onChangeType: (id: string) => void;
+  onChangeRange: (id: string) => void;
+}
+
+export function StepTypeRange({
+  types,
+  ranges,
+  typeId,
+  rangeId,
+  onChangeType,
+  onChangeRange,
+}: Props) {
+  return (
+    <div className="space-y-6">
+      {/* Type selection */}
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">Choose size & material</h2>
+          <p className="text-sm text-muted-foreground">
+            Select the slat size or material type.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {types.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => onChangeType(t.id)}
+              className={cn(
+                "rounded-lg border p-3 text-left transition-all hover:border-primary/50",
+                typeId === t.id
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                  : "border-border"
+              )}
+            >
+              <div className="font-medium">{t.name}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                {t.material && <span className="capitalize">{t.material}</span>}
+                {t.slat_size_mm && <span> · {t.slat_size_mm}mm slats</span>}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Range selection (only when type is selected) */}
+      {typeId && ranges.length > 0 && (
+        <div className="space-y-3">
+          <div>
+            <h2 className="text-lg font-semibold">Choose your range</h2>
+            <p className="text-sm text-muted-foreground">
+              Each range offers different fabrics, textures, and colour palettes.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {ranges.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => onChangeRange(r.id)}
+                className={cn(
+                  "rounded-lg border p-3 text-left transition-all hover:border-primary/50",
+                  rangeId === r.id
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                    : "border-border"
+                )}
+              >
+                <div className="font-medium">{r.name}</div>
+                {r.description && (
+                  <div className="mt-0.5 text-sm text-muted-foreground line-clamp-2">
+                    {r.description}
+                  </div>
+                )}
+                {r.colour_options.length > 0 && (
+                  <div className="mt-2 flex gap-1">
+                    {r.colour_options.slice(0, 6).map((c) => (
+                      <span
+                        key={c.name}
+                        className="inline-block size-4 rounded-full border"
+                        style={{ backgroundColor: c.hex }}
+                        title={c.name}
+                      />
+                    ))}
+                    {r.colour_options.length > 6 && (
+                      <span className="text-xs text-muted-foreground">
+                        +{r.colour_options.length - 6}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

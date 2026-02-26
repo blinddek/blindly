@@ -28,10 +28,11 @@ on conflict (section_key) do update set content = excluded.content;
 delete from public.nav_links;
 insert into public.nav_links (label, href, display_order, is_active) values
   ('{"en": "Home", "af": "Tuis"}'::jsonb, '/', 1, true),
-  ('{"en": "Products", "af": "Produkte"}'::jsonb, '/shop', 2, true),
-  ('{"en": "About", "af": "Oor Ons"}'::jsonb, '/about', 3, true),
-  ('{"en": "Contact", "af": "Kontak"}'::jsonb, '/contact', 4, true),
-  ('{"en": "FAQ", "af": "Vrae"}'::jsonb, '/faq', 5, true);
+  ('{"en": "Configure", "af": "Konfigureer"}'::jsonb, '/configure', 2, true),
+  ('{"en": "Products", "af": "Produkte"}'::jsonb, '/shop', 3, true),
+  ('{"en": "About", "af": "Oor Ons"}'::jsonb, '/about', 4, true),
+  ('{"en": "Contact", "af": "Kontak"}'::jsonb, '/contact', 5, true),
+  ('{"en": "FAQ", "af": "Vrae"}'::jsonb, '/faq', 6, true);
 
 -- ─── Footer Sections ─────────────────────────────────────────
 delete from public.footer_sections;
@@ -324,14 +325,152 @@ on conflict (slug) do update set
   colour_options = excluded.colour_options,
   display_order = excluded.display_order;
 
--- ─── Product Categories (template shop — maps to blind categories) ──
+-- ─── Additional Roller Ranges ──────────────────────────────
+insert into public.blind_ranges (blind_type_id, name, slug, description, colour_options, display_order) values
+  ((select id from blind_types where slug = 'roller-standard'), 'Aspen & Classic', 'roller-aspen',
+   'Versatile translucent fabric with a soft weave.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Ivory","hex":"#FFFFF0"},{"name":"Pebble","hex":"#C4BCA8"},{"name":"Charcoal","hex":"#36454F"}]'::jsonb, 5),
+  ((select id from blind_types where slug = 'roller-standard'), 'Kleenscreen', 'roller-kleenscreen',
+   'Anti-bacterial sunscreen ideal for kitchens, bathrooms, and medical spaces.',
+   '[{"name":"White","hex":"#F8F8F8"},{"name":"Cream","hex":"#FFFDD0"},{"name":"Grey","hex":"#A9A9A9"}]'::jsonb, 6),
+  ((select id from blind_types where slug = 'roller-standard'), 'Matrix', 'roller-matrix',
+   'Bold geometric weave with excellent UV control.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Graphite","hex":"#4A4A4A"},{"name":"Mocha","hex":"#967969"},{"name":"Taupe","hex":"#B8A99A"}]'::jsonb, 7),
+  ((select id from blind_types where slug = 'roller-standard'), 'Sable', 'roller-sable',
+   'Luxurious textured blockout fabric.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Linen","hex":"#E8DFD0"},{"name":"Dove","hex":"#B0AFA8"},{"name":"Charcoal","hex":"#36454F"},{"name":"Black","hex":"#1A1A1A"}]'::jsonb, 8),
+  ((select id from blind_types where slug = 'roller-standard'), 'Smart Screen', 'roller-smartscreen',
+   'Performance sunscreen with excellent outward visibility and UV rejection.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Linen","hex":"#E8DFD0"},{"name":"Charcoal","hex":"#4A4A4A"},{"name":"Bronze","hex":"#8C6E4A"}]'::jsonb, 9),
+  ((select id from blind_types where slug = 'roller-standard'), 'Solar Cool', 'roller-solarcool',
+   'Reflective sunscreen that reduces heat gain — ideal for hot climates.',
+   '[{"name":"Silver","hex":"#C0C0C0"},{"name":"White","hex":"#F0F0F0"},{"name":"Pearl","hex":"#E8E4D9"}]'::jsonb, 10),
+  ((select id from blind_types where slug = 'roller-standard'), 'Solitaire', 'roller-solitaire',
+   'Classic translucent fabric in a wide palette of neutral tones.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Ivory","hex":"#FFFFF0"},{"name":"Sand","hex":"#C2B280"},{"name":"Stone","hex":"#C4BEB5"},{"name":"Charcoal","hex":"#36454F"}]'::jsonb, 11),
+  ((select id from blind_types where slug = 'roller-standard'), 'Uniview', 'roller-uniview',
+   'Open-weave sunscreen with maximum outward visibility.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Charcoal","hex":"#3A3A3A"},{"name":"Bronze","hex":"#8C6E4A"}]'::jsonb, 12),
+  ((select id from blind_types where slug = 'roller-standard'), 'Urban', 'roller-urban',
+   'Contemporary textured fabric with a subtle linen aesthetic.',
+   '[{"name":"White","hex":"#F5F5F0"},{"name":"Linen","hex":"#E8DFD0"},{"name":"Stone","hex":"#B5B0A8"},{"name":"Charcoal","hex":"#4A4A4A"},{"name":"Navy","hex":"#1B2A4A"}]'::jsonb, 13),
+  ((select id from blind_types where slug = 'roller-standard'), 'Vogue', 'roller-vogue',
+   'Fashion-forward patterns and metallic sheens for statement windows.',
+   '[{"name":"Pearl","hex":"#E8E4D9"},{"name":"Champagne","hex":"#F7E7CE"},{"name":"Graphite","hex":"#4A4A4A"}]'::jsonb, 14)
+on conflict (slug) do update set
+  name = excluded.name, description = excluded.description, colour_options = excluded.colour_options, display_order = excluded.display_order;
+
+-- ─── Additional Aluminium Ranges ──────────────────────────
+insert into public.blind_ranges (blind_type_id, name, slug, description, colour_options, display_order) values
+  ((select id from blind_types where slug = '25mm-aluminium'), 'Licorice & Mushroom', '25mm-licorice-mushroom',
+   'Rich charcoal and warm mushroom tones in 25mm slats.',
+   '[{"name":"Licorice","hex":"#2D2D2D"},{"name":"Mushroom","hex":"#B5A89A"},{"name":"Graphite","hex":"#4A4A4A"}]'::jsonb, 2),
+  ((select id from blind_types where slug = '50mm-aluminium'), 'Décor', '50mm-decor',
+   'Premium wood-look and metallic finishes on durable aluminium.',
+   '[{"name":"Oak","hex":"#C4963A"},{"name":"Walnut","hex":"#5C3A21"},{"name":"Cherry","hex":"#8B2500"},{"name":"White","hex":"#FFFFFF"}]'::jsonb, 3)
+on conflict (slug) do update set
+  name = excluded.name, description = excluded.description, colour_options = excluded.colour_options, display_order = excluded.display_order;
+
+-- ─── Additional Wood & Natural Ranges ─────────────────────
+insert into public.blind_ranges (blind_type_id, name, slug, description, colour_options, display_order) values
+  ((select id from blind_types where slug = '50mm-wood'), 'Wood 50mm', '50mm-wood-natural',
+   'Classic 50mm real wood venetian in natural grain finishes.',
+   '[{"name":"Natural","hex":"#D4A76A"},{"name":"White","hex":"#F5F5F0"},{"name":"Walnut","hex":"#5C3A21"},{"name":"Espresso","hex":"#3C1F0A"}]'::jsonb, 2),
+  ((select id from blind_types where slug = '50mm-bamboo'), 'Bamboo 50mm', '50mm-bamboo-natural',
+   'Eco-friendly bamboo slats with a natural woven texture.',
+   '[{"name":"Natural","hex":"#D4B896"},{"name":"Carbonised","hex":"#8B6B3D"},{"name":"Walnut","hex":"#5C3A21"}]'::jsonb, 1),
+  ((select id from blind_types where slug = '50mm-pvc'), 'PVC Smooth 50mm', '50mm-pvc-smooth',
+   'Moisture-resistant PVC venetian — perfect for kitchens and bathrooms.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Cream","hex":"#FFF8E7"},{"name":"Grey","hex":"#B0B0B0"}]'::jsonb, 1)
+on conflict (slug) do update set
+  name = excluded.name, description = excluded.description, colour_options = excluded.colour_options, display_order = excluded.display_order;
+
+-- ─── Additional Vertical Ranges ───────────────────────────
+insert into public.blind_ranges (blind_type_id, name, slug, description, colour_options, display_order) values
+  ((select id from blind_types where slug = '90mm-vertical'), 'Aspen 90mm', 'vertical-aspen-90',
+   'Classic translucent 90mm louvres in a soft weave.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Ivory","hex":"#FFFFF0"},{"name":"Stone","hex":"#C4BEB5"}]'::jsonb, 1),
+  ((select id from blind_types where slug = '90mm-vertical'), 'Beach 90mm', 'vertical-beach-90',
+   'Coastal-inspired 90mm louvres with a relaxed texture.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Linen","hex":"#E8DFD0"},{"name":"Sand","hex":"#C2B280"}]'::jsonb, 2),
+  ((select id from blind_types where slug = '90mm-vertical'), 'Solitaire 90mm', 'vertical-solitaire-90',
+   'Classic fabric louvres in a wide palette of neutral tones.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Cream","hex":"#FFFDD0"},{"name":"Grey","hex":"#808080"}]'::jsonb, 3),
+  ((select id from blind_types where slug = '127mm-vertical'), 'Aspen 127mm', 'vertical-aspen-127',
+   'Classic translucent 127mm louvres.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Ivory","hex":"#FFFFF0"},{"name":"Stone","hex":"#C4BEB5"},{"name":"Charcoal","hex":"#4A4A4A"}]'::jsonb, 3),
+  ((select id from blind_types where slug = '127mm-vertical'), 'Beach 127mm', 'vertical-beach-127',
+   'Coastal-inspired 127mm fabric louvres.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Linen","hex":"#E8DFD0"},{"name":"Sand","hex":"#C2B280"},{"name":"Stone","hex":"#C4BEB5"}]'::jsonb, 4),
+  ((select id from blind_types where slug = '127mm-vertical'), 'Solitaire 127mm', 'vertical-solitaire-127',
+   'Classic 127mm louvres in neutral tones.',
+   '[{"name":"White","hex":"#FFFFFF"},{"name":"Ivory","hex":"#FFFFF0"},{"name":"Sand","hex":"#C2B280"},{"name":"Grey","hex":"#808080"}]'::jsonb, 5)
+on conflict (slug) do update set
+  name = excluded.name, description = excluded.description, colour_options = excluded.colour_options, display_order = excluded.display_order;
+
+-- ─── Blind Extras (accessories) ───────────────────────────
+insert into public.blind_extras (name, slug, description, pricing_type, category_filter, type_filter, max_width_mm, display_order) values
+  ('Stainless Steel Ball Chain', 'ss-ball-chain', 'Upgrade to a durable stainless steel control chain.', 'fixed', '{roller}', null, null, 1),
+  ('Metal Ball Chain', 'metal-ball-chain', 'Standard metal ball chain upgrade.', 'fixed', '{roller}', null, null, 2),
+  ('Wood Valance (106mm)', 'wood-valance', 'Decorative wood pelmet to conceal the roller mechanism.', 'width_based', '{roller}', null, null, 3),
+  ('Cassette with Full Fascia', 'cassette-fascia', 'Enclosed aluminium cassette for a clean, modern look.', 'width_based', '{roller}', null, null, 4),
+  ('Side Guides', 'side-guides', 'Aluminium edge guides to eliminate light gaps.', 'fixed', '{roller}', null, null, 5),
+  ('40mm Roller Upgrade', '40mm-roller', 'Upgrade to a 40mm diameter roller tube.', 'width_based', '{roller}', null, 200, 6),
+  ('45mm Roller Upgrade', '45mm-roller', 'Upgrade to a 45mm diameter roller tube for wider blinds.', 'width_based', '{roller}', null, null, 7),
+  ('Duo Link', 'duo-link', 'Link two roller blinds on a single bracket.', 'width_based', '{roller}', null, 200, 8)
+on conflict (slug) do update set
+  name = excluded.name, description = excluded.description, pricing_type = excluded.pricing_type, display_order = excluded.display_order;
+
+-- ─── Product Categories (template shop — expanded) ────────
 insert into public.product_categories (name, slug, image, display_order, is_active) values
   ('{"en": "Roller Blinds"}'::jsonb, 'roller', null, 1, true),
-  ('{"en": "Venetian Blinds"}'::jsonb, 'venetian', null, 2, true),
-  ('{"en": "Vertical Blinds"}'::jsonb, 'vertical', null, 3, true)
+  ('{"en": "Aluminium Venetian"}'::jsonb, 'aluminium-venetian', null, 2, true),
+  ('{"en": "Wood & Natural Venetian"}'::jsonb, 'wood-venetian', null, 3, true),
+  ('{"en": "Vertical Blinds"}'::jsonb, 'vertical', null, 4, true),
+  ('{"en": "Accessories"}'::jsonb, 'accessories', null, 5, true)
 on conflict (slug) do update set
   name = excluded.name,
   display_order = excluded.display_order;
+
+-- ─── Products (one per range as browsable items) ──────────
+-- "From" prices shown; actual price depends on dimensions via configurator
+insert into public.products (name, slug, description, price_cents, images, category_id, stock_quantity, is_active) values
+  -- Roller Blinds
+  ('{"en":"Beach Roller Blind"}'::jsonb, 'roller-beach', '{"en":"Light filtering fabric with a coastal, relaxed aesthetic. Available in White, Ivory, Linen, and Stone."}'::jsonb, 49000, '{}', (select id from product_categories where slug = 'roller'), 999, true),
+  ('{"en":"Cedar Roller Blind"}'::jsonb, 'roller-cedar', '{"en":"Textured weave sunscreen fabric with excellent outward visibility."}'::jsonb, 52000, '{}', (select id from product_categories where slug = 'roller'), 999, true),
+  ('{"en":"Sanctuary Blockout Roller"}'::jsonb, 'roller-sanctuary-bo', '{"en":"Premium blockout fabric for complete light control — bedrooms, nurseries, media rooms."}'::jsonb, 59000, '{}', (select id from product_categories where slug = 'roller'), 999, true),
+  ('{"en":"Sanctuary Light Filtering"}'::jsonb, 'roller-sanctuary-lf', '{"en":"Soft light filtering fabric that gently diffuses natural light."}'::jsonb, 55000, '{}', (select id from product_categories where slug = 'roller'), 999, true),
+  ('{"en":"Aspen & Classic Roller"}'::jsonb, 'roller-aspen', '{"en":"Versatile translucent fabric with a soft weave for living areas."}'::jsonb, 46000, '{}', (select id from product_categories where slug = 'roller'), 999, true),
+  ('{"en":"Smart Screen Roller"}'::jsonb, 'roller-smartscreen', '{"en":"Performance sunscreen with excellent outward visibility and UV rejection."}'::jsonb, 62000, '{}', (select id from product_categories where slug = 'roller'), 999, true),
+  ('{"en":"Solar Cool Roller"}'::jsonb, 'roller-solarcool', '{"en":"Reflective sunscreen that reduces heat gain — ideal for hot climates."}'::jsonb, 68000, '{}', (select id from product_categories where slug = 'roller'), 999, true),
+  ('{"en":"Sable Blockout Roller"}'::jsonb, 'roller-sable', '{"en":"Luxurious textured blockout fabric in rich, sophisticated tones."}'::jsonb, 61000, '{}', (select id from product_categories where slug = 'roller'), 999, true),
+  ('{"en":"Urban Roller Blind"}'::jsonb, 'roller-urban', '{"en":"Contemporary textured fabric with a subtle linen aesthetic."}'::jsonb, 54000, '{}', (select id from product_categories where slug = 'roller'), 999, true),
+  ('{"en":"Vogue Roller Blind"}'::jsonb, 'roller-vogue', '{"en":"Fashion-forward patterns and metallic sheens for statement windows."}'::jsonb, 72000, '{}', (select id from product_categories where slug = 'roller'), 999, true),
+  -- Aluminium Venetian
+  ('{"en":"25mm Plain & Designer Venetian"}'::jsonb, '25mm-plain-designer', '{"en":"Classic 25mm aluminium slats in solid and metallic finishes."}'::jsonb, 44000, '{}', (select id from product_categories where slug = 'aluminium-venetian'), 999, true),
+  ('{"en":"25mm Licorice & Mushroom Venetian"}'::jsonb, '25mm-licorice-mushroom', '{"en":"Rich charcoal and warm mushroom tones in 25mm aluminium."}'::jsonb, 48000, '{}', (select id from product_categories where slug = 'aluminium-venetian'), 999, true),
+  ('{"en":"50mm Plain & Designer Venetian"}'::jsonb, '50mm-plain-designer', '{"en":"Wide-slat aluminium venetian in contemporary colours."}'::jsonb, 56000, '{}', (select id from product_categories where slug = 'aluminium-venetian'), 999, true),
+  ('{"en":"50mm Brushed & Perforated Venetian"}'::jsonb, '50mm-brushed-perforated', '{"en":"Premium metallic finishes and perforated slats."}'::jsonb, 64000, '{}', (select id from product_categories where slug = 'aluminium-venetian'), 999, true),
+  ('{"en":"50mm Décor Venetian"}'::jsonb, '50mm-decor', '{"en":"Wood-look and metallic finishes on durable aluminium."}'::jsonb, 62000, '{}', (select id from product_categories where slug = 'aluminium-venetian'), 999, true),
+  -- Wood & Natural
+  ('{"en":"50mm Sherwood Venetian"}'::jsonb, '50mm-sherwood', '{"en":"Real stained timber venetian in rich natural tones."}'::jsonb, 78000, '{}', (select id from product_categories where slug = 'wood-venetian'), 999, true),
+  ('{"en":"50mm Wood Venetian"}'::jsonb, '50mm-wood-natural', '{"en":"Classic 50mm real wood venetian in natural grain finishes."}'::jsonb, 82000, '{}', (select id from product_categories where slug = 'wood-venetian'), 999, true),
+  ('{"en":"50mm Bamboo Venetian"}'::jsonb, '50mm-bamboo-natural', '{"en":"Eco-friendly bamboo slats with a natural woven texture."}'::jsonb, 72000, '{}', (select id from product_categories where slug = 'wood-venetian'), 999, true),
+  ('{"en":"50mm PVC Venetian"}'::jsonb, '50mm-pvc-smooth', '{"en":"Moisture-resistant PVC — perfect for kitchens and bathrooms."}'::jsonb, 48000, '{}', (select id from product_categories where slug = 'wood-venetian'), 999, true),
+  -- Vertical
+  ('{"en":"Sabre 127mm Vertical"}'::jsonb, 'vertical-sabre', '{"en":"Durable fabric louvres in a textured weave — ideal for sliding doors."}'::jsonb, 52000, '{}', (select id from product_categories where slug = 'vertical'), 999, true),
+  ('{"en":"PVC Smooth 127mm Vertical"}'::jsonb, 'vertical-pvc-smooth', '{"en":"Easy-clean PVC louvres for kitchens and bathrooms."}'::jsonb, 46000, '{}', (select id from product_categories where slug = 'vertical'), 999, true),
+  ('{"en":"Aspen 127mm Vertical"}'::jsonb, 'vertical-aspen-127', '{"en":"Classic translucent 127mm louvres."}'::jsonb, 54000, '{}', (select id from product_categories where slug = 'vertical'), 999, true),
+  ('{"en":"Beach 127mm Vertical"}'::jsonb, 'vertical-beach-127', '{"en":"Coastal-inspired 127mm fabric louvres."}'::jsonb, 56000, '{}', (select id from product_categories where slug = 'vertical'), 999, true),
+  ('{"en":"90mm Aspen Vertical"}'::jsonb, 'vertical-aspen-90', '{"en":"Classic translucent 90mm louvres — a slimmer, contemporary profile."}'::jsonb, 52000, '{}', (select id from product_categories where slug = 'vertical'), 999, true),
+  ('{"en":"90mm Beach Vertical"}'::jsonb, 'vertical-beach-90', '{"en":"Coastal-inspired 90mm louvres with a relaxed texture."}'::jsonb, 54000, '{}', (select id from product_categories where slug = 'vertical'), 999, true),
+  -- Accessories
+  ('{"en":"Stainless Steel Ball Chain"}'::jsonb, 'ss-ball-chain', '{"en":"Upgrade to a durable stainless steel control chain for roller blinds."}'::jsonb, 17000, '{}', (select id from product_categories where slug = 'accessories'), 999, true),
+  ('{"en":"Wood Valance (106mm)"}'::jsonb, 'wood-valance', '{"en":"Decorative wood pelmet to conceal the roller mechanism."}'::jsonb, 25900, '{}', (select id from product_categories where slug = 'accessories'), 999, true),
+  ('{"en":"Cassette with Full Fascia"}'::jsonb, 'cassette-fascia', '{"en":"Enclosed aluminium cassette for a clean, modern look."}'::jsonb, 44200, '{}', (select id from product_categories where slug = 'accessories'), 999, true),
+  ('{"en":"Side Guides"}'::jsonb, 'side-guides', '{"en":"Aluminium edge guides to eliminate light gaps."}'::jsonb, 38400, '{}', (select id from product_categories where slug = 'accessories'), 999, true)
+on conflict (slug) do update set
+  name = excluded.name, description = excluded.description, price_cents = excluded.price_cents, category_id = excluded.category_id;
 
 -- ─── Admin User Note ─────────────────────────────────────────
 -- To create an admin user:
