@@ -41,16 +41,13 @@ export default function ClientImportPage() {
     }
   }
 
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setCsvText(ev.target?.result as string || "");
-      setPreview([]);
-      setResult(null);
-    };
-    reader.readAsText(file);
+    const text = await file.text();
+    setCsvText(text);
+    setPreview([]);
+    setResult(null);
   }
 
   return (
@@ -121,8 +118,8 @@ export default function ClientImportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.slice(0, 20).map((row, i) => (
-                    <tr key={i} className="border-b last:border-0">
+                  {preview.slice(0, 20).map((row) => (
+                    <tr key={row.email} className="border-b last:border-0">
                       <td className="py-2 pr-4">{row.full_name}</td>
                       <td className="py-2 pr-4">{row.email}</td>
                       <td className="py-2 pr-4">{row.phone || "\u2014"}</td>
@@ -167,8 +164,8 @@ export default function ClientImportPage() {
               <div className="rounded-md border bg-destructive/10 p-3 text-sm">
                 <p className="mb-2 font-medium text-destructive">Errors:</p>
                 <ul className="space-y-1 text-xs">
-                  {result.errors.map((err, i) => (
-                    <li key={i}>{err}</li>
+                  {result.errors.map((err) => (
+                    <li key={err}>{err}</li>
                   ))}
                 </ul>
               </div>

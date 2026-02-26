@@ -121,8 +121,9 @@ export default function SiteSettingsPage() {
           </div>
           <Field label="WhatsApp Number" value={form.whatsapp_number ?? ""} onChange={(v) => set("whatsapp_number", v)} placeholder="27123456789" hint="International format without + (used for wa.me link)" />
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-foreground">Address</label>
+            <label htmlFor="settings-address" className="text-sm font-medium text-foreground">Address</label>
             <Textarea
+              id="settings-address"
               value={form.address ?? ""}
               onChange={(e) => set("address", e.target.value)}
               placeholder="123 Main Street, City, 1234"

@@ -107,10 +107,10 @@ function parseSheet(
 }
 
 /**
- * Parse an entire Shademaster XLS/XLSX file.
+ * Parse any supplier XLS/XLSX workbook.
  * Auto-detects the parser for each sheet based on sheet name and filename.
  */
-export function parseShademasterFile(
+export function parseWorkbook(
   buffer: ArrayBuffer,
   filename: string
 ): ParseResult {

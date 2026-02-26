@@ -107,6 +107,9 @@ function buildSidebarNav(): NavGroup[] {
   if (isEnabled("clientImport")) {
     manageItems.push({ href: "/admin/clients/import", label: "Client Import", icon: Users });
   }
+  if (isEnabled("blindsImport")) {
+    manageItems.push({ href: "/admin/blinds/import", label: "Price Import", icon: FileText });
+  }
   groups.push({ title: "Manage", items: manageItems });
 
   // Site

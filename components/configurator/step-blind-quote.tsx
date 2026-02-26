@@ -59,7 +59,7 @@ export function StepBlindQuote({
         </p>
         <p className="text-sm text-muted-foreground">
           Price lookup requires imported supplier data. Once the admin has
-          imported the Shademaster price sheets, pricing will work automatically.
+          imported the supplier price sheets, pricing will work automatically.
         </p>
         <Button variant="outline" onClick={onRecalculate}>
           <RefreshCw className="size-4" />

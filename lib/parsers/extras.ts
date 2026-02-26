@@ -2,6 +2,72 @@ import type { ExtrasResult } from "@/types/blinds";
 import type { WorkSheet } from "xlsx";
 import * as XLSX from "xlsx";
 
+interface WidthHeader {
+  headerRowIdx: number;
+  widths: number[];
+  widthStartCol: number;
+}
+
+/** Find the width header row — a row with 3+ sequential numbers (20–500). */
+function findWidthHeaders(raw: unknown[][]): WidthHeader | null {
+  for (let r = 0; r < Math.min(raw.length, 10); r++) {
+    const row = raw[r];
+    if (!row) continue;
+
+    const numericCols: { col: number; val: number }[] = [];
+    for (let c = 0; c < row.length; c++) {
+      const val = Number.parseFloat(String(row[c] ?? ""));
+      if (!Number.isNaN(val) && val >= 20 && val <= 500) {
+        numericCols.push({ col: c, val });
+      }
+    }
+
+    if (numericCols.length >= 3) {
+      return {
+        headerRowIdx: r,
+        widthStartCol: numericCols[0].col,
+        widths: numericCols.map((n) => n.val),
+      };
+    }
+  }
+  return null;
+}
+
+/** Extract the item name from cells before widthStartCol. */
+function extractItemName(row: unknown[], widthStartCol: number): string {
+  const parts: string[] = [];
+  for (let c = 0; c < widthStartCol; c++) {
+    const cell = String(row[c] ?? "").trim();
+    if (cell) parts.push(cell);
+  }
+  return parts.join(" ").trim();
+}
+
+/** Extract prices and their corresponding widths from a row. */
+function extractPricesForRow(
+  row: unknown[],
+  widths: number[],
+  widthStartCol: number
+): { validWidths: number[]; prices: number[]; maxWidth: number | null } {
+  const prices: number[] = [];
+  const validWidths: number[] = [];
+  let maxWidth: number | null = null;
+
+  for (let i = 0; i < widths.length; i++) {
+    const c = widthStartCol + i;
+    const val = Number.parseFloat(String(row[c] ?? ""));
+    if (!Number.isNaN(val) && val > 0) {
+      validWidths.push(widths[i]);
+      prices.push(val);
+    } else if (prices.length > 0) {
+      maxWidth = validWidths[validWidths.length - 1];
+      break;
+    }
+  }
+
+  return { validWidths, prices, maxWidth };
+}
+
 /**
  * Parses the "Extras" sheet from Roller Blind price list.
  * Layout: width headers in a top row, each subsequent row is an accessory
@@ -10,71 +76,28 @@ import * as XLSX from "xlsx";
 export function parseExtras(sheet: WorkSheet): ExtrasResult {
   const raw: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-  // Find width header row
-  let headerRowIdx = -1;
-  let widths: number[] = [];
-  let widthStartCol = -1;
-
-  for (let r = 0; r < Math.min(raw.length, 10); r++) {
-    const row = raw[r];
-    if (!row) continue;
-
-    const numericCols: { col: number; val: number }[] = [];
-    for (let c = 0; c < row.length; c++) {
-      const val = parseFloat(String(row[c] ?? ""));
-      if (!isNaN(val) && val >= 20 && val <= 500) {
-        numericCols.push({ col: c, val });
-      }
-    }
-
-    if (numericCols.length >= 3) {
-      headerRowIdx = r;
-      widthStartCol = numericCols[0].col;
-      widths = numericCols.map((n) => n.val);
-      break;
-    }
-  }
-
-  if (headerRowIdx === -1) {
+  const header = findWidthHeaders(raw);
+  if (!header) {
     return { items: [] };
   }
 
+  const { headerRowIdx, widths, widthStartCol } = header;
   const items: ExtrasResult["items"] = [];
 
   for (let r = headerRowIdx + 1; r < raw.length; r++) {
     const row = raw[r];
     if (!row || row.length === 0) continue;
 
-    // Extract name from cells before width columns
-    const nameParts: string[] = [];
-    for (let c = 0; c < widthStartCol; c++) {
-      const cell = String(row[c] ?? "").trim();
-      if (cell) nameParts.push(cell);
-    }
-    const name = nameParts.join(" ").trim();
+    const name = extractItemName(row, widthStartCol);
     if (!name) continue;
 
-    // Extract prices per width
-    const prices: number[] = [];
-    const validWidths: number[] = [];
-    let maxWidth: number | null = null;
-
-    for (let i = 0; i < widths.length; i++) {
-      const c = widthStartCol + i;
-      const val = parseFloat(String(row[c] ?? ""));
-      if (!isNaN(val) && val > 0) {
-        validWidths.push(widths[i]);
-        prices.push(val);
-      } else if (prices.length > 0) {
-        // Empty cell after valid prices = max width limit
-        maxWidth = validWidths[validWidths.length - 1];
-        break;
-      }
-    }
-
+    const { validWidths, prices, maxWidth } = extractPricesForRow(
+      row,
+      widths,
+      widthStartCol
+    );
     if (prices.length === 0) continue;
 
-    // Detect if fixed (all same price) or width_based
     const allSame = prices.every((p) => p === prices[0]);
     const pricingType = allSame ? ("fixed" as const) : ("width_based" as const);
 

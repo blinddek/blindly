@@ -163,7 +163,45 @@ export interface ImportMapping {
   sheet_name: string;
   maps_to_range_id: string | null;
   parser_type: ParserType;
+  display_name: string | null;
+  notes: string | null;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  slug: string;
+  notes: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Client-supplied sheet→range mapping override from the import UI. */
+export interface SheetMappingOverride {
+  sheet_name: string;
+  parser_type: ParserType;
+  maps_to_range_id: string | null;
+  skip: boolean;
+}
+
+/** Preview of a parsed sheet for the import wizard UI. */
+export interface SheetPreview {
+  sheet_name: string;
+  detected_parser: ParserType;
+  stats: { rows: number; cols: number; prices: number };
+  sample_data: unknown[][];
+  existing_mapping: ImportMapping | null;
+}
+
+/** Full parse preview returned before import confirmation. */
+export interface ParsePreview {
+  filename: string;
+  sheets: SheetPreview[];
+  errors: string[];
 }
 
 // ─── Orders ─────────────────────────────────────────────

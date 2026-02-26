@@ -48,7 +48,9 @@ const PAGE_LABELS: Record<string, string> = {
 
 type FilterType = "all" | "missing_image" | "missing_description" | "noindex";
 
-function getStatus(page: PageSeoRow): "complete" | "partial" | "missing" {
+type SeoStatus = "complete" | "partial" | "missing";
+
+function getStatus(page: PageSeoRow): SeoStatus {
   const hasTitle = !!page.title?.en;
   const hasDesc = !!page.description?.en;
   const hasImage = !!page.og_image_url;
@@ -151,58 +153,21 @@ export default function AdminSeoPage() {
       </div>
 
       {/* Page List */}
-      {loading ? (
+      {loading && (
         <p className="text-sm text-muted-foreground">Loading...</p>
-      ) : filtered.length === 0 ? (
+      )}
+      {!loading && filtered.length === 0 && (
         <p className="text-sm text-muted-foreground">No pages found.</p>
-      ) : (
+      )}
+      {!loading && filtered.length > 0 && (
         <div className="space-y-2">
-          {filtered.map((page) => {
-            const status = getStatus(page);
-            const label = PAGE_LABELS[page.page_key] || page.page_key;
-
-            return (
-              <Card key={page.id}>
-                <CardContent className="flex items-center justify-between py-3">
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{label}</span>
-                      <Badge
-                        variant={
-                          status === "complete"
-                            ? "default"
-                            : status === "partial"
-                              ? "secondary"
-                              : "outline"
-                        }
-                      >
-                        {status === "complete" ? "Complete" : status === "partial" ? "Partial" : "Not Set"}
-                      </Badge>
-                      {page.noindex && (
-                        <Badge variant="destructive">Noindex</Badge>
-                      )}
-                    </div>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {page.title?.en || <span className="italic">No title set</span>}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {page.description?.en
-                        ? page.description.en.substring(0, 100) + (page.description.en.length > 100 ? "..." : "")
-                        : "No description"}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setEditing(page)}
-                    className="ml-2 shrink-0"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {filtered.map((page) => (
+            <SeoPageCard
+              key={page.id}
+              page={page}
+              onEdit={() => setEditing(page)}
+            />
+          ))}
         </div>
       )}
 
@@ -214,5 +179,59 @@ export default function AdminSeoPage() {
         }}
       />
     </div>
+  );
+}
+
+function getBadgeVariant(status: SeoStatus) {
+  if (status === "complete") return "default" as const;
+  if (status === "partial") return "secondary" as const;
+  return "outline" as const;
+}
+
+function getStatusLabel(status: SeoStatus) {
+  if (status === "complete") return "Complete";
+  if (status === "partial") return "Partial";
+  return "Not Set";
+}
+
+function truncateDescription(desc: string | undefined | null): string {
+  if (!desc) return "No description";
+  return desc.length > 100 ? `${desc.substring(0, 100)}...` : desc;
+}
+
+function SeoPageCard({ page, onEdit }: { page: PageSeoRow; onEdit: () => void }) {
+  const status = getStatus(page);
+  const label = PAGE_LABELS[page.page_key] || page.page_key;
+
+  return (
+    <Card>
+      <CardContent className="flex items-center justify-between py-3">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{label}</span>
+            <Badge variant={getBadgeVariant(status)}>
+              {getStatusLabel(status)}
+            </Badge>
+            {page.noindex && (
+              <Badge variant="destructive">Noindex</Badge>
+            )}
+          </div>
+          <p className="truncate text-sm text-muted-foreground">
+            {page.title?.en || <span className="italic">No title set</span>}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {truncateDescription(page.description?.en)}
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onEdit}
+          className="ml-2 shrink-0"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

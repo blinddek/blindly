@@ -47,8 +47,8 @@ const emptyPost = (): BlogPostForm => ({
 function slugify(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/(^-)|(-$)/g, "");
 }
 
 export default function BlogEditor() {
@@ -222,8 +222,9 @@ export default function BlogEditor() {
         <Card key={item.id ?? `new-${i}`}>
           <CardContent className="space-y-4 pt-6">
             <div>
-              <label className="mb-1 block text-sm font-medium">Slug</label>
+              <label htmlFor={`blog-slug-${item.id ?? i}`} className="mb-1 block text-sm font-medium">Slug</label>
               <Input
+                id={`blog-slug-${item.id ?? i}`}
                 value={item.slug}
                 onChange={(e) => handleSlugChange(i, e.target.value)}
                 placeholder="auto-generated-from-title"
@@ -253,20 +254,22 @@ export default function BlogEditor() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label htmlFor={`blog-author-${item.id ?? i}`} className="mb-1 block text-sm font-medium">
                   Author
                 </label>
                 <Input
+                  id={`blog-author-${item.id ?? i}`}
                   value={item.author}
                   onChange={(e) => updateItem(i, "author", e.target.value)}
                   placeholder="Author name"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label htmlFor={`blog-category-${item.id ?? i}`} className="mb-1 block text-sm font-medium">
                   Category
                 </label>
                 <select
+                  id={`blog-category-${item.id ?? i}`}
                   value={item.category_id ?? ""}
                   onChange={(e) =>
                     updateItem(i, "category_id", e.target.value || null)
@@ -284,7 +287,7 @@ export default function BlogEditor() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">Tags</label>
+              <p className="mb-1 text-sm font-medium">Tags</p>
               <DynamicStringList
                 value={item.tags}
                 onChange={(tags) => updateItem(i, "tags", tags)}
@@ -309,15 +312,16 @@ export default function BlogEditor() {
                       handlePublishedToggle(i, e.target.checked)
                     }
                     className="h-4 w-4 rounded border-input"
-                  />
-                  Published
+                  />{" "}
+                  <span>Published</span>
                 </label>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label htmlFor={`blog-published-${item.id ?? i}`} className="mb-1 block text-sm font-medium">
                   Published At
                 </label>
                 <Input
+                  id={`blog-published-${item.id ?? i}`}
                   value={item.published_at ?? ""}
                   readOnly
                   className="text-muted-foreground"

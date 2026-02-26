@@ -57,6 +57,7 @@ export interface SiteConfig {
     coupons: boolean;
     gifts: boolean;
     clientImport: boolean;
+    blindsImport: boolean;
     microsoftGraph: boolean;
   };
   integrations: {
@@ -137,6 +138,7 @@ export const siteConfig: SiteConfig = {
     coupons: false,
     gifts: false,
     clientImport: false,
+    blindsImport: true,
     microsoftGraph: false,
   },
   integrations: {

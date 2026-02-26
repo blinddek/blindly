@@ -43,8 +43,8 @@ const emptyProduct = (): ProductForm => ({
 function slugify(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/(^-)|(-$)/g, "");
 }
 
 export default function AdminProductsPage() {
@@ -210,8 +210,9 @@ export default function AdminProductsPage() {
         <Card key={item.id ?? `new-${i}`}>
           <CardContent className="space-y-4 pt-6">
             <div>
-              <label className="mb-1 block text-sm font-medium">Slug</label>
+              <label htmlFor={`product-slug-${item.id ?? i}`} className="mb-1 block text-sm font-medium">Slug</label>
               <Input
+                id={`product-slug-${item.id ?? i}`}
                 value={item.slug}
                 onChange={(e) => handleSlugChange(i, e.target.value)}
                 placeholder="auto-generated-from-name"
@@ -234,10 +235,11 @@ export default function AdminProductsPage() {
 
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label htmlFor={`product-price-${item.id ?? i}`} className="mb-1 block text-sm font-medium">
                   Price (cents)
                 </label>
                 <Input
+                  id={`product-price-${item.id ?? i}`}
                   type="number"
                   value={item.price_cents}
                   onChange={(e) =>
@@ -247,10 +249,11 @@ export default function AdminProductsPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label htmlFor={`product-stock-${item.id ?? i}`} className="mb-1 block text-sm font-medium">
                   Stock Quantity
                 </label>
                 <Input
+                  id={`product-stock-${item.id ?? i}`}
                   type="number"
                   value={item.stock_quantity}
                   onChange={(e) =>
@@ -259,10 +262,11 @@ export default function AdminProductsPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label htmlFor={`product-category-${item.id ?? i}`} className="mb-1 block text-sm font-medium">
                   Category
                 </label>
                 <select
+                  id={`product-category-${item.id ?? i}`}
                   value={item.category_id ?? ""}
                   onChange={(e) =>
                     updateItem(i, "category_id", e.target.value || null)
@@ -295,9 +299,9 @@ export default function AdminProductsPage() {
             />
 
             <div>
-              <label className="mb-1 block text-sm font-medium">
+              <p className="mb-1 text-sm font-medium">
                 Additional Images
-              </label>
+              </p>
               <DynamicStringList
                 value={item.images?.slice(1) ?? []}
                 onChange={(urls) =>
@@ -317,8 +321,8 @@ export default function AdminProductsPage() {
                   checked={item.is_active}
                   onChange={(e) => updateItem(i, "is_active", e.target.checked)}
                   className="h-4 w-4 rounded border-input"
-                />
-                Active (visible in shop)
+                />{" "}
+                <span>Active (visible in shop)</span>
               </label>
             </div>
 
