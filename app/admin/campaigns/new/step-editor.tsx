@@ -1,0 +1,197 @@
+"use client";
+
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { RichTextEditor } from "@/components/admin/email/rich-text-editor";
+
+export interface StepData {
+  dayOffset: number;
+  subject: string;
+  previewText: string;
+  bodyHtml: string;
+  ctaText: string;
+  ctaUrl: string;
+}
+
+interface StepEditorProps {
+  readonly index: number;
+  readonly step: StepData;
+  readonly isExpanded: boolean;
+  readonly canMoveUp: boolean;
+  readonly canMoveDown: boolean;
+  readonly canRemove: boolean;
+  readonly onToggle: () => void;
+  readonly onChange: (step: StepData) => void;
+  readonly onMoveUp: () => void;
+  readonly onMoveDown: () => void;
+  readonly onRemove: () => void;
+}
+
+const SUBJECT_VARIABLES = [
+  { key: "firstName", label: "First Name" },
+];
+
+export function StepEditor({
+  index,
+  step,
+  isExpanded,
+  canMoveUp,
+  canMoveDown,
+  canRemove,
+  onToggle,
+  onChange,
+  onMoveUp,
+  onMoveDown,
+  onRemove,
+}: StepEditorProps) {
+  function update(field: keyof StepData, value: string | number) {
+    onChange({ ...step, [field]: value });
+  }
+
+  function insertSubjectVariable(variable: string) {
+    update("subject", step.subject + `{{${variable}}}`);
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        className="cursor-pointer pb-3"
+        onClick={onToggle}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="shrink-0">
+              Step {index + 1}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              Day {step.dayOffset}
+            </span>
+            {step.subject && (
+              <span className="text-sm text-muted-foreground truncate max-w-[300px]">
+                — {step.subject}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            {canMoveUp && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                onClick={(e) => { e.stopPropagation(); onMoveUp(); }}
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {canMoveDown && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                onClick={(e) => { e.stopPropagation(); onMoveDown(); }}
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {canRemove && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Remove step ${index + 1}?`)) onRemove();
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+
+      {isExpanded && (
+        <CardContent className="space-y-4 pt-0">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Day Offset</Label>
+              <Input
+                type="number"
+                min={0}
+                value={step.dayOffset}
+                onChange={(e) => update("dayOffset", Number.parseInt(e.target.value, 10) || 0)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Days after campaign start to send this email
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Subject Line</Label>
+            <Input
+              value={step.subject}
+              onChange={(e) => update("subject", e.target.value)}
+              placeholder="e.g. Welcome back, {{firstName}}!"
+            />
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Insert:</span>
+              {SUBJECT_VARIABLES.map((v) => (
+                <Badge
+                  key={v.key}
+                  variant="outline"
+                  className="cursor-pointer text-xs hover:bg-primary/10 hover:border-primary/40 transition-colors"
+                  onClick={() => insertSubjectVariable(v.key)}
+                >
+                  {`{{${v.key}}}`}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Preview Text</Label>
+            <Input
+              value={step.previewText}
+              onChange={(e) => update("previewText", e.target.value)}
+              placeholder="Shown in inbox beside the subject..."
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Email Body</Label>
+            <RichTextEditor
+              value={step.bodyHtml}
+              onChange={(html) => update("bodyHtml", html)}
+              placeholder="Start typing your email content..."
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>CTA Button Text (optional)</Label>
+              <Input
+                value={step.ctaText}
+                onChange={(e) => update("ctaText", e.target.value)}
+                placeholder="e.g. Explore Courses"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CTA Button URL</Label>
+              <Input
+                value={step.ctaUrl}
+                onChange={(e) => update("ctaUrl", e.target.value)}
+                placeholder="/courses or https://..."
+                className="font-mono text-sm"
+              />
+            </div>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}

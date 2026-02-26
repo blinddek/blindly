@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blindly — Brand & Design Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --linen: #F5F0EB;
+    --ivory: #FDFBF7;
+    --charcoal: #2C2C2C;
+    --stone: #6B6560;
+    --sand: #DDD5CA;
+    --terracotta: #C4663A;
+    --sienna: #A8522B;
+    --sage: #6B8F71;
+    --amber: #D4A843;
+    --clay: #C44B3A;
+    --espresso: #3A3632;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: var(--linen);
+    color: var(--charcoal);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ===== DESIGN SYSTEM SECTION ===== */
+  .ds-section {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 80px 24px;
+  }
+  .ds-section + .ds-section { padding-top: 0; }
+
+  .ds-title {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 2rem;
+    color: var(--charcoal);
+    margin-bottom: 12px;
+  }
+  .ds-subtitle {
+    color: var(--stone);
+    font-size: 0.95rem;
+    margin-bottom: 40px;
+    max-width: 600px;
+  }
+
+  /* ===== NAV PROTOTYPE ===== */
+  .nav-proto {
+    background: var(--ivory);
+    border-bottom: 1px solid var(--sand);
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 72px;
+  }
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+  }
+  .nav-logo-mark {
+    width: 36px;
+    height: 36px;
+  }
+  .nav-logo-text {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 1.5rem;
+    color: var(--charcoal);
+    letter-spacing: 0.02em;
+  }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    list-style: none;
+  }
+  .nav-links a {
+    text-decoration: none;
+    color: var(--stone);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--charcoal); }
+  .nav-cta {
+    background: var(--terracotta);
+    color: white !important;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+  .nav-cta:hover { background: var(--sienna); color: white !important; }
+
+  /* ===== HERO ===== */
+  .hero {
+    position: relative;
+    height: 85vh;
+    min-height: 550px;
+    max-height: 800px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #E8DDD4 0%, #D4C4B5 30%, #C9B8A6 60%, #B5A08A 100%);
+  }
+  .hero-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 18px,
+        rgba(255,255,255,0.25) 18px,
+        rgba(255,255,255,0.25) 20px
+      );
+    opacity: 0.5;
+  }
+  /* Simulated window with blinds */
+  .hero-window {
+    position: absolute;
+    right: 8%;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 380px;
+    height: 480px;
+    background: linear-gradient(180deg, #87CEEB 0%, #E0F0FF 60%, #FFEFD5 100%);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 12px #B5A08A, 0 30px 60px rgba(0,0,0,0.15);
+  }
+  .hero-blind-slat {
+    width: 100%;
+    height: 22px;
+    background: linear-gradient(180deg, #F0E6D8 0%, #E8DDD0 40%, #D9CCBE 100%);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    position: relative;
+  }
+  .hero-blind-slat::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.05) 50%, transparent 100%);
+  }
+  .hero-blind-gap {
+    width: 100%;
+    height: 14px;
+  }
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(2.5rem, 5vw, 3.75rem);
+    color: var(--charcoal);
+    line-height: 1.1;
+    margin-bottom: 20px;
+    max-width: 550px;
+  }
+  .hero p {
+    color: var(--stone);
+    font-size: 1.15rem;
+    max-width: 440px;
+    margin-bottom: 36px;
+    line-height: 1.7;
+  }
+  .hero-btns {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary {
+    background: var(--terracotta);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--sienna); }
+  .btn-secondary {
+    background: transparent;
+    border: 2px solid var(--terracotta);
+    color: var(--terracotta);
+  }
+  .btn-secondary:hover { background: var(--terracotta); color: white; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--stone);
+    padding: 14px 20px;
+  }
+  .btn-ghost:hover { color: var(--charcoal); background: rgba(221,213,202,0.3); }
+  .btn-sm { padding: 10px 20px; font-size: 0.85rem; }
+
+  /* ===== CATEGORIES SECTION ===== */
+  .categories {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 80px 24px;
+  }
+  .categories-header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .categories-header h2 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 2.25rem;
+    margin-bottom: 12px;
+  }
+  .categories-header p {
+    color: var(--stone);
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+  .cat-card {
+    background: var(--ivory);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .cat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+  }
+  .cat-card-img {
+    aspect-ratio: 4/3;
+    overflow: hidden;
+  }
+  .cat-card-img-inner {
+    width: 100%;
+    height: 100%;
+    transition: transform 0.4s ease;
+  }
+  .cat-card:hover .cat-card-img-inner {
+    transform: scale(1.05);
+  }
+  /* Simulated product images with CSS patterns */
+  .cat-img-roller {
+    background: linear-gradient(180deg, #F5EDE3 0%, #E8DACE 100%);
+    position: relative;
+  }
+  .cat-img-roller::after {
+    content: '';
+    position: absolute;
+    inset: 20%;
+    background: repeating-linear-gradient(0deg, #D4C4B2 0px, #D4C4B2 2px, transparent 2px, transparent 12px);
+    border-radius: 4px;
+    opacity: 0.7;
+  }
+  .cat-img-aluminium {
+    background: linear-gradient(180deg, #E8E6E3 0%, #D5D1CC 100%);
+    position: relative;
+  }
+  .cat-img-aluminium::after {
+    content: '';
+    position: absolute;
+    inset: 20%;
+    background: repeating-linear-gradient(0deg, #BDB8B2 0px, #BDB8B2 3px, rgba(255,255,255,0.5) 3px, rgba(255,255,255,0.5) 5px, #C5C0BA 5px, #C5C0BA 8px, transparent 8px, transparent 16px);
+    border-radius: 2px;
+  }
+  .cat-img-wood {
+    background: linear-gradient(180deg, #E5D5C0 0%, #D4C0A5 100%);
+    position: relative;
+  }
+  .cat-img-wood::after {
+    content: '';
+    position: absolute;
+    inset: 20%;
+    background: repeating-linear-gradient(0deg, #C4A882 0px, #C4A882 4px, rgba(255,255,255,0.3) 4px, rgba(255,255,255,0.3) 6px, #CBAF90 6px, #CBAF90 10px, transparent 10px, transparent 20px);
+    border-radius: 2px;
+  }
+  .cat-img-vertical {
+    background: linear-gradient(180deg, #EDE7DF 0%, #DDD5CA 100%);
+    position: relative;
+  }
+  .cat-img-vertical::after {
+    content: '';
+    position: absolute;
+    inset: 20%;
+    background: repeating-linear-gradient(90deg, #C8BFB2 0px, #C8BFB2 8px, rgba(255,255,255,0.4) 8px, rgba(255,255,255,0.4) 10px);
+    border-radius: 2px;
+  }
+  .cat-card-body {
+    padding: 20px 24px;
+  }
+  .cat-card-body h3 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 1.25rem;
+    margin-bottom: 4px;
+  }
+  .cat-card-body span {
+    font-size: 0.85rem;
+    color: var(--stone);
+  }
+
+  /* ===== HOW IT WORKS ===== */
+  .how-it-works {
+    background: var(--ivory);
+    padding: 80px 24px;
+  }
+  .how-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .how-inner h2 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 2.25rem;
+    margin-bottom: 48px;
+  }
+  .how-steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px;
+  }
+  .how-step {
+    text-align: center;
+  }
+  .how-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--terracotta);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+  }
+  .how-step h4 {
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .how-step p {
+    color: var(--stone);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  /* ===== TRUST BAR ===== */
+  .trust-bar {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 60px 24px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    text-align: center;
+  }
+  .trust-item {
+    padding: 24px;
+  }
+  .trust-icon {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+  }
+  .trust-item h5 {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+  }
+  .trust-item p {
+    color: var(--stone);
+    font-size: 0.8rem;
+  }
+
+  /* ===== CONFIGURATOR PREVIEW ===== */
+  .config-preview {
+    background: var(--ivory);
+    padding: 80px 24px;
+    border-top: 1px solid var(--sand);
+  }
+  .config-inner {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  .config-inner > .ds-title {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .config-inner > .ds-subtitle {
+    text-align: center;
+    margin: 0 auto 48px;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 48px;
+  }
+  .progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    flex: 1;
+    max-width: 120px;
+  }
+  .progress-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    position: relative;
+    z-index: 2;
+    transition: all 0.3s;
+  }
+  .progress-dot.completed {
+    background: var(--terracotta);
+    color: white;
+  }
+  .progress-dot.current {
+    background: var(--terracotta);
+    color: white;
+    box-shadow: 0 0 0 4px rgba(196,102,58,0.2);
+    animation: pulse 2s infinite;
+  }
+  .progress-dot.upcoming {
+    background: transparent;
+    border: 2px solid var(--sand);
+    color: var(--stone);
+  }
+  .progress-label {
+    font-size: 0.7rem;
+    color: var(--stone);
+    margin-top: 8px;
+    text-align: center;
+  }
+  .progress-line {
+    flex: 1;
+    height: 2px;
+    margin: 0 -8px;
+    position: relative;
+    top: -12px;
+  }
+  .progress-line.completed { background: var(--terracotta); }
+  .progress-line.upcoming { background: var(--sand); }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(196,102,58,0.2); }
+    50% { box-shadow: 0 0 0 8px rgba(196,102,58,0.1); }
+  }
+
+  /* Configurator card */
+  .config-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+  .config-card-header {
+    padding: 32px 36px 0;
+  }
+  .config-card-header h3 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+  }
+  .config-card-header p {
+    color: var(--stone);
+    font-size: 0.9rem;
+  }
+  .config-card-body {
+    padding: 28px 36px;
+  }
+
+  /* Swatch grid */
+  .swatch-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .swatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .swatch:hover { transform: scale(1.08); }
+  .swatch-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    transition: border-color 0.2s;
+    position: relative;
+  }
+  .swatch.active .swatch-circle {
+    border-color: var(--terracotta);
+  }
+  .swatch.active .swatch-circle::after {
+    content: '✓';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .swatch-name {
+    font-size: 0.7rem;
+    color: var(--stone);
+  }
+
+  /* Disclaimer */
+  .disclaimer {
+    background: #FFF8F0;
+    border: 1px solid #F0D9C0;
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+  .disclaimer-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    background: var(--amber);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .disclaimer p {
+    font-size: 0.85rem;
+    color: var(--stone);
+    line-height: 1.5;
+  }
+  .disclaimer-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    cursor: pointer;
+  }
+  .custom-checkbox {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 2px solid var(--sand);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .custom-checkbox.checked {
+    background: var(--terracotta);
+    border-color: var(--terracotta);
+    color: white;
+    font-size: 0.7rem;
+  }
+  .disclaimer-check span {
+    font-size: 0.85rem;
+    color: var(--charcoal);
+  }
+
+  /* Config footer */
+  .config-card-footer {
+    padding: 20px 36px;
+    border-top: 1px solid var(--sand);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(245,240,235,0.5);
+  }
+  .config-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--charcoal);
+  }
+  .config-price-label {
+    font-size: 0.75rem;
+    color: var(--stone);
+    display: block;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ===== MEASUREMENT INPUT PREVIEW ===== */
+  .measure-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .input-group label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--stone);
+  }
+  .input-field {
+    padding: 12px 16px;
+    border: 1.5px solid var(--sand);
+    border-radius: 10px;
+    background: var(--ivory);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--charcoal);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-field:focus {
+    border-color: var(--terracotta);
+    box-shadow: 0 0 0 3px rgba(196,102,58,0.15);
+  }
+  .input-field::placeholder {
+    color: #B5AFA8;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+  }
+  .matched-size {
+    background: rgba(107,143,113,0.1);
+    border: 1px solid rgba(107,143,113,0.3);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    color: var(--sage);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .matched-size strong {
+    color: var(--charcoal);
+  }
+
+  /* ===== COLOUR PALETTE DISPLAY ===== */
+  .palette-display {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 80px 24px;
+    border-top: 1px solid var(--sand);
+  }
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+    margin-top: 32px;
+  }
+  .palette-swatch {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .palette-color {
+    height: 80px;
+  }
+  .palette-info {
+    background: white;
+    padding: 12px 14px;
+  }
+  .palette-info h5 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .palette-info code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--stone);
+  }
+
+  /* ===== TYPOGRAPHY SHOWCASE ===== */
+  .type-showcase {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 80px 24px;
+    border-top: 1px solid var(--sand);
+  }
+  .type-samples {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    margin-top: 32px;
+  }
+  .type-sample h3 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--terracotta);
+    margin-bottom: 16px;
+    font-weight: 600;
+  }
+  .type-display {
+    font-family: 'DM Serif Display', Georgia, serif;
+  }
+  .type-body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+  .type-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    background: var(--espresso);
+    color: rgba(255,255,255,0.7);
+    padding: 60px 24px 40px;
+  }
+  .footer-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 48px;
+  }
+  .footer h4 {
+    color: white;
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+  }
+  .footer p, .footer a {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.6);
+    text-decoration: none;
+    line-height: 2;
+    display: block;
+  }
+  .footer a:hover { color: rgba(255,255,255,0.9); }
+  .footer-bottom {
+    max-width: 1280px;
+    margin: 40px auto 0;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.4);
+    text-align: center;
+  }
+
+  /* ===== SECTION LABEL ===== */
+  .section-label {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--terracotta);
+    background: rgba(196,102,58,0.08);
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 16px;
+  }
+
+  /* ===== CART PREVIEW ===== */
+  .cart-preview {
+    margin-top: 48px;
+  }
+  .cart-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.85rem;
+  }
+  .cart-table thead th {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--sand);
+    color: var(--stone);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .cart-table tbody td {
+    padding: 16px;
+    border-bottom: 1px solid var(--sand);
+    vertical-align: middle;
+  }
+  .cart-table .price-col {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    text-align: right;
+  }
+  .cart-table thead th:last-child { text-align: right; }
+  .cart-color-dot {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 1024px) {
+    .cat-grid { grid-template-columns: repeat(2, 1fr); }
+    .how-steps { grid-template-columns: repeat(2, 1fr); }
+    .footer-inner { grid-template-columns: 1fr 1fr; }
+    .hero-window { display: none; }
+    .type-samples { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .cat-grid { grid-template-columns: 1fr; }
+    .how-steps { grid-template-columns: 1fr; }
+    .trust-bar { grid-template-columns: repeat(2, 1fr); }
+    .footer-inner { grid-template-columns: 1fr; }
+    .measure-row { grid-template-columns: 1fr; }
+    .nav-links { display: none; }
+    .config-card-body { padding: 20px; }
+    .config-card-header { padding: 24px 20px 0; }
+    .config-card-footer { padding: 16px 20px; }
+    .progress-label { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== NAVIGATION ===== -->
+<nav class="nav-proto">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <!-- Logo mark: horizontal lines with gaps (blind slats) forming abstract shape -->
+      <svg class="nav-logo-mark" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="4" width="32" height="3" rx="1.5" fill="#2C2C2C"/>
+        <rect x="2" y="10" width="32" height="3" rx="1.5" fill="#2C2C2C"/>
+        <rect x="6" y="16" width="24" height="3" rx="1.5" fill="#C4663A"/>
+        <rect x="2" y="22" width="32" height="3" rx="1.5" fill="#2C2C2C"/>
+        <rect x="2" y="28" width="32" height="3" rx="1.5" fill="#2C2C2C"/>
+      </svg>
+      <span class="nav-logo-text">Blindly</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#">Products</a></li>
+      <li><a href="#">How It Works</a></li>
+      <li><a href="#">Gallery</a></li>
+      <li><a href="#">Contact</a></li>
+      <li><a href="#" class="nav-cta">Configure Your Blinds</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-window">
+    <!-- Generate blind slats -->
+    <script>
+      // We'll fill this with JS below
+    </script>
+  </div>
+  <div class="hero-content">
+    <h1>Your windows,<br>beautifully dressed.</h1>
+    <p>Custom-made blinds configured to your exact measurements. Premium quality, delivered to your door anywhere in South Africa.</p>
+    <div class="hero-btns">
+      <a href="#" class="btn btn-primary">Start Configuring →</a>
+      <a href="#" class="btn btn-secondary">Browse Products</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CATEGORIES ===== -->
+<section class="categories">
+  <div class="categories-header">
+    <span class="section-label">Our Range</span>
+    <h2>Find your perfect blind</h2>
+    <p>From sleek rollers to classic wood venetians — explore our full range of made-to-measure window treatments.</p>
+  </div>
+  <div class="cat-grid">
+    <div class="cat-card">
+      <div class="cat-card-img"><div class="cat-card-img-inner cat-img-roller"></div></div>
+      <div class="cat-card-body">
+        <h3>Roller Blinds</h3>
+        <span>16 ranges available</span>
+      </div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-card-img"><div class="cat-card-img-inner cat-img-aluminium"></div></div>
+      <div class="cat-card-body">
+        <h3>Aluminium Venetian</h3>
+        <span>5 ranges available</span>
+      </div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-card-img"><div class="cat-card-img-inner cat-img-wood"></div></div>
+      <div class="cat-card-body">
+        <h3>Wood & Bamboo</h3>
+        <span>8 ranges available</span>
+      </div>
+    </div>
+    <div class="cat-card">
+      <div class="cat-card-img"><div class="cat-card-img-inner cat-img-vertical"></div></div>
+      <div class="cat-card-body">
+        <h3>Vertical Blinds</h3>
+        <span>3 ranges available</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== HOW IT WORKS ===== -->
+<section class="how-it-works">
+  <div class="how-inner">
+    <span class="section-label">How It Works</span>
+    <h2>Made to measure, made simple</h2>
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="how-icon">1</div>
+        <h4>Choose</h4>
+        <p>Select your blind type, material, and colour from our curated range.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-icon">2</div>
+        <h4>Measure</h4>
+        <p>Enter your window dimensions. We'll show your price instantly.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-icon">3</div>
+        <h4>Order</h4>
+        <p>Secure checkout with Paystack. Add installation if you'd like.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-icon">4</div>
+        <h4>Enjoy</h4>
+        <p>Delivered to your door. Self-fit or we'll install for you.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TRUST BAR ===== -->
+<div class="trust-bar">
+  <div class="trust-item">
+    <div class="trust-icon">🚚</div>
+    <h5>Free Delivery</h5>
+    <p>On orders over R5,000</p>
+  </div>
+  <div class="trust-item">
+    <div class="trust-icon">📐</div>
+    <h5>Free Professional Measure</h5>
+    <p>In our service area</p>
+  </div>
+  <div class="trust-item">
+    <div class="trust-icon">🛠️</div>
+    <h5>Installation Available</h5>
+    <p>Our team fits it perfectly</p>
+  </div>
+  <div class="trust-item">
+    <div class="trust-icon">🇿🇦</div>
+    <h5>SA Manufactured</h5>
+    <p>Quality local production</p>
+  </div>
+</div>
+
+<!-- ===== CONFIGURATOR PREVIEW ===== -->
+<section class="config-preview" id="configurator">
+  <div class="config-inner">
+    <span class="section-label" style="display:block;text-align:center;">Configurator Preview</span>
+    <h2 class="ds-title" style="text-align:center;">Step 5: Choose your colour</h2>
+    <p class="ds-subtitle" style="text-align:center;margin:0 auto 48px;">This is what the configurator looks like mid-flow — after selecting type, mount, thickness, and range.</p>
+
+    <!-- Progress Bar -->
+    <div class="progress-bar">
+      <div class="progress-step">
+        <div class="progress-dot completed">✓</div>
+        <span class="progress-label">Type</span>
+      </div>
+      <div class="progress-line completed"></div>
+      <div class="progress-step">
+        <div class="progress-dot completed">✓</div>
+        <span class="progress-label">Mount</span>
+      </div>
+      <div class="progress-line completed"></div>
+      <div class="progress-step">
+        <div class="progress-dot completed">✓</div>
+        <span class="progress-label">Thickness</span>
+      </div>
+      <div class="progress-line completed"></div>
+      <div class="progress-step">
+        <div class="progress-dot completed">✓</div>
+        <span class="progress-label">Range</span>
+      </div>
+      <div class="progress-line completed"></div>
+      <div class="progress-step">
+        <div class="progress-dot current">5</div>
+        <span class="progress-label">Colour</span>
+      </div>
+      <div class="progress-line upcoming"></div>
+      <div class="progress-step">
+        <div class="progress-dot upcoming">6</div>
+        <span class="progress-label">Size</span>
+      </div>
+      <div class="progress-line upcoming"></div>
+      <div class="progress-step">
+        <div class="progress-dot upcoming">7</div>
+        <span class="progress-label">Cart</span>
+      </div>
+    </div>
+
+    <!-- Step Card: Colour Selection -->
+    <div class="config-card">
+      <div class="config-card-header">
+        <h3>Choose your colour</h3>
+        <p>Cedar range — Roller Blind · Outside mount · <a href="#" style="color:var(--terracotta);">Change</a></p>
+      </div>
+      <div class="config-card-body">
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="swatch-circle" style="background:#F5F0E8;"></div>
+            <span class="swatch-name">Ivory</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-circle" style="background:#E8DFD0;"></div>
+            <span class="swatch-name">Linen</span>
+          </div>
+          <div class="swatch active">
+            <div class="swatch-circle" style="background:#C9BBA8;"></div>
+            <span class="swatch-name">Stone</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-circle" style="background:#A89882;"></div>
+            <span class="swatch-name">Dune</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-circle" style="background:#8B7D6B;"></div>
+            <span class="swatch-name">Bark</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-circle" style="background:#6B5E4F;"></div>
+            <span class="swatch-name">Walnut</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-circle" style="background:#D4D0CA;"></div>
+            <span class="swatch-name">Silver</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-circle" style="background:#E0CFC0;"></div>
+            <span class="swatch-name">Blush</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-circle" style="background:#B8C5B4;"></div>
+            <span class="swatch-name">Sage</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-circle" style="background:#3D3832;"></div>
+            <span class="swatch-name">Charcoal</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-circle" style="background:#1E1C18;"></div>
+            <span class="swatch-name">Night</span>
+          </div>
+          <div class="swatch">
+            <div class="swatch-circle" style="background:#FFFFFF; border: 1px solid #DDD5CA;"></div>
+            <span class="swatch-name">White</span>
+          </div>
+        </div>
+
+        <div class="disclaimer">
+          <div class="disclaimer-icon">!</div>
+          <div>
+            <p>Colours displayed are representative only. Actual colours may vary due to screen calibration, lighting, and shade conditions. We recommend requesting a free sample swatch for large orders.</p>
+            <div class="disclaimer-check" onclick="this.querySelector('.custom-checkbox').classList.toggle('checked')">
+              <div class="custom-checkbox checked">✓</div>
+              <span>I understand colours may vary from what is shown on screen.</span>
+            </div>
+          </div>
+        </div>
+
+        <a href="#" style="color:var(--terracotta);font-size:0.9rem;text-decoration:none;font-weight:500;">📦 Request a free swatch →</a>
+      </div>
+
+      <div class="config-card-footer">
+        <div>
+          <span class="config-price-label">From</span>
+          <span class="config-price">R 2,450</span>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <a href="#" class="btn btn-ghost btn-sm">← Back</a>
+          <a href="#" class="btn btn-primary btn-sm">Continue →</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step Card: Measurements (Step 6 preview) -->
+    <div class="config-card" style="margin-top:32px;">
+      <div class="config-card-header">
+        <h3>Enter your measurements</h3>
+        <p>Cedar — Stone · Roller Blind · Outside mount</p>
+      </div>
+      <div class="config-card-body">
+        <div class="measure-row">
+          <div class="input-group">
+            <label>Width (mm)</label>
+            <input type="text" class="input-field" value="1200" placeholder="e.g. 1200">
+          </div>
+          <div class="input-group">
+            <label>Drop / Height (mm)</label>
+            <input type="text" class="input-field" value="800" placeholder="e.g. 800">
+          </div>
+          <div class="input-group">
+            <label>Location label</label>
+            <input type="text" class="input-field" value="Kitchen" placeholder="e.g. Kitchen" style="font-family:'DM Sans',sans-serif;">
+          </div>
+        </div>
+
+        <div class="matched-size">
+          <span>✓</span> Your blind will be made to <strong>120cm × 80cm</strong> (rounded up for outside mount coverage)
+        </div>
+
+        <div class="disclaimer">
+          <div class="disclaimer-icon">!</div>
+          <div>
+            <p>I confirm I have measured my windows myself and accept responsibility for measurement accuracy.</p>
+            <div class="disclaimer-check" onclick="this.querySelector('.custom-checkbox').classList.toggle('checked')">
+              <div class="custom-checkbox">✓</div>
+              <span>I accept responsibility for my measurements.</span>
+            </div>
+          </div>
+        </div>
+
+        <a href="#" style="color:var(--terracotta);font-size:0.9rem;text-decoration:none;font-weight:500;">📐 Prefer peace of mind? Request a free professional measure →</a>
+      </div>
+
+      <div class="config-card-footer">
+        <div>
+          <span class="config-price-label">This blind</span>
+          <span class="config-price">R 2,450</span>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <a href="#" class="btn btn-ghost btn-sm">← Back</a>
+          <a href="#" class="btn btn-primary btn-sm">Add to Cart →</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart Preview -->
+    <div class="cart-preview">
+      <div class="config-card">
+        <div class="config-card-header">
+          <h3>Your Cart</h3>
+          <p>3 blinds configured</p>
+        </div>
+        <div class="config-card-body" style="padding:0;">
+          <table class="cart-table">
+            <thead>
+              <tr>
+                <th>Location</th>
+                <th>Type</th>
+                <th>Range & Colour</th>
+                <th>Size</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Kitchen</strong></td>
+                <td>Roller</td>
+                <td><span class="cart-color-dot" style="background:#C9BBA8;"></span>Cedar — Stone</td>
+                <td style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;">1200 × 800</td>
+                <td class="price-col">R 2,450</td>
+              </tr>
+              <tr>
+                <td><strong>Bedroom 1</strong></td>
+                <td>Roller</td>
+                <td><span class="cart-color-dot" style="background:#C9BBA8;"></span>Cedar — Stone</td>
+                <td style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;">900 × 600</td>
+                <td class="price-col">R 1,890</td>
+              </tr>
+              <tr>
+                <td><strong>Lounge</strong></td>
+                <td>50mm Aluminium</td>
+                <td><span class="cart-color-dot" style="background:#D4D0CA;"></span>Plain — Silver</td>
+                <td style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;">1800 × 1200</td>
+                <td class="price-col">R 3,200</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="config-card-footer">
+          <div>
+            <span class="config-price-label">Subtotal (3 blinds)</span>
+            <span class="config-price">R 7,540</span>
+          </div>
+          <div style="display:flex;gap:12px;">
+            <a href="#" class="btn btn-secondary btn-sm">Save Quote</a>
+            <a href="#" class="btn btn-primary btn-sm">Checkout →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== COLOUR PALETTE ===== -->
+<section class="palette-display">
+  <span class="section-label">Design System</span>
+  <h2 class="ds-title">Colour Palette</h2>
+  <p class="ds-subtitle">Warm neutrals anchored by sophisticated charcoal, with terracotta as the single bold accent.</p>
+  <div class="palette-grid">
+    <div class="palette-swatch">
+      <div class="palette-color" style="background:var(--linen);"></div>
+      <div class="palette-info"><h5>Linen</h5><code>#F5F0EB</code></div>
+    </div>
+    <div class="palette-swatch">
+      <div class="palette-color" style="background:var(--ivory);"></div>
+      <div class="palette-info"><h5>Ivory</h5><code>#FDFBF7</code></div>
+    </div>
+    <div class="palette-swatch">
+      <div class="palette-color" style="background:var(--sand);"></div>
+      <div class="palette-info"><h5>Sand</h5><code>#DDD5CA</code></div>
+    </div>
+    <div class="palette-swatch">
+      <div class="palette-color" style="background:var(--stone);"></div>
+      <div class="palette-info"><h5>Stone</h5><code>#6B6560</code></div>
+    </div>
+    <div class="palette-swatch">
+      <div class="palette-color" style="background:var(--charcoal);"></div>
+      <div class="palette-info"><h5>Charcoal</h5><code>#2C2C2C</code></div>
+    </div>
+    <div class="palette-swatch">
+      <div class="palette-color" style="background:var(--terracotta);"></div>
+      <div class="palette-info"><h5>Terracotta</h5><code>#C4663A</code></div>
+    </div>
+    <div class="palette-swatch">
+      <div class="palette-color" style="background:var(--sienna);"></div>
+      <div class="palette-info"><h5>Burnt Sienna</h5><code>#A8522B</code></div>
+    </div>
+    <div class="palette-swatch">
+      <div class="palette-color" style="background:var(--sage);"></div>
+      <div class="palette-info"><h5>Sage</h5><code>#6B8F71</code></div>
+    </div>
+    <div class="palette-swatch">
+      <div class="palette-color" style="background:var(--amber);"></div>
+      <div class="palette-info"><h5>Amber</h5><code>#D4A843</code></div>
+    </div>
+    <div class="palette-swatch">
+      <div class="palette-color" style="background:var(--clay);"></div>
+      <div class="palette-info"><h5>Clay Red</h5><code>#C44B3A</code></div>
+    </div>
+    <div class="palette-swatch">
+      <div class="palette-color" style="background:var(--espresso);"></div>
+      <div class="palette-info"><h5>Espresso</h5><code>#3A3632</code></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TYPOGRAPHY ===== -->
+<section class="type-showcase">
+  <span class="section-label">Design System</span>
+  <h2 class="ds-title">Typography</h2>
+  <p class="ds-subtitle">DM Serif Display for headings. DM Sans for body. JetBrains Mono for prices and measurements.</p>
+  <div class="type-samples">
+    <div class="type-sample">
+      <h3>DM Serif Display — Headings</h3>
+      <p class="type-display" style="font-size:3rem;line-height:1.1;margin-bottom:16px;">Your windows, beautifully dressed.</p>
+      <p class="type-display" style="font-size:2rem;line-height:1.2;margin-bottom:12px;">Choose your range</p>
+      <p class="type-display" style="font-size:1.5rem;line-height:1.3;margin-bottom:12px;">Cedar Collection</p>
+      <p class="type-display" style="font-size:1.25rem;line-height:1.3;">Roller Blinds</p>
+    </div>
+    <div class="type-sample">
+      <h3>DM Sans — Body & UI</h3>
+      <p class="type-body" style="font-size:1.125rem;margin-bottom:16px;">Custom-made blinds configured to your exact measurements. Premium quality, delivered to your door anywhere in South Africa.</p>
+      <p class="type-body" style="font-size:1rem;color:var(--stone);margin-bottom:16px;">Colours displayed are representative only. Actual colours may vary due to screen calibration.</p>
+      <p class="type-body" style="font-size:0.875rem;color:var(--stone);margin-bottom:24px;">16 ranges available · Free delivery over R5,000</p>
+      <h3 style="margin-top:24px;">JetBrains Mono — Prices & Dimensions</h3>
+      <p class="type-mono" style="font-size:1.75rem;margin-bottom:8px;">R 2,450</p>
+      <p class="type-mono" style="font-size:1.25rem;color:var(--stone);margin-bottom:8px;">1200mm × 800mm</p>
+      <p class="type-mono" style="font-size:1rem;color:var(--stone);">120cm × 80cm</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <h4>Blindly</h4>
+      <p>Premium custom blinds, configured online and delivered to your door. Part of the Nortier Group.</p>
+      <p style="margin-top:16px;">📧 hello@blindly.co.za</p>
+      <p>📞 021 000 0000</p>
+    </div>
+    <div>
+      <h4>Products</h4>
+      <a href="#">Roller Blinds</a>
+      <a href="#">Aluminium Venetian</a>
+      <a href="#">Wood & Bamboo</a>
+      <a href="#">Vertical Blinds</a>
+    </div>
+    <div>
+      <h4>Help</h4>
+      <a href="#">How to Measure</a>
+      <a href="#">FAQ</a>
+      <a href="#">Delivery & Returns</a>
+      <a href="#">Contact Us</a>
+    </div>
+    <div>
+      <h4>Company</h4>
+      <a href="#">About Us</a>
+      <a href="#">Gallery</a>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms & Conditions</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    © 2026 Blindly. All rights reserved. A Yoros-powered website.
+  </div>
+</footer>
+
+<!-- Generate blind slats in hero window -->
+<script>
+  const heroWindow = document.querySelector('.hero-window');
+  if (heroWindow) {
+    let html = '';
+    for (let i = 0; i < 16; i++) {
+      const gap = i < 3 ? 14 : (i < 5 ? 10 : (i < 8 ? 6 : 2));
+      html += `<div class="hero-blind-slat"></div>`;
+      if (gap > 3) html += `<div class="hero-blind-gap" style="height:${gap}px"></div>`;
+    }
+    heroWindow.innerHTML = html;
+  }
+
+  // Interactive swatches
+  document.querySelectorAll('.swatch').forEach(s => {
+    s.addEventListener('click', () => {
+      s.closest('.swatch-grid').querySelectorAll('.swatch').forEach(x => x.classList.remove('active'));
+      s.classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>
