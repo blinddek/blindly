@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
@@ -25,8 +26,8 @@ export function Navbar({ links, settings }: NavbarProps) {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 md:px-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center text-lg font-bold tracking-tight">
-          {settings.logo_text}
+        <Link href="/" className="flex items-center gap-2">
+          <Image src="/logo.svg" alt={settings.logo_text} width={140} height={36} className="h-9 w-auto dark:invert" priority />
         </Link>
 
         {/* Desktop nav */}

@@ -38,6 +38,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_ZA",
     siteName: siteConfig.name,
+    images: [{ url: "/logo.png", width: 1200, height: 630, alt: siteConfig.name }],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
+    apple: "/favicon.png",
   },
 };
 

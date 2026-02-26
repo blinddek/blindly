@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useLocale } from "@/lib/locale";
 import { subscribeNewsletter } from "@/lib/newsletter/actions";
@@ -51,9 +52,7 @@ export function Footer({ sections, settings }: FooterProps) {
 
         <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
           <div className="flex items-center gap-3">
-            <span className="text-lg font-bold tracking-tight">
-              {settings.logo_text}
-            </span>
+            <Image src="/logo.svg" alt={settings.logo_text} width={120} height={30} className="h-7 w-auto dark:invert" />
             <p className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} {settings.company_name}.{" "}
               {t({ en: "All rights reserved.", af: "Alle regte voorbehou." })}
