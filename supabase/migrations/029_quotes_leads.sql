@@ -47,7 +47,7 @@ CREATE TABLE swatch_requests (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON swatch_requests FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON swatch_requests FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
 -- ---------------------
 -- 3. MEASURE REQUESTS
@@ -70,4 +70,4 @@ CREATE TABLE measure_requests (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON measure_requests FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON measure_requests FOR EACH ROW EXECUTE FUNCTION handle_updated_at();

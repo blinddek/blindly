@@ -1,0 +1,57 @@
+<svg viewBox="0 0 120 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Headrail -->
+  <rect x="15" y="10" width="90" height="12" rx="2" stroke="#8B8178" stroke-width="1.5"/>
+
+  <!-- Ladder strings -->
+  <line x1="32" y1="22" x2="32" y2="150" stroke="#8B8178" stroke-width="0.75" opacity="0.5"/>
+  <line x1="88" y1="22" x2="88" y2="150" stroke="#8B8178" stroke-width="0.75" opacity="0.5"/>
+
+  <!-- Slat 1 -->
+  <g transform="rotate(2, 60, 35)">
+    <rect x="18" y="32" width="84" height="6" rx="1" stroke="#C4663A" stroke-width="1.5"/>
+    <line x1="25" y1="34" x2="95" y2="34" stroke="#C4663A" stroke-width="0.4" opacity="0.25"/>
+    <line x1="30" y1="36" x2="90" y2="36" stroke="#C4663A" stroke-width="0.3" opacity="0.2"/>
+  </g>
+
+  <!-- Slat 2 -->
+  <g transform="rotate(2, 60, 54)">
+    <rect x="18" y="51" width="84" height="6" rx="1" stroke="#C4663A" stroke-width="1.5"/>
+    <line x1="25" y1="53" x2="95" y2="53" stroke="#C4663A" stroke-width="0.4" opacity="0.25"/>
+    <line x1="30" y1="55" x2="90" y2="55" stroke="#C4663A" stroke-width="0.3" opacity="0.2"/>
+  </g>
+
+  <!-- Slat 3 -->
+  <g transform="rotate(2, 60, 73)">
+    <rect x="18" y="70" width="84" height="6" rx="1" stroke="#C4663A" stroke-width="1.5"/>
+    <line x1="25" y1="72" x2="95" y2="72" stroke="#C4663A" stroke-width="0.4" opacity="0.25"/>
+    <line x1="30" y1="74" x2="90" y2="74" stroke="#C4663A" stroke-width="0.3" opacity="0.2"/>
+  </g>
+
+  <!-- Slat 4 -->
+  <g transform="rotate(2, 60, 92)">
+    <rect x="18" y="89" width="84" height="6" rx="1" stroke="#C4663A" stroke-width="1.5"/>
+    <line x1="25" y1="91" x2="95" y2="91" stroke="#C4663A" stroke-width="0.4" opacity="0.25"/>
+    <line x1="30" y1="93" x2="90" y2="93" stroke="#C4663A" stroke-width="0.3" opacity="0.2"/>
+  </g>
+
+  <!-- Slat 5 -->
+  <g transform="rotate(2, 60, 111)">
+    <rect x="18" y="108" width="84" height="6" rx="1" stroke="#C4663A" stroke-width="1.5"/>
+    <line x1="25" y1="110" x2="95" y2="110" stroke="#C4663A" stroke-width="0.4" opacity="0.25"/>
+    <line x1="30" y1="112" x2="90" y2="112" stroke="#C4663A" stroke-width="0.3" opacity="0.2"/>
+  </g>
+
+  <!-- Slat 6 -->
+  <g transform="rotate(2, 60, 130)">
+    <rect x="18" y="127" width="84" height="6" rx="1" stroke="#C4663A" stroke-width="1.5"/>
+    <line x1="25" y1="129" x2="95" y2="129" stroke="#C4663A" stroke-width="0.4" opacity="0.25"/>
+    <line x1="30" y1="131" x2="90" y2="131" stroke="#C4663A" stroke-width="0.3" opacity="0.2"/>
+  </g>
+
+  <!-- Bottom rail -->
+  <rect x="18" y="148" width="84" height="6" rx="2" stroke="#C4663A" stroke-width="1.5"/>
+
+  <!-- Tilt wand -->
+  <line x1="16" y1="20" x2="16" y2="85" stroke="#8B8178" stroke-width="1"/>
+  <circle cx="16" cy="87" r="2.5" stroke="#8B8178" stroke-width="1"/>
+</svg>

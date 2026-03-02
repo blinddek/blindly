@@ -19,7 +19,7 @@ CREATE TABLE blind_categories (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON blind_categories FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON blind_categories FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
 -- ---------------------
 -- 2. BLIND TYPES
@@ -47,7 +47,7 @@ CREATE TABLE blind_types (
 );
 
 CREATE INDEX idx_blind_types_category ON blind_types(category_id);
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON blind_types FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON blind_types FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
 -- ---------------------
 -- 3. BLIND RANGES
@@ -72,7 +72,7 @@ CREATE TABLE blind_ranges (
 );
 
 CREATE INDEX idx_blind_ranges_type ON blind_ranges(blind_type_id);
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON blind_ranges FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON blind_ranges FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
 -- ---------------------
 -- 4. PRICE MATRICES

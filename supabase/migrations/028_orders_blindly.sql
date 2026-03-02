@@ -55,7 +55,7 @@ CREATE INDEX idx_blindly_orders_email ON blindly_orders(customer_email);
 CREATE INDEX idx_blindly_orders_number ON blindly_orders(order_number);
 CREATE INDEX idx_blindly_orders_created ON blindly_orders(created_at DESC);
 
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON blindly_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON blindly_orders FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
 -- ---------------------
 -- 2. ORDER ITEMS

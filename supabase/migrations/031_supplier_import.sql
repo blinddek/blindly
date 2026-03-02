@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
 
 CREATE TRIGGER set_suppliers_updated_at
   BEFORE UPDATE ON suppliers
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
 -- Seed existing supplier
 INSERT INTO suppliers (name, slug) VALUES ('Shademaster', 'shademaster')

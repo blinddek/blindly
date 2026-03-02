@@ -2,12 +2,14 @@
 
 import { cn } from "@/lib/utils";
 import type { TypeOption, RangeOption } from "./blind-configurator";
+import { BlindIllustration, ColourSwatch, SwatchTextureDefs, getMaterialType } from "./blind-illustrations";
 
 interface Props {
   types: TypeOption[];
   ranges: RangeOption[];
   typeId: string;
   rangeId: string;
+  categorySlug: string;
   onChangeType: (id: string) => void;
   onChangeRange: (id: string) => void;
 }
@@ -17,11 +19,14 @@ export function StepTypeRange({
   ranges,
   typeId,
   rangeId,
+  categorySlug,
   onChangeType,
   onChangeRange,
 }: Props) {
+  const materialType = getMaterialType(categorySlug);
   return (
     <div className="space-y-6">
+      <SwatchTextureDefs />
       {/* Type selection */}
       <div className="space-y-3">
         <div>
@@ -42,10 +47,19 @@ export function StepTypeRange({
                   : "border-border"
               )}
             >
-              <div className="font-medium">{t.name}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                {t.material && <span className="capitalize">{t.material}</span>}
-                {t.slat_size_mm && <span> · {t.slat_size_mm}mm slats</span>}
+              <div className="flex items-start gap-3">
+                <BlindIllustration
+                  categorySlug={categorySlug}
+                  size="sm"
+                  colour={typeId === t.id ? "#C4663A" : "#8B8178"}
+                />
+                <div>
+                  <div className="font-medium">{t.name}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {t.material && <span className="capitalize">{t.material}</span>}
+                    {t.slat_size_mm && <span> · {t.slat_size_mm}mm slats</span>}
+                  </div>
+                </div>
               </div>
             </button>
           ))}
@@ -80,13 +94,14 @@ export function StepTypeRange({
                   </div>
                 )}
                 {r.colour_options.length > 0 && (
-                  <div className="mt-2 flex gap-1">
+                  <div className="mt-2 flex items-center gap-1">
                     {r.colour_options.slice(0, 6).map((c) => (
-                      <span
+                      <ColourSwatch
                         key={c.name}
-                        className="inline-block size-4 rounded-full border"
-                        style={{ backgroundColor: c.hex }}
-                        title={c.name}
+                        hex={c.hex}
+                        name={c.name}
+                        materialType={materialType}
+                        size="sm"
                       />
                     ))}
                     {r.colour_options.length > 6 && (

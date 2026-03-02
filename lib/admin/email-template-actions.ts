@@ -8,9 +8,21 @@ import { sendRawEmail } from "@/lib/email";
 export async function getEmailTemplates() {
   await ensureAdmin();
   const admin = createAdminClient();
+
+  // Only fetch templates relevant to enabled features
+  const { isEnabled } = await import("@/config/features");
+  const keys = ["welcome", "password_reset", "contact_confirmation"];
+  if (isEnabled("booking")) {
+    keys.push("booking_confirmation", "booking_cancellation", "booking_reminder", "booking_reschedule");
+  }
+  if (isEnabled("shop")) {
+    keys.push("order_confirmation");
+  }
+
   const { data, error } = await admin
     .from("email_templates")
     .select("*")
+    .in("key", keys)
     .order("key");
 
   if (error) throw new Error(error.message);

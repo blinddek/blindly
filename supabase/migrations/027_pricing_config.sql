@@ -24,7 +24,7 @@ CREATE TABLE blind_extras (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON blind_extras FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON blind_extras FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
 -- ---------------------
 -- 2. EXTRA PRICE POINTS
@@ -74,7 +74,7 @@ CREATE TABLE motorisation_options (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON motorisation_options FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON motorisation_options FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
 -- ---------------------
 -- 5. MOTORISATION PRICING
@@ -108,14 +108,46 @@ CREATE TABLE markup_config (
   UNIQUE(scope_type, scope_id)
 );
 
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON markup_config FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON markup_config FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
 
 -- Seed global default
 INSERT INTO markup_config (scope_type, scope_id, markup_percent) VALUES
   ('global', NULL, 40.00);
 
 -- ---------------------
--- 7. PRICING SETTINGS
+-- 7. SITE SETTINGS (key/value config store)
+-- ---------------------
+CREATE TABLE IF NOT EXISTS site_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key TEXT UNIQUE NOT NULL,
+  value TEXT NOT NULL DEFAULT '',
+  value_type TEXT NOT NULL DEFAULT 'text'
+    CHECK (value_type IN ('text', 'number', 'boolean', 'json')),
+  category TEXT NOT NULL DEFAULT 'general',
+  label TEXT,
+  description TEXT,
+  is_public BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON site_settings FOR EACH ROW EXECUTE FUNCTION handle_updated_at();
+
+ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "site_settings: public read public"
+  ON site_settings FOR SELECT
+  TO anon, authenticated
+  USING (is_public = true);
+
+CREATE POLICY "site_settings: admin full access"
+  ON site_settings FOR ALL
+  TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- ---------------------
+-- 8. PRICING SETTINGS
 -- Delivery, installation, VAT, etc.
 -- ---------------------
 INSERT INTO site_settings (key, value, value_type, category, label, description, is_public) VALUES
@@ -128,7 +160,7 @@ INSERT INTO site_settings (key, value, value_type, category, label, description,
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
 -- ---------------------
--- 8. IMPORT TRACKING
+-- 9. IMPORT TRACKING
 -- ---------------------
 CREATE TABLE price_imports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -146,7 +178,7 @@ CREATE TABLE price_imports (
 );
 
 -- ---------------------
--- 9. IMPORT MAPPINGS
+-- 10. IMPORT MAPPINGS
 -- Sheet name → Range mapping (saved per supplier for re-imports)
 -- ---------------------
 CREATE TABLE import_mappings (

@@ -15,6 +15,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { LocalizedInput } from "@/components/admin/localized-input";
+import { BusinessHoursEditor } from "@/components/admin/business-hours-editor";
 import { toast } from "sonner";
 import { Save } from "lucide-react";
 
@@ -130,7 +131,10 @@ export default function SiteSettingsPage() {
               rows={2}
             />
           </div>
-          <Field label="Business Hours" value={form.business_hours ?? ""} onChange={(v) => set("business_hours", v)} placeholder="Mon-Fri 08:00-17:00" />
+          <BusinessHoursEditor
+            value={form.business_hours}
+            onChange={(schedule) => setForm((prev) => ({ ...prev, business_hours: schedule }))}
+          />
         </CardContent>
       </Card>
 

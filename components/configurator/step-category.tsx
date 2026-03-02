@@ -2,13 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import type { CategoryOption } from "./blind-configurator";
-
-const ICONS: Record<string, string> = {
-  roller: "↕",
-  "aluminium-venetian": "≡",
-  "wood-venetian": "☰",
-  vertical: "║",
-};
+import { BlindIllustration } from "./blind-illustrations";
 
 interface Props {
   categories: CategoryOption[];
@@ -37,7 +31,13 @@ export function StepCategory({ categories, value, onChange }: Props) {
                 : "border-border"
             )}
           >
-            <div className="mb-1 text-2xl">{ICONS[cat.slug] ?? "▪"}</div>
+            <div className="mb-2">
+              <BlindIllustration
+                categorySlug={cat.slug}
+                size="md"
+                colour={value === cat.id ? "#C4663A" : "#8B8178"}
+              />
+            </div>
             <div className="font-medium">{cat.name}</div>
             {cat.description && (
               <div className="mt-1 text-sm text-muted-foreground">

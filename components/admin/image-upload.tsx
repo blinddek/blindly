@@ -11,6 +11,7 @@ interface ImageUploadProps {
   value: string | null;
   onChange: (url: string | null) => void;
   folder?: string;
+  bucket?: string;
   label?: string;
 }
 
@@ -22,6 +23,7 @@ export function ImageUpload({
   value,
   onChange,
   folder = "images",
+  bucket = "uploads",
   label = "Image",
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
@@ -38,6 +40,7 @@ export function ImageUpload({
     const formData = new FormData();
     formData.set("file", file);
     formData.set("folder", folder);
+    formData.set("bucket", bucket);
 
     const result = await uploadFile(formData);
 

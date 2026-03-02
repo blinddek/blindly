@@ -253,6 +253,7 @@ export function BlindConfigurator() {
               ranges={ranges}
               typeId={state.type_id}
               rangeId={state.range_id}
+              categorySlug={state.category_slug}
               onChangeType={(id) =>
                 update({ type_id: id, range_id: "", colour: "" })
               }
@@ -263,6 +264,7 @@ export function BlindConfigurator() {
             <StepColour
               colours={selectedRange.colour_options}
               rangeName={selectedRange.name}
+              categorySlug={state.category_slug}
               value={state.colour}
               onChange={(c) => update({ colour: c })}
             />

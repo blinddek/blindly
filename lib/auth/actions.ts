@@ -157,15 +157,18 @@ export async function updateProfile(
 
   const full_name = formData.get("full_name") as string;
   const phone = formData.get("phone") as string;
-  const business_name = formData.get("business_name") as string;
 
   // Build update payload — always include core fields
   const updates: Record<string, unknown> = {
     full_name,
     phone,
-    business_name,
     updated_at: new Date().toISOString(),
   };
+
+  // Only include business_name if it was submitted in the form
+  if (formData.has("business_name")) {
+    updates.business_name = formData.get("business_name") as string;
+  }
 
   // Notification prefs (sent as hidden JSON field from notifications tab)
   const notifJson = formData.get("notification_prefs") as string | null;

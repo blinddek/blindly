@@ -233,3 +233,16 @@ export async function getPortfolioItemBySlug(slug: string): Promise<PortfolioIte
     .single();
   return (data as PortfolioItem) ?? null;
 }
+
+// ---------- Legal Documents ----------
+
+export async function getLegalDocumentBySlug(slug: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("legal_documents")
+    .select("title, slug, content, version, updated_at")
+    .eq("slug", slug)
+    .eq("active", true)
+    .single();
+  return data;
+}

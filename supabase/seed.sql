@@ -431,15 +431,18 @@ on conflict (slug) do update set
   name = excluded.name, description = excluded.description, colour_options = excluded.colour_options, display_order = excluded.display_order;
 
 -- ─── Blind Extras (accessories) ───────────────────────────
-insert into public.blind_extras (name, slug, description, pricing_type, category_filter, type_filter, max_width_mm, display_order) values
-  ('Stainless Steel Ball Chain', 'ss-ball-chain', 'Upgrade to a durable stainless steel control chain.', 'fixed', '{roller}', null, null, 1),
-  ('Metal Ball Chain', 'metal-ball-chain', 'Standard metal ball chain upgrade.', 'fixed', '{roller}', null, null, 2),
-  ('Wood Valance (106mm)', 'wood-valance', 'Decorative wood pelmet to conceal the roller mechanism.', 'width_based', '{roller}', null, null, 3),
-  ('Cassette with Full Fascia', 'cassette-fascia', 'Enclosed aluminium cassette for a clean, modern look.', 'width_based', '{roller}', null, null, 4),
-  ('Side Guides', 'side-guides', 'Aluminium edge guides to eliminate light gaps.', 'fixed', '{roller}', null, null, 5),
-  ('40mm Roller Upgrade', '40mm-roller', 'Upgrade to a 40mm diameter roller tube.', 'width_based', '{roller}', null, 200, 6),
-  ('45mm Roller Upgrade', '45mm-roller', 'Upgrade to a 45mm diameter roller tube for wider blinds.', 'width_based', '{roller}', null, null, 7),
-  ('Duo Link', 'duo-link', 'Link two roller blinds on a single bracket.', 'width_based', '{roller}', null, 200, 8)
+-- Add slug column if missing (migration 027 didn't include it)
+ALTER TABLE blind_extras ADD COLUMN IF NOT EXISTS slug TEXT UNIQUE;
+
+insert into public.blind_extras (name, slug, description, pricing_type, applies_to_categories, applies_to_types, max_width_cm, display_order) values
+  ('Stainless Steel Ball Chain', 'ss-ball-chain', 'Upgrade to a durable stainless steel control chain.', 'fixed', ARRAY[(select id from blind_categories where slug = 'roller')], null, null, 1),
+  ('Metal Ball Chain', 'metal-ball-chain', 'Standard metal ball chain upgrade.', 'fixed', ARRAY[(select id from blind_categories where slug = 'roller')], null, null, 2),
+  ('Wood Valance (106mm)', 'wood-valance', 'Decorative wood pelmet to conceal the roller mechanism.', 'width_based', ARRAY[(select id from blind_categories where slug = 'roller')], null, null, 3),
+  ('Cassette with Full Fascia', 'cassette-fascia', 'Enclosed aluminium cassette for a clean, modern look.', 'width_based', ARRAY[(select id from blind_categories where slug = 'roller')], null, null, 4),
+  ('Side Guides', 'side-guides', 'Aluminium edge guides to eliminate light gaps.', 'fixed', ARRAY[(select id from blind_categories where slug = 'roller')], null, null, 5),
+  ('40mm Roller Upgrade', '40mm-roller', 'Upgrade to a 40mm diameter roller tube.', 'width_based', ARRAY[(select id from blind_categories where slug = 'roller')], null, 200, 6),
+  ('45mm Roller Upgrade', '45mm-roller', 'Upgrade to a 45mm diameter roller tube for wider blinds.', 'width_based', ARRAY[(select id from blind_categories where slug = 'roller')], null, null, 7),
+  ('Duo Link', 'duo-link', 'Link two roller blinds on a single bracket.', 'width_based', ARRAY[(select id from blind_categories where slug = 'roller')], null, 200, 8)
 on conflict (slug) do update set
   name = excluded.name, description = excluded.description, pricing_type = excluded.pricing_type, display_order = excluded.display_order;
 

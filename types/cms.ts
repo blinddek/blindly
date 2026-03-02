@@ -25,7 +25,7 @@ export interface SiteSettings {
   google_maps_url?: string;
   google_maps_coordinates?: { lat: number; lng: number };
   coordinates?: string;
-  business_hours?: string;
+  business_hours?: string | DaySchedule[];
   social_links?: { platform: string; url: string }[];
   social_facebook?: string;
   social_instagram?: string;
@@ -34,6 +34,15 @@ export interface SiteSettings {
   social_youtube?: string;
   social_tiktok?: string;
   facebook_pixel_id?: string;
+}
+
+// ─── Business Hours ──────────────────────────────────────
+
+export interface DaySchedule {
+  day: string;
+  open: boolean;
+  from: string;
+  to: string;
 }
 
 // ─── Navigation ───────────────────────────────────────────

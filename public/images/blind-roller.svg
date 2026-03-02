@@ -1,0 +1,24 @@
+<svg viewBox="0 0 120 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Mounting brackets -->
+  <rect x="15" y="8" width="8" height="12" rx="1" stroke="#8B8178" stroke-width="1.5"/>
+  <rect x="97" y="8" width="8" height="12" rx="1" stroke="#8B8178" stroke-width="1.5"/>
+
+  <!-- Roller tube -->
+  <rect x="18" y="12" width="84" height="10" rx="5" stroke="#8B8178" stroke-width="1.5"/>
+
+  <!-- Fabric body -->
+  <path d="M20 22 L20 140 Q60 146 100 140 L100 22" stroke="#C4663A" stroke-width="1.5"/>
+
+  <!-- Fabric fold lines -->
+  <line x1="24" y1="50" x2="96" y2="50" stroke="#C4663A" stroke-width="0.5" opacity="0.3"/>
+  <line x1="24" y1="80" x2="96" y2="80" stroke="#C4663A" stroke-width="0.5" opacity="0.3"/>
+  <line x1="24" y1="110" x2="96" y2="110" stroke="#C4663A" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- Weighted hem -->
+  <path d="M20 140 Q60 146 100 140" stroke="#C4663A" stroke-width="2"/>
+
+  <!-- Pull chain -->
+  <circle cx="104" cy="28" r="2" stroke="#8B8178" stroke-width="1"/>
+  <line x1="104" y1="30" x2="104" y2="80" stroke="#8B8178" stroke-width="1" stroke-dasharray="2 3"/>
+  <circle cx="104" cy="82" r="3" stroke="#8B8178" stroke-width="1"/>
+</svg>
