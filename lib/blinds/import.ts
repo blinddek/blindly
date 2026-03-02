@@ -285,8 +285,15 @@ async function upsertPriceMatrix(
     }
   }
 
-  for (let i = 0; i < rows.length; i += 500) {
-    const chunk = rows.slice(i, i + 500);
+  // Deduplicate — last occurrence wins (same width×drop for same range)
+  const deduped = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) {
+    deduped.set(`${row.blind_range_id}:${row.width_cm}:${row.drop_cm}`, row);
+  }
+  const uniqueRows = [...deduped.values()];
+
+  for (let i = 0; i < uniqueRows.length; i += 500) {
+    const chunk = uniqueRows.slice(i, i + 500);
     const { data: result, error } = await supabase
       .from("price_matrices")
       .upsert(chunk, {
