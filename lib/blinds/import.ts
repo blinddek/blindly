@@ -117,8 +117,8 @@ async function importParsedData(
       if (override?.skip) continue;
 
       // Resolve mapping: override first, then DB lookup
-      let rangeId = override?.maps_to_range_id ?? null;
-      if (!rangeId) {
+      let rangeIds: string[] = (override?.maps_to_range_ids ?? []).filter(Boolean);
+      if (rangeIds.length === 0) {
         const { data: mapping } = await supabase
           .from("import_mappings")
           .select("maps_to_range_id, parser_type")
@@ -126,16 +126,21 @@ async function importParsedData(
           .eq("sheet_name", sheet.sheet_name)
           .eq("is_active", true)
           .single();
-        rangeId = mapping?.maps_to_range_id ?? null;
+        if (mapping?.maps_to_range_id) {
+          rangeIds = [mapping.maps_to_range_id];
+        }
       }
 
-      const stats = await importSheet(sheet, rangeId, errors);
-      totalCreated += stats.created;
-      totalUpdated += stats.updated;
-      totalUnchanged += stats.unchanged;
-      extrasSynced += stats.extrasSynced;
-      mechanismsSynced += stats.mechanismsSynced;
-      motorsSynced += stats.motorsSynced;
+      // Import into each mapped range (supports shared price matrices)
+      for (const rangeId of rangeIds.length > 0 ? rangeIds : [null]) {
+        const stats = await importSheet(sheet, rangeId, errors);
+        totalCreated += stats.created;
+        totalUpdated += stats.updated;
+        totalUnchanged += stats.unchanged;
+        extrasSynced += stats.extrasSynced;
+        mechanismsSynced += stats.mechanismsSynced;
+        motorsSynced += stats.motorsSynced;
+      }
     } catch (err) {
       errors.push(
         `Error importing "${sheet.sheet_name}": ${err instanceof Error ? err.message : String(err)}`
@@ -247,7 +252,7 @@ async function saveOverridesAsTemplates(
         supplier,
         sheet_name: o.sheet_name,
         parser_type: o.parser_type,
-        maps_to_range_id: o.maps_to_range_id,
+        maps_to_range_id: o.maps_to_range_ids[0] ?? null,
         is_active: true,
       },
       { onConflict: "supplier,sheet_name" }

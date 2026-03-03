@@ -135,7 +135,7 @@ export default async function AdminDashboard() {
                     <p className="text-sm font-medium capitalize">{run.task_name.replaceAll("_", " ")}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {run.status} &middot; {ago}
-                      {run.duration_ms != null && ` &middot; ${run.duration_ms}ms`}
+                      {run.duration_ms != null && <> &middot; {run.duration_ms}ms</>}
                     </p>
                   </div>
                 </div>

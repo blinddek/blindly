@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -27,6 +29,7 @@ import {
   Clock,
   FileText,
   ListChecks,
+  Search,
 } from "lucide-react";
 import {
   getSuppliers,
@@ -40,7 +43,6 @@ import {
 import type { ImportSummary } from "@/lib/blinds/import";
 import type {
   Supplier,
-  BlindRange,
   ParsePreview,
   SheetPreview,
   ImportMapping,
@@ -67,6 +69,7 @@ export default function PriceImportPage() {
         description="Upload supplier price lists, map sheets to blind ranges, and manage import history."
         tabs={[
           { key: "import", label: "Import", icon: Upload },
+          { key: "prices", label: "Prices", icon: Search },
           { key: "mappings", label: "Mappings", icon: ListChecks },
           { key: "history", label: "History", icon: Clock },
         ]}
@@ -74,6 +77,7 @@ export default function PriceImportPage() {
         {(activeTab) => (
           <>
             {activeTab === "import" && <ImportTab />}
+            {activeTab === "prices" && <PriceCheckerTab />}
             {activeTab === "mappings" && <MappingsTab />}
             {activeTab === "history" && <HistoryTab />}
           </>
@@ -85,9 +89,17 @@ export default function PriceImportPage() {
 
 // ─── Import Tab ────────────────────────────────────────────
 
+interface RangeOption {
+  id: string;
+  name: string;
+  slug: string;
+  blind_type_id: string;
+  blind_types: { name: string } | null;
+}
+
 function ImportTab() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [ranges, setRanges] = useState<BlindRange[]>([]);
+  const [ranges, setRanges] = useState<RangeOption[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState("");
   const [newSupplierName, setNewSupplierName] = useState("");
   const [showNewSupplier, setShowNewSupplier] = useState(false);
@@ -109,10 +121,10 @@ function ImportTab() {
       const supabase = createClient();
       const { data } = await supabase
         .from("blind_ranges")
-        .select("id, name, slug, blind_type_id")
+        .select("id, name, slug, blind_type_id, blind_types(name)")
         .eq("is_active", true)
         .order("name");
-      setRanges((data as BlindRange[]) ?? []);
+      setRanges((data as unknown as RangeOption[]) ?? []);
     }
     load();
   }, []);
@@ -156,10 +168,11 @@ function ImportTab() {
       // Build initial overrides from existing mappings + auto-detection
       const map = new Map<string, SheetMappingOverride>();
       for (const sheet of prev.sheets) {
+        const existingId = sheet.existing_mapping?.maps_to_range_id;
         map.set(sheet.sheet_name, {
           sheet_name: sheet.sheet_name,
           parser_type: sheet.detected_parser,
-          maps_to_range_id: sheet.existing_mapping?.maps_to_range_id ?? null,
+          maps_to_range_ids: existingId ? [existingId] : [],
           skip: false,
         });
       }
@@ -188,6 +201,13 @@ function ImportTab() {
     } finally {
       setImporting(false);
     }
+  }
+
+  function handleReset() {
+    setFile(null);
+    setPreview(null);
+    setResult(null);
+    setOverrides(new Map());
   }
 
   function updateOverride(sheetName: string, update: Partial<SheetMappingOverride>) {
@@ -329,7 +349,7 @@ function ImportTab() {
       )}
 
       {/* Step 3: Results */}
-      {result && <ImportResultCard result={result} />}
+      {result && <ImportResultCard result={result} onReset={handleReset} />}
     </div>
   );
 }
@@ -343,7 +363,7 @@ function SheetMappingCard({
   onUpdate,
 }: {
   sheet: SheetPreview;
-  ranges: BlindRange[];
+  ranges: RangeOption[];
   override?: SheetMappingOverride;
   onUpdate: (update: Partial<SheetMappingOverride>) => void;
 }) {
@@ -358,6 +378,15 @@ function SheetMappingCard({
     motorisation: "Motorisation",
     vertical: "Vertical",
   };
+
+  // Group ranges by blind type for a clean dropdown
+  const grouped = ranges.reduce<Record<string, typeof ranges>>((acc, r) => {
+    const typeName = r.blind_types?.name ?? "Other";
+    if (!acc[typeName]) acc[typeName] = [];
+    acc[typeName].push(r);
+    return acc;
+  }, {});
+  const groupEntries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <div className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:gap-4">
@@ -380,25 +409,11 @@ function SheetMappingCard({
       </span>
 
       {needsRange && !override?.skip && (
-        <div className="flex-1 sm:max-w-xs">
-          <Select
-            value={override?.maps_to_range_id ?? ""}
-            onValueChange={(val) =>
-              onUpdate({ maps_to_range_id: val || null })
-            }
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Assign to range..." />
-            </SelectTrigger>
-            <SelectContent>
-              {ranges.map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {r.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <RangeSelector
+          rangeIds={override?.maps_to_range_ids ?? []}
+          groupEntries={groupEntries}
+          onChange={(ids) => onUpdate({ maps_to_range_ids: ids })}
+        />
       )}
 
       {override?.skip && (
@@ -408,9 +423,87 @@ function SheetMappingCard({
   );
 }
 
+// ─── Range Selector (supports multiple ranges per sheet) ──
+
+type GroupEntry = [string, RangeOption[]];
+
+function RangeSelector({
+  rangeIds,
+  groupEntries,
+  onChange,
+}: {
+  rangeIds: string[];
+  groupEntries: GroupEntry[];
+  onChange: (ids: string[]) => void;
+}) {
+  function renderSelect(value: string, onSelect: (val: string) => void) {
+    return (
+      <Select value={value} onValueChange={onSelect}>
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue placeholder="Assign to range..." />
+        </SelectTrigger>
+        <SelectContent>
+          {groupEntries.map(([typeName, items]) => (
+            <SelectGroup key={typeName}>
+              <SelectLabel>{typeName}</SelectLabel>
+              {items.map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 flex-col gap-1.5">
+      {rangeIds.map((rangeId, idx) => (
+        <div key={`${rangeId}-${idx}`} className="flex items-center gap-1.5 sm:max-w-xs">
+          {renderSelect(rangeId, (val) => {
+            const next = [...rangeIds];
+            next[idx] = val;
+            onChange(next);
+          })}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 shrink-0 p-0"
+            onClick={() => onChange(rangeIds.filter((_, i) => i !== idx))}
+          >
+            <Trash2 className="size-3" />
+          </Button>
+        </div>
+      ))}
+      {rangeIds.length === 0 ? (
+        <div className="sm:max-w-xs">
+          {renderSelect("", (val) => onChange([val]))}
+        </div>
+      ) : (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-fit gap-1 text-xs text-muted-foreground"
+          onClick={() => onChange([...rangeIds, ""])}
+        >
+          <Plus className="size-3" /> Add range
+        </Button>
+      )}
+    </div>
+  );
+}
+
 // ─── Import Result Card ────────────────────────────────────
 
-function ImportResultCard({ result }: { result: ImportSummary }) {
+function ImportResultCard({
+  result,
+  onReset,
+}: {
+  result: ImportSummary;
+  onReset: () => void;
+}) {
   return (
     <Card>
       <CardContent className="pt-6 space-y-4">
@@ -445,8 +538,171 @@ function ImportResultCard({ result }: { result: ImportSummary }) {
             </ul>
           </div>
         )}
+        <Button onClick={onReset} variant="outline">
+          <Upload className="mr-2 size-4" />
+          Import Another File
+        </Button>
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Price Checker Tab ────────────────────────────────────
+
+interface PriceCell {
+  width_cm: number;
+  drop_cm: number;
+  supplier_price_cents: number;
+}
+
+function PriceCheckerTab() {
+  const [ranges, setRanges] = useState<RangeOption[]>([]);
+  const [selectedRange, setSelectedRange] = useState("");
+  const [prices, setPrices] = useState<PriceCell[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [rangesLoading, setRangesLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("blind_ranges")
+        .select("id, name, slug, blind_type_id, blind_types(name)")
+        .eq("is_active", true)
+        .order("name");
+      setRanges((data as unknown as RangeOption[]) ?? []);
+      setRangesLoading(false);
+    }
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedRange) {
+      setPrices([]);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const supabase = createClient();
+    supabase
+      .from("price_matrices")
+      .select("width_cm, drop_cm, supplier_price_cents")
+      .eq("blind_range_id", selectedRange)
+      .order("drop_cm")
+      .order("width_cm")
+      .then(({ data }) => {
+        if (!cancelled) {
+          setPrices((data as PriceCell[]) ?? []);
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [selectedRange]);
+
+  // Build grid data
+  const widths = [...new Set(prices.map((p) => p.width_cm))].sort((a, b) => a - b);
+  const drops = [...new Set(prices.map((p) => p.drop_cm))].sort((a, b) => a - b);
+  const priceMap = new Map(
+    prices.map((p) => [`${p.width_cm}:${p.drop_cm}`, p.supplier_price_cents])
+  );
+
+  // Group ranges for dropdown
+  const grouped = ranges.reduce<Record<string, RangeOption[]>>((acc, r) => {
+    const typeName = r.blind_types?.name ?? "Other";
+    if (!acc[typeName]) acc[typeName] = [];
+    acc[typeName].push(r);
+    return acc;
+  }, {});
+  const groupEntries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+
+  if (rangesLoading) {
+    return (
+      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" /> Loading...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <label htmlFor="price-range-select" className="text-sm text-muted-foreground">Range:</label>
+        <Select value={selectedRange} onValueChange={setSelectedRange}>
+          <SelectTrigger id="price-range-select" className="w-64">
+            <SelectValue placeholder="Select a range..." />
+          </SelectTrigger>
+          <SelectContent>
+            {groupEntries.map(([typeName, items]) => (
+              <SelectGroup key={typeName}>
+                <SelectLabel>{typeName}</SelectLabel>
+                {items.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> Loading prices...
+        </div>
+      )}
+
+      {!loading && selectedRange && prices.length === 0 && (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          No prices found for this range. Import a price list first.
+        </p>
+      )}
+
+      {!loading && prices.length > 0 && (
+        <>
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <Badge variant="secondary">{prices.length} prices</Badge>
+            <Badge variant="secondary">{widths.length} widths ({widths[0]}–{widths[widths.length - 1]} cm)</Badge>
+            <Badge variant="secondary">{drops.length} drops ({drops[0]}–{drops[drops.length - 1]} cm)</Badge>
+          </div>
+          <div className="overflow-auto rounded-md border" style={{ maxHeight: "70vh" }}>
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-background z-10">
+                <tr>
+                  <th className="sticky left-0 z-20 bg-muted px-2 py-1.5 text-left font-semibold">
+                    Drop \ Width
+                  </th>
+                  {widths.map((w) => (
+                    <th key={w} className="bg-muted px-2 py-1.5 text-right font-semibold whitespace-nowrap">
+                      {w}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {drops.map((d) => (
+                  <tr key={d} className="border-t hover:bg-muted/50">
+                    <td className="sticky left-0 z-10 bg-background px-2 py-1 font-medium border-r">
+                      {d}
+                    </td>
+                    {widths.map((w) => {
+                      const cents = priceMap.get(`${w}:${d}`);
+                      return (
+                        <td key={w} className="px-2 py-1 text-right tabular-nums whitespace-nowrap">
+                          {cents != null
+                            ? `R${(cents / 100).toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                            : <span className="text-muted-foreground/40">—</span>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

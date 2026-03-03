@@ -184,7 +184,7 @@ export interface Supplier {
 export interface SheetMappingOverride {
   sheet_name: string;
   parser_type: ParserType;
-  maps_to_range_id: string | null;
+  maps_to_range_ids: string[];
   skip: boolean;
 }
 
