@@ -56,15 +56,15 @@ export function SettingsLayout({
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.key || "");
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="flex flex-col h-full gap-6">
+      <div className="shrink-0">
         <h1 className="text-2xl font-bold text-foreground">{title}</h1>
         {description && (
           <p className="mt-1 text-muted-foreground">{description}</p>
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row md:h-[calc(100vh-10rem)]">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0">
         {/* Desktop sidebar */}
         <nav className="hidden md:flex w-52 shrink-0 flex-col border-r pr-4">
           <div className="flex flex-col gap-1">
