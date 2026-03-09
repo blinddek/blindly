@@ -114,7 +114,7 @@ export const siteConfig: SiteConfig = {
     blog: false,
     portfolio: false,
     booking: false,
-    shop: true,
+    shop: false,
     lms: false,
     newsletter: true,
     i18n: true,
