@@ -150,26 +150,12 @@ export default async function HomePage() {
               {hero.cta_secondary_text?.en && hero.cta_secondary_url && (
                 <Link
                   href={hero.cta_secondary_url}
-                  className="inline-block rounded-md border border-white/50 px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                  className="inline-block rounded-md bg-primary px-8 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   {hero.cta_secondary_text.en}
                 </Link>
               )}
             </div>
-
-            {settings.whatsapp_number && (
-              <p className="mt-6 text-sm text-white/60">
-                Or{" "}
-                <a
-                  href={`https://wa.me/${settings.whatsapp_number.replaceAll(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2 hover:text-white/80"
-                >
-                  WhatsApp us
-                </a>
-              </p>
-            )}
           </div>
         </section>
       )}
