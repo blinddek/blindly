@@ -89,19 +89,26 @@ export function AddressAutocomplete({
     const p = feature.properties;
     const [lng, lat] = feature.geometry.coordinates;
 
-    const street = p.housenumber && p.street
-      ? `${p.housenumber} ${p.street}`
-      : (p.street || p.name || "");
+    // Try to salvage the house number from what the user typed if Photon didn't return one
+    const typedNumber = /^\d+/.exec(query)?.[0];
+    const houseNumber = p.housenumber || typedNumber || "";
+
+    const streetName = p.street || p.name || "";
+    const street = houseNumber && streetName ? `${houseNumber} ${streetName}` : streetName;
     const city = p.city || p.town || p.village || p.suburb || "";
     const province = p.state || "";
     const postal_code = p.postcode || "";
 
     const label = featureLabel(feature);
-    setQuery(label);
+    const displayLabel = houseNumber && streetName && !label.startsWith(houseNumber)
+      ? `${houseNumber} ${label}`
+      : label;
+
+    setQuery(displayLabel);
     setSuggestions([]);
     setOpen(false);
 
-    onSelect({ display_name: label, street, city, province, postal_code, lat, lng });
+    onSelect({ display_name: displayLabel, street, city, province, postal_code, lat, lng });
   }
 
   return (
