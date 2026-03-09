@@ -72,7 +72,14 @@ export default function AdminProductsPage() {
       ]);
 
       if (productsRes.error) toast.error(productsRes.error.message);
-      else if (productsRes.data) setItems(productsRes.data as ProductForm[]);
+      else if (productsRes.data) {
+        setItems(
+          productsRes.data.map((p) => ({
+            ...p,
+            images: Array.isArray(p.images) ? p.images : [],
+          })) as ProductForm[]
+        );
+      }
 
       if (catsRes.data) setCategories(catsRes.data as ProductCategory[]);
       setLoading(false);
