@@ -7,6 +7,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 
@@ -15,7 +16,10 @@ export interface BlindCartItem {
   id: string;
   blind_range_id: string;
   range_name: string;
+  category_id: string;
+  category_slug: string;
   category_name: string;
+  type_id: string;
   type_name: string;
   colour: string;
   mount_type: "inside" | "outside";
@@ -59,7 +63,7 @@ function readStoredCart(): BlindCartItem[] {
 
 export function BlindCartProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [items, setItems] = useState<BlindCartItem[]>(readStoredCart);
-  const hydratedRef = useRef(typeof window !== "undefined");
+  const hydratedRef = useRef(globalThis.window !== undefined);
 
   useEffect(() => {
     if (!hydratedRef.current) return;
@@ -87,20 +91,23 @@ export function BlindCartProvider({ children }: Readonly<{ children: ReactNode }
   const vatCents = items.reduce((s, i) => s + i.vat_cents, 0);
   const grandTotalCents = items.reduce((s, i) => s + i.total_with_vat_cents, 0);
 
+  const value = useMemo<BlindCartContextValue>(
+    () => ({
+      items,
+      addItem,
+      removeItem,
+      updateLabel,
+      clearCart,
+      totalItems,
+      subtotalCents,
+      vatCents,
+      grandTotalCents,
+    }),
+    [items, addItem, removeItem, updateLabel, clearCart, totalItems, subtotalCents, vatCents, grandTotalCents]
+  );
+
   return (
-    <BlindCartContext.Provider
-      value={{
-        items,
-        addItem,
-        removeItem,
-        updateLabel,
-        clearCart,
-        totalItems,
-        subtotalCents,
-        vatCents,
-        grandTotalCents,
-      }}
-    >
+    <BlindCartContext.Provider value={value}>
       {children}
     </BlindCartContext.Provider>
   );

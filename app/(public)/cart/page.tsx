@@ -1,16 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { Trash2, ShoppingCart, ArrowRight, Plus } from "lucide-react";
+import { Trash2, ShoppingCart, ArrowRight, Plus, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useBlindCart } from "@/components/blinds/blind-cart-provider";
+import { useBlindCart, type BlindCartItem } from "@/components/blinds/blind-cart-provider";
 
 function formatRand(cents: number): string {
   return `R${(cents / 100).toLocaleString("en-ZA", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+/** Build a /configure URL pre-filled with the same range & colour, landing on Measurements */
+function sameBlindUrl(item: BlindCartItem): string {
+  const params = new URLSearchParams({
+    range_id: item.blind_range_id,
+    colour: item.colour,
+    type_id: item.type_id,
+    category_id: item.category_id,
+    category_slug: item.category_slug,
+  });
+  return `/configure?${params.toString()}`;
 }
 
 export default function CartPage() {
@@ -42,14 +54,12 @@ export default function CartPage() {
             <Card key={item.id}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-1">
+                  <div className="flex-1 space-y-0.5">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Blind {idx + 1}
                       {item.location_label && ` — ${item.location_label}`}
                     </p>
-                    <h3 className="font-semibold">
-                      {item.range_name}
-                    </h3>
+                    <h3 className="font-semibold">{item.range_name}</h3>
                     <p className="text-sm text-muted-foreground">
                       {item.category_name} · {item.type_name}
                     </p>
@@ -90,7 +100,15 @@ export default function CartPage() {
                   </div>
                 </dl>
 
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex items-center justify-between gap-4 border-t pt-3">
+                  {/* Add same style — lands on Measurements with range & colour pre-selected */}
+                  <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
+                    <Link href={sameBlindUrl(item)}>
+                      <Copy className="size-3.5" />
+                      Add same style
+                    </Link>
+                  </Button>
+
                   <span className="text-base font-bold">
                     {formatRand(item.total_with_vat_cents)}
                   </span>
@@ -102,7 +120,7 @@ export default function CartPage() {
           <Button variant="outline" asChild className="w-full">
             <Link href="/configure">
               <Plus className="size-4" />
-              Add another blind
+              Add a different blind
             </Link>
           </Button>
         </div>

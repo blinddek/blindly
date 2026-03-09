@@ -85,8 +85,8 @@ const STEP_LABELS = ["Type", "Range", "Colour", "Measurements", "Quote"];
 /* ─── Main Component ───────────────────────────────────────── */
 
 interface BlindConfiguratorProps {
-  prefill?: Partial<BlindState>;
-  startStep?: number;
+  readonly prefill?: Partial<BlindState>;
+  readonly startStep?: number;
 }
 
 export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorProps) {
@@ -197,7 +197,10 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
       id: crypto.randomUUID(),
       blind_range_id: state.range_id,
       range_name: range?.name ?? "",
+      category_id: state.category_id,
+      category_slug: state.category_slug,
       category_name: category?.name ?? "",
+      type_id: state.type_id,
       type_name: type?.name ?? "",
       colour: state.colour,
       mount_type: state.mount_type,
