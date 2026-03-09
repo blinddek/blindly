@@ -114,15 +114,18 @@ export default async function HomePage() {
       {/* ───── 1. Hero ───── */}
       {hero && (
         <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden md:min-h-[85vh]">
-          {hero.background_image ? (
-            <Image
-              src={hero.background_image}
-              alt=""
-              fill
-              priority
-              className="object-cover"
-            />
-          ) : null}
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 h-full w-full object-cover"
+          >
+            <source src="/images/5710732-hd_1920_1080_30fps(1).mp4" type="video/mp4" />
+            {hero.background_image && (
+              <Image src={hero.background_image} alt="" fill priority className="object-cover" />
+            )}
+          </video>
           <div className="absolute inset-0 bg-primary/80" />
 
           <div className="relative z-10 mx-auto max-w-3xl px-4 py-20 text-center">
