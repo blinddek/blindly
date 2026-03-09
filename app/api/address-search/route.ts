@@ -2,30 +2,52 @@ import { NextRequest, NextResponse } from "next/server";
 
 /**
  * GET /api/address-search?q=...
- * Proxies Nominatim address search (ZA only) so the server can set User-Agent.
- * Returns up to 6 suggestions with addressdetails.
+ * Proxies Photon (komoot.io) address search, filtered to South Africa.
+ * Photon uses OSM data with a better autocomplete index than raw Nominatim.
+ * No API key required.
  */
+
+// Bounding box for South Africa
+const ZA_BBOX = "16,-35,33,-22"; // minLon,minLat,maxLon,maxLat
+
+interface PhotonFeature {
+  type: "Feature";
+  geometry: { type: "Point"; coordinates: [number, number] };
+  properties: {
+    osm_id?: number;
+    name?: string;
+    housenumber?: string;
+    street?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    suburb?: string;
+    state?: string;
+    postcode?: string;
+    country?: string;
+    type?: string;
+  };
+}
+
+interface PhotonResponse {
+  features: PhotonFeature[];
+}
+
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q") ?? "";
-  if (q.length < 4) return NextResponse.json([]);
-
-  // Appending the country name improves Nominatim accuracy for ZA addresses
-  const query = q.toLowerCase().includes("south africa") ? q : `${q}, South Africa`;
+  if (q.length < 3) return NextResponse.json([]);
 
   const url =
-    `https://nominatim.openstreetmap.org/search` +
-    `?q=${encodeURIComponent(query)}&countrycodes=za&format=json&addressdetails=1&limit=6`;
+    `https://photon.komoot.io/api/` +
+    `?q=${encodeURIComponent(q)}&lang=en&limit=6&bbox=${ZA_BBOX}`;
 
   try {
     const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Blindly-App/1.0 (contact@blindly.co.za)",
-        "Accept-Language": "en",
-      },
-      next: { revalidate: 300 },
+      headers: { "User-Agent": "Blindly-App/1.0 (contact@blindly.co.za)" },
+      next: { revalidate: 60 },
     });
-    const data = await res.json();
-    return NextResponse.json(data);
+    const data = await res.json() as PhotonResponse;
+    return NextResponse.json(data.features ?? []);
   } catch {
     return NextResponse.json([]);
   }

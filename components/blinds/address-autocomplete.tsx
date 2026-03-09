@@ -4,20 +4,22 @@ import { useState, useRef } from "react";
 import { Search, MapPin, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-  address: {
-    house_number?: string;
-    road?: string;
-    suburb?: string;
+interface PhotonFeature {
+  type: "Feature";
+  geometry: { type: "Point"; coordinates: [number, number] }; // [lng, lat]
+  properties: {
+    osm_id?: number;
+    name?: string;
+    housenumber?: string;
+    street?: string;
     city?: string;
     town?: string;
     village?: string;
+    suburb?: string;
     state?: string;
     postcode?: string;
+    country?: string;
+    type?: string;
   };
 }
 
@@ -36,19 +38,31 @@ interface Props {
   readonly placeholder?: string;
 }
 
+function featureLabel(f: PhotonFeature): string {
+  const p = f.properties;
+  const parts: string[] = [];
+  if (p.housenumber && p.street) parts.push(`${p.housenumber} ${p.street}`);
+  else if (p.street) parts.push(p.street);
+  else if (p.name) parts.push(p.name);
+  const city = p.city || p.town || p.village || p.suburb;
+  if (city) parts.push(city);
+  if (p.state) parts.push(p.state);
+  if (p.postcode) parts.push(p.postcode);
+  return parts.join(", ");
+}
+
 export function AddressAutocomplete({
   onSelect,
   placeholder = "Start typing your address…",
 }: Props) {
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
+  const [suggestions, setSuggestions] = useState<PhotonFeature[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   function fetchSuggestions(value: string) {
-    if (value.length < 4) {
+    if (value.length < 3) {
       setSuggestions([]);
       setOpen(false);
       return;
@@ -56,7 +70,7 @@ export function AddressAutocomplete({
     setLoading(true);
     fetch(`/api/address-search?q=${encodeURIComponent(value)}`)
       .then((r) => r.json())
-      .then((data: NominatimResult[]) => {
+      .then((data: PhotonFeature[]) => {
         setSuggestions(data ?? []);
         setOpen((data ?? []).length > 0);
       })
@@ -68,35 +82,30 @@ export function AddressAutocomplete({
     const value = e.target.value;
     setQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchSuggestions(value), 400);
+    debounceRef.current = setTimeout(() => fetchSuggestions(value), 350);
   }
 
-  function handleSelect(result: NominatimResult) {
-    const { address } = result;
-    const street = [address.house_number, address.road].filter(Boolean).join(" ");
-    const city = address.city || address.town || address.village || "";
-    const province = address.state || "";
-    const postal_code = address.postcode || "";
+  function handleSelect(feature: PhotonFeature) {
+    const p = feature.properties;
+    const [lng, lat] = feature.geometry.coordinates;
 
-    // Show a clean summary in the search box instead of the verbose Nominatim string
-    const label = [street, city, postal_code].filter(Boolean).join(", ");
-    setQuery(label || result.display_name);
+    const street = p.housenumber && p.street
+      ? `${p.housenumber} ${p.street}`
+      : (p.street || p.name || "");
+    const city = p.city || p.town || p.village || p.suburb || "";
+    const province = p.state || "";
+    const postal_code = p.postcode || "";
+
+    const label = featureLabel(feature);
+    setQuery(label);
     setSuggestions([]);
     setOpen(false);
 
-    onSelect({
-      display_name: result.display_name,
-      street,
-      city,
-      province,
-      postal_code,
-      lat: Number.parseFloat(result.lat),
-      lng: Number.parseFloat(result.lon),
-    });
+    onSelect({ display_name: label, street, city, province, postal_code, lat, lng });
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div className="relative">
       <div className="relative">
         {loading ? (
           <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
@@ -116,16 +125,17 @@ export function AddressAutocomplete({
 
       {open && suggestions.length > 0 && (
         <ul className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg text-sm overflow-hidden max-h-64 overflow-y-auto">
-          {suggestions.map((s) => (
-            <li key={s.place_id}>
+          {suggestions.map((f, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: Photon results have no stable id
+            <li key={f.properties.osm_id ?? i}>
               <button
                 type="button"
                 className="flex w-full items-start gap-2 px-3 py-2.5 text-left hover:bg-accent transition-colors"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => handleSelect(s)}
+                onClick={() => handleSelect(f)}
               >
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="leading-snug">{s.display_name}</span>
+                <span className="leading-snug">{featureLabel(f)}</span>
               </button>
             </li>
           ))}
