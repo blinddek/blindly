@@ -82,9 +82,14 @@ const STEP_LABELS = ["Type", "Range", "Colour", "Measurements", "Quote"];
 
 /* ─── Main Component ───────────────────────────────────────── */
 
-export function BlindConfigurator() {
-  const [step, setStep] = useState(0);
-  const [state, setState] = useState<BlindState>(INITIAL_STATE);
+interface BlindConfiguratorProps {
+  prefill?: Partial<BlindState>;
+  startStep?: number;
+}
+
+export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorProps) {
+  const [step, setStep] = useState(startStep);
+  const [state, setState] = useState<BlindState>({ ...INITIAL_STATE, ...prefill });
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [types, setTypes] = useState<TypeOption[]>([]);
   const [ranges, setRanges] = useState<RangeOption[]>([]);
