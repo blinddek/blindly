@@ -6,12 +6,9 @@ import {
   Settings,
   ChevronRight,
   Mail,
-  Newspaper,
   Image,
-  MessageSquare,
   ShoppingBag,
   CalendarDays,
-  Activity,
   Clock,
   CheckCircle2,
   AlertCircle,
@@ -53,12 +50,7 @@ export default async function AdminDashboard() {
   ]);
 
   // Build feature-conditional stat cards
-  const statCards: StatCard[] = [
-    { label: "Messages", value: stats.contactCount, icon: MessageSquare },
-  ];
-  if (isEnabled("newsletter")) {
-    statCards.push({ label: "Subscribers", value: stats.newsletterCount, icon: Newspaper });
-  }
+  const statCards: StatCard[] = [];
   if (isEnabled("blog")) {
     statCards.push({ label: "Blog Posts", value: stats.blogCount, icon: FileText });
   }
@@ -69,7 +61,6 @@ export default async function AdminDashboard() {
   // Build feature-conditional quick links
   const quickLinks: QuickLink[] = [
     { href: "/admin/homepage", label: "Homepage Sections", description: "Edit hero, services, FAQ and more", icon: Home },
-    { href: "/admin/contact", label: "Messages", description: "View contact form submissions", icon: MessageSquare },
     { href: "/admin/navigation", label: "Navigation", description: "Manage nav links and footer", icon: Navigation },
   ];
   if (isEnabled("blog")) {
@@ -86,9 +77,17 @@ export default async function AdminDashboard() {
   }
   quickLinks.push(
     { href: "/admin/settings", label: "Site Settings", description: "Business info, contact, social", icon: Settings },
-    { href: "/admin/activity", label: "Activity Log", description: "Recent admin actions", icon: Activity },
     { href: "/admin/settings/email-templates", label: "Email Settings", description: "Manage email templates", icon: Mail },
   );
+
+  // Filter cron runs to only show tasks relevant to enabled features
+  const filteredCronRuns = cronRuns.filter((run) => {
+    const name = run.task_name.toLowerCase();
+    if ((name.includes("campaign") || name.includes("drip")) &&
+        !isEnabled("emailCampaigns") && !isEnabled("dripEmails")) return false;
+    if (name.includes("reminder") && !isEnabled("booking")) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-8">
@@ -115,13 +114,13 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Cron Status */}
-      {cronRuns.length > 0 && (
+      {filteredCronRuns.length > 0 && (
         <div>
           <h2 className="mb-4 text-lg font-semibold flex items-center gap-2">
             <Clock className="h-4 w-4" /> Automated Tasks
           </h2>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {cronRuns.map((run) => {
+            {filteredCronRuns.map((run) => {
               const StatusIcon = cronStatusIcons[run.status] ?? CheckCircle2;
               const color = cronStatusColors[run.status] ?? "text-muted-foreground";
               const ago = timeAgo(run.created_at);
