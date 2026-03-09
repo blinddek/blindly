@@ -28,13 +28,10 @@ export async function POST(request: Request) {
 
   // 4. Dispatch to handlers
   try {
-    switch (event.event) {
-      case "charge.success":
-        await handleChargeSuccess(event.data);
-        break;
-
-      default:
-        console.log("[webhook] Unhandled event:", event.event);
+    if (event.event === "charge.success") {
+      await handleChargeSuccess(event.data);
+    } else {
+      console.log("[webhook] Unhandled event:", event.event);
     }
   } catch (err) {
     console.error("[webhook] Handler error:", err);
@@ -68,6 +65,12 @@ async function handleChargeSuccess(data: Record<string, unknown>) {
   // ── Course enrollment payment ──
   if (courseId && userId) {
     await handleCoursePayment(supabase, courseId, userId, reference);
+    return;
+  }
+
+  // ── Blindly order payment ──
+  if (metadata?.payment_type === "blindly_order" || metadata?.blindly_order_id) {
+    await handleBlindlyOrderPayment(supabase, reference, metadata);
     return;
   }
 
@@ -128,6 +131,44 @@ async function handleChargeSuccess(data: Record<string, unknown>) {
     });
   } catch (err) {
     console.error("[webhook] Failed to notify admin:", err);
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleBlindlyOrderPayment(supabase: any, reference: string, metadata: Record<string, unknown>) {
+  const { data: order } = await supabase
+    .from("blindly_orders")
+    .select("id, payment_status, customer_name, customer_email, order_number, total_cents")
+    .eq("paystack_reference", reference)
+    .single();
+
+  if (!order) {
+    console.warn("[webhook] No blindly_order found for reference:", reference);
+    return;
+  }
+
+  if (order.payment_status === "paid") {
+    console.log("[webhook] Blindly order already paid:", order.id);
+    return;
+  }
+
+  await supabase
+    .from("blindly_orders")
+    .update({ payment_status: "paid", order_status: "confirmed" })
+    .eq("id", order.id);
+
+  console.log("[webhook] Blindly order paid:", order.order_number);
+
+  try {
+    await notifyAdmin("admin_new_order", {
+      orderReference: order.order_number ?? reference,
+      customerEmail: order.customer_email,
+      total: formatPrice(order.total_cents),
+      itemCount: metadata.item_count ?? 0,
+      adminUrl: `${process.env.NEXT_PUBLIC_APP_URL || ""}/admin/orders/${order.id}`,
+    });
+  } catch (err) {
+    console.error("[webhook] Failed to notify admin of blindly order:", err);
   }
 }
 

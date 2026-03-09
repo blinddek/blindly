@@ -2,6 +2,7 @@ import { Navbar } from "@/components/shared/navbar";
 import { Footer } from "@/components/shared/footer";
 import { WhatsAppButton } from "@/components/shared/whatsapp-button";
 import { CartProvider } from "@/components/shop/cart-provider";
+import { BlindCartProvider } from "@/components/blinds/blind-cart-provider";
 import { getLayoutData } from "@/lib/cms/queries";
 import { isEnabled } from "@/config/features";
 
@@ -30,5 +31,6 @@ export default async function PublicLayout({
     </>
   );
 
-  return shopEnabled ? <CartProvider>{content}</CartProvider> : content;
+  const withBlindCart = <BlindCartProvider>{content}</BlindCartProvider>;
+  return shopEnabled ? <CartProvider>{withBlindCart}</CartProvider> : withBlindCart;
 }

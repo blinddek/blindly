@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,6 +11,7 @@ import { StepTypeRange } from "./step-type-range";
 import { StepColour } from "./step-colour";
 import { StepMeasurements } from "./step-measurements";
 import { StepBlindQuote } from "./step-blind-quote";
+import { useBlindCart } from "@/components/blinds/blind-cart-provider";
 
 /* ─── Types ────────────────────────────────────────────────── */
 
@@ -88,6 +90,9 @@ interface BlindConfiguratorProps {
 }
 
 export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorProps) {
+  const router = useRouter();
+  const { addItem } = useBlindCart();
+
   const [step, setStep] = useState(startStep);
   const [state, setState] = useState<BlindState>({ ...INITIAL_STATE, ...prefill });
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -181,6 +186,34 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
     if (step === 4) calculatePrice();
   }, [step, calculatePrice]);
 
+  // Add to cart and navigate
+  const handleAddToCart = useCallback(() => {
+    if (!quote) return;
+    const category = categories.find((c) => c.id === state.category_id);
+    const type = types.find((t) => t.id === state.type_id);
+    const range = ranges.find((r) => r.id === state.range_id);
+
+    addItem({
+      id: crypto.randomUUID(),
+      blind_range_id: state.range_id,
+      range_name: range?.name ?? "",
+      category_name: category?.name ?? "",
+      type_name: type?.name ?? "",
+      colour: state.colour,
+      mount_type: state.mount_type,
+      width_mm: state.width_mm,
+      drop_mm: state.drop_mm,
+      control_side: state.control_side,
+      matched_width_cm: quote.matched_width_cm,
+      matched_drop_cm: quote.matched_drop_cm,
+      customer_price_cents: quote.customer_price_cents,
+      vat_cents: quote.vat_cents,
+      total_with_vat_cents: quote.total_with_vat_cents,
+    });
+
+    router.push("/cart");
+  }, [quote, state, categories, types, ranges, addItem, router]);
+
   const selectedRange = ranges.find((r) => r.id === state.range_id);
 
   const canAdvance = (): boolean => {
@@ -211,6 +244,12 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
 
   const progress = ((step + 1) / STEP_LABELS.length) * 100;
 
+  function stepLabelClass(i: number): string {
+    if (i === step) return "text-xs font-semibold text-primary transition-colors";
+    if (i < step) return "text-xs cursor-pointer text-muted-foreground hover:text-foreground transition-colors";
+    return "text-xs text-muted-foreground/50 transition-colors";
+  }
+
   return (
     <div className="space-y-6">
       {/* Progress */}
@@ -228,13 +267,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
               key={label}
               onClick={() => i < step && setStep(i)}
               disabled={i >= step}
-              className={`text-xs transition-colors ${
-                i === step
-                  ? "font-semibold text-primary"
-                  : i < step
-                    ? "cursor-pointer text-muted-foreground hover:text-foreground"
-                    : "text-muted-foreground/50"
-              }`}
+              className={stepLabelClass(i)}
             >
               {label}
             </button>
@@ -297,6 +330,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
               types={types}
               ranges={ranges}
               onRecalculate={calculatePrice}
+              onAddToCart={handleAddToCart}
             />
           )}
         </CardContent>
@@ -312,7 +346,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
           <ChevronLeft className="size-4" />
           Back
         </Button>
-        {step < 4 ? (
+        {step < 4 && (
           <Button
             onClick={() => setStep((s) => s + 1)}
             disabled={!canAdvance()}
@@ -320,8 +354,6 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
             Next
             <ChevronRight className="size-4" />
           </Button>
-        ) : (
-          <Button disabled>Add to Cart (Coming Soon)</Button>
         )}
       </div>
     </div>

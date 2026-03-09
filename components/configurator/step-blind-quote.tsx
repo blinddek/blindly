@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, ShoppingCart, Check } from "lucide-react";
 import type {
   BlindPriceResult,
   BlindState,
@@ -11,14 +12,15 @@ import type {
 } from "./blind-configurator";
 
 interface Props {
-  quote: BlindPriceResult | null;
-  loading: boolean;
-  error: string | null;
-  state: BlindState;
-  categories: CategoryOption[];
-  types: TypeOption[];
-  ranges: RangeOption[];
-  onRecalculate: () => void;
+  readonly quote: BlindPriceResult | null;
+  readonly loading: boolean;
+  readonly error: string | null;
+  readonly state: BlindState;
+  readonly categories: CategoryOption[];
+  readonly types: TypeOption[];
+  readonly ranges: RangeOption[];
+  readonly onRecalculate: () => void;
+  readonly onAddToCart: () => void;
 }
 
 function formatRand(cents: number): string {
@@ -37,7 +39,16 @@ export function StepBlindQuote({
   types,
   ranges,
   onRecalculate,
+  onAddToCart,
 }: Props) {
+  const [added, setAdded] = useState(false);
+
+  function handleAddToCart() {
+    onAddToCart();
+    setAdded(true);
+    setTimeout(() => setAdded(false), 2000);
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
@@ -132,6 +143,21 @@ export function StepBlindQuote({
         Price is for a single blind. Add multiple blinds to your cart for
         multi-window orders.
       </p>
+
+      {/* Add to cart */}
+      <Button className="w-full" size="lg" onClick={handleAddToCart}>
+        {added ? (
+          <>
+            <Check className="size-4" />
+            Added to Cart!
+          </>
+        ) : (
+          <>
+            <ShoppingCart className="size-4" />
+            Add to Cart
+          </>
+        )}
+      </Button>
     </div>
   );
 }
