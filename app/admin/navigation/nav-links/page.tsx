@@ -17,7 +17,8 @@ import { Plus, Trash2, Save, GripVertical } from "lucide-react";
 import {
   DndContext,
   closestCenter,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -153,7 +154,10 @@ export default function NavLinksPage() {
   const [links, setLinks] = useState<NavLink[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
+  );
 
   async function fetchLinks() {
     const supabase = createClient();
