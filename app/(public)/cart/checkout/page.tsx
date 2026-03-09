@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useBlindCart } from "@/components/blinds/blind-cart-provider";
+import { AddressAutocomplete, type AddressResult } from "@/components/blinds/address-autocomplete";
 import {
   getDiscountRate,
   calcDiscountCents,
@@ -39,6 +40,8 @@ export default function BlindCheckoutPage() {
     city: "",
     province: "",
     postal_code: "",
+    address_lat: "",
+    address_lng: "",
     delivery_type: "self_install" as "self_install" | "professional_install",
     distance_km: "",
     notes: "",
@@ -61,6 +64,22 @@ export default function BlindCheckoutPage() {
       })
       .finally(() => setRulesLoaded(true));
   }, []);
+
+  // Auto-calculate distance when switching to professional install and address is already set
+  useEffect(() => {
+    if (
+      form.delivery_type === "professional_install" &&
+      form.address_lat &&
+      form.address_lng &&
+      !form.distance_km
+    ) {
+      calcDistance({
+        lat: Number.parseFloat(form.address_lat),
+        lng: Number.parseFloat(form.address_lng),
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.delivery_type]);
 
   if (!hydrated) return null;
 
@@ -86,23 +105,26 @@ export default function BlindCheckoutPage() {
 
   const orderTotalCents = blindsTotal + installCents + transportCents;
 
-  async function calcDistance() {
-    if (!form.address_line_1 || !form.city) {
-      setDistanceError("Enter street address and city first.");
+  async function calcDistance(coords?: { lat: number; lng: number }) {
+    const hasCoords = coords ?? (form.address_lat && form.address_lng
+      ? { lat: Number.parseFloat(form.address_lat), lng: Number.parseFloat(form.address_lng) }
+      : null);
+
+    if (!hasCoords && (!form.address_line_1 || !form.city)) {
+      setDistanceError("Select an address from the autocomplete first.");
       return;
     }
     setCalcingDistance(true);
     setDistanceError(null);
     try {
+      const body = hasCoords
+        ? { lat: hasCoords.lat, lng: hasCoords.lng }
+        : { address: form.address_line_1, city: form.city, province: form.province, postal_code: form.postal_code };
+
       const res = await fetch("/api/distance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address: form.address_line_1,
-          city: form.city,
-          province: form.province,
-          postal_code: form.postal_code,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json() as { distance_km?: number; error?: string };
       if (data.error) {
@@ -117,7 +139,22 @@ export default function BlindCheckoutPage() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleAddressSelect(result: AddressResult) {
+    setForm((f) => ({
+      ...f,
+      address_line_1: result.street,
+      city: result.city,
+      province: result.province,
+      postal_code: result.postal_code,
+      address_lat: String(result.lat),
+      address_lng: String(result.lng),
+    }));
+    if (form.delivery_type === "professional_install") {
+      calcDistance({ lat: result.lat, lng: result.lng });
+    }
+  }
+
+  async function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
@@ -233,7 +270,19 @@ export default function BlindCheckoutPage() {
             <Card>
               <CardContent className="p-5 space-y-4">
                 <h2 className="font-semibold">Delivery Address</h2>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Search address *</Label>
+                  <AddressAutocomplete
+                    onSelect={handleAddressSelect}
+                    placeholder="e.g. 12 Main Street, Cape Town"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Select from the dropdown to auto-fill the fields below.
+                  </p>
+                </div>
+
+                {/* Editable fields — pre-filled by autocomplete, correctable by hand */}
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5 sm:col-span-2">
                     <Label htmlFor="address">Street address *</Label>
                     <Input
@@ -366,7 +415,7 @@ export default function BlindCheckoutPage() {
                     <div className="mt-2 space-y-1 text-sm border-t pt-3">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">
-                          Installation ({items.length} blind{items.length !== 1 ? "s" : ""})
+                          Installation ({items.length} blind{items.length === 1 ? "" : "s"})
                         </span>
                         <span>{installCents === 0 ? "Free" : formatRand(installCents)}</span>
                       </div>
