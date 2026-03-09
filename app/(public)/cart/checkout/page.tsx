@@ -407,9 +407,13 @@ export default function BlindCheckoutPage() {
   const professionalFeeCents = installLaborCents + transportCents;
   const relevantFeeCents = isProfessional ? professionalFeeCents : courierCents;
 
-  // Smart suggestion: if self-install courier is cheaper than professional, flag it
+  // Suggest courier only for distant clients where transport alone is ≥3× courier cost
   const showCourierSuggestion =
-    isProfessional && distanceCalculated && !calcingDistance && courierCents < professionalFeeCents;
+    isProfessional &&
+    distanceCalculated &&
+    !calcingDistance &&
+    distanceKm >= 50 &&
+    transportCents >= courierCents * 3;
 
   const feeKnown = isProfessional ? distanceCalculated : true; // courier fee always known for self-install
   const orderTotalCents = blindsTotal + (feeKnown ? relevantFeeCents : 0);
@@ -477,7 +481,9 @@ export default function BlindCheckoutPage() {
     }
     if (step === 2) {
       if (!form.address_line_1 || !form.city)
-        return "Please search and select a delivery address.";
+        return manualEntry
+          ? "Please enter your street address and city."
+          : "Please search and select a delivery address.";
     }
     return null;
   }
@@ -691,7 +697,7 @@ export default function BlindCheckoutPage() {
                 {step >= 3 && (
                   <InstallFeeCell
                     label={isProfessional ? "Installation fee" : "Courier delivery fee"}
-                    distanceCalculated={distanceCalculated}
+                    distanceCalculated={feeKnown}
                     calcingDistance={calcingDistance}
                     feeCents={relevantFeeCents}
                   />
@@ -701,6 +707,14 @@ export default function BlindCheckoutPage() {
                   <span className="text-primary">{formatRand(orderTotalCents)}</span>
                 </div>
               </div>
+
+              {step >= 2 && form.address_line_1 && (
+                <div className="mt-3 rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground space-y-0.5">
+                  <p className="font-medium text-foreground">Delivery address</p>
+                  <p>{form.address_line_1}</p>
+                  <p>{[form.city, form.province, form.postal_code].filter(Boolean).join(", ")}</p>
+                </div>
+              )}
 
               <p className="mt-3 text-center text-xs text-muted-foreground">
                 Secure payment via Paystack.
