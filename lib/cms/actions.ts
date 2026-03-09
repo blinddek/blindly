@@ -51,6 +51,7 @@ export async function upsertNavLink(data: {
   href: string;
   display_order: number;
   is_active: boolean;
+  hide_in_nav?: boolean;
 }) {
   await ensureAdmin();
   const supabase = createAdminClient();

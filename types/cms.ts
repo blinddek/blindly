@@ -53,6 +53,7 @@ export interface NavLink {
   href: string;
   display_order: number;
   is_active: boolean;
+  hide_in_nav: boolean;
 }
 
 export interface FooterLink {

@@ -14,8 +14,8 @@ import { siteConfig } from "@/config/site";
 import type { NavLink, SiteSettings } from "@/types/cms";
 
 interface NavbarProps {
-  links: NavLink[];
-  settings: SiteSettings;
+  readonly links: NavLink[];
+  readonly settings: SiteSettings;
 }
 
 export function Navbar({ links, settings }: NavbarProps) {
@@ -32,7 +32,7 @@ export function Navbar({ links, settings }: NavbarProps) {
 
         {/* Desktop nav — exclude any link that duplicates the CTA button */}
         <nav className="hidden items-center gap-1 md:flex">
-          {links.filter((l) => l.href !== settings.cta_url).map((link) => (
+          {links.filter((l) => !l.hide_in_nav).map((link) => (
             <Link
               key={link.id}
               href={link.href}
@@ -73,7 +73,7 @@ export function Navbar({ links, settings }: NavbarProps) {
       {mobileOpen && (
         <div className="border-t border-border bg-background md:hidden">
           <nav className="flex flex-col px-4 py-4">
-            {links.filter((l) => l.href !== settings.cta_url).map((link) => (
+            {links.filter((l) => !l.hide_in_nav).map((link) => (
               <Link
                 key={link.id}
                 href={link.href}

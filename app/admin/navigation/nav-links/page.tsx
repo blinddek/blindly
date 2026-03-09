@@ -51,6 +51,14 @@ export default function NavLinksPage() {
     );
   }
 
+  function handleHideToggle(id: string) {
+    setLinks((prev) =>
+      prev.map((link) =>
+        link.id === id ? { ...link, hide_in_nav: !link.hide_in_nav } : link
+      )
+    );
+  }
+
   async function handleSave(link: NavLink) {
     try {
       await upsertNavLink({
@@ -59,6 +67,7 @@ export default function NavLinksPage() {
         href: link.href,
         display_order: link.display_order,
         is_active: link.is_active,
+        hide_in_nav: link.hide_in_nav,
       });
       toast.success("Saved!");
     } catch (err: unknown) {
@@ -200,6 +209,28 @@ export default function NavLinksPage() {
                     onChange={(e) => handleHrefChange(link.id, e.target.value)}
                     placeholder="/about"
                   />
+                </div>
+
+                {/* Hide in nav toggle */}
+                <div className="flex flex-col items-center gap-1 pt-5">
+                  <label className="text-xs text-muted-foreground whitespace-nowrap">
+                    Hide in nav
+                  </label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={link.hide_in_nav}
+                    onClick={() => handleHideToggle(link.id)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                      link.hide_in_nav ? "bg-primary" : "bg-muted"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        link.hide_in_nav ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
                 </div>
 
                 {/* Actions */}
