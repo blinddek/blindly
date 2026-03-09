@@ -26,13 +26,13 @@ type FeatureKey = keyof typeof siteConfig.features;
 export function isEnabled(feature: string): boolean {
   const featureKey = feature as FeatureKey;
 
-  // Explicit opt-in/out in config takes priority
+  // Explicit config value always takes priority over tier defaults
   if (featureKey in siteConfig.features) {
     if (siteConfig.features[featureKey] === true) return true;
-    // If explicitly false, still check tier defaults
+    if (siteConfig.features[featureKey] === false) return false;
   }
 
-  // Tier-based defaults
+  // Tier-based defaults (only reached if key is absent from config)
   return TIER_FEATURES[siteConfig.tier]?.includes(feature) ?? false;
 }
 
