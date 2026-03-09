@@ -86,3 +86,69 @@ export function getDiscountRate(
 export function calcDiscountCents(grandTotalCents: number, rate: number): number {
   return Math.round(grandTotalCents * rate);
 }
+
+// ─── Courier Pricing ──────────────────────────────────────────────────────────
+
+export interface CourierTier {
+  min_kg: number;
+  max_kg: number | null; // null = no upper limit
+  cost_cents: number;
+}
+
+export interface CategoryWeight {
+  category_id: string;
+  category_name: string;
+  weight_per_m2_kg: number;
+}
+
+export interface CourierPricing {
+  packaging_kg: number;
+  category_weights: CategoryWeight[];
+  tiers: CourierTier[];
+}
+
+export const DEFAULT_COURIER_PRICING: CourierPricing = {
+  packaging_kg: 0.5,
+  category_weights: [],
+  tiers: [
+    { min_kg: 0,  max_kg: 5,    cost_cents: 15_000 }, // R150
+    { min_kg: 5,  max_kg: 15,   cost_cents: 25_000 }, // R250
+    { min_kg: 15, max_kg: null, cost_cents: 40_000 }, // R400
+  ],
+};
+
+/** Weight of a single blind in kg based on its area and the category's kg/m². */
+export function calcItemWeightKg(
+  item: { category_id: string; width_mm: number; drop_mm: number },
+  categoryWeights: CategoryWeight[]
+): number {
+  const cw = categoryWeights.find((c) => c.category_id === item.category_id);
+  if (!cw) return 0;
+  const m2 = (item.width_mm / 1000) * (item.drop_mm / 1000);
+  return m2 * cw.weight_per_m2_kg;
+}
+
+/** Total shipment weight in kg (all blinds + packaging). */
+export function calcTotalWeightKg(
+  items: { category_id: string; width_mm: number; drop_mm: number }[],
+  courierPricing: CourierPricing
+): number {
+  const blindWeight = items.reduce(
+    (sum, item) => sum + calcItemWeightKg(item, courierPricing.category_weights),
+    0
+  );
+  return blindWeight + courierPricing.packaging_kg;
+}
+
+/** Courier cost in cents for the given cart items based on weight tiers. */
+export function calcCourierCents(
+  items: { category_id: string; width_mm: number; drop_mm: number }[],
+  courierPricing: CourierPricing
+): number {
+  if (courierPricing.tiers.length === 0) return 0;
+  const totalKg = calcTotalWeightKg(items, courierPricing);
+  const tier = courierPricing.tiers.find(
+    (t) => totalKg >= t.min_kg && (t.max_kg === null || totalKg < t.max_kg)
+  );
+  return tier?.cost_cents ?? 0;
+}

@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, RotateCcw, Percent, Truck, Upload, Search, ListChecks, Clock, Plus, Wrench, BadgePercent } from "lucide-react";
+import { Loader2, Save, RotateCcw, Percent, Truck, Upload, Search, ListChecks, Clock, Plus, Wrench, BadgePercent, PackageCheck } from "lucide-react";
 import { toast } from "sonner";
 import { setGlobalMarkup, setCategoryMarkup, setSupplierMarkup, addSupplier } from "./actions";
 import { ImportTab, PriceCheckerTab, MappingsTab, HistoryTab } from "@/components/admin/blinds/import-tabs";
 import { InstallationTab } from "@/components/admin/blinds/installation-tab";
 import { DiscountsTab } from "@/components/admin/blinds/discounts-tab";
+import { CourierTab } from "@/components/admin/blinds/courier-tab";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ export default function BlindsPricingPage() {
         { key: "prices", label: "Prices", icon: Search },
         { key: "margins", label: "Profit Margins", icon: Percent },
         { key: "installation", label: "Installation", icon: Wrench },
+        { key: "courier", label: "Courier", icon: PackageCheck },
         { key: "discounts", label: "Discounts", icon: BadgePercent },
         { key: "mappings", label: "Mappings", icon: ListChecks },
         { key: "history", label: "History", icon: Clock },
@@ -58,6 +60,7 @@ export default function BlindsPricingPage() {
           {activeTab === "import" && <ImportTab />}
           {activeTab === "prices" && <PriceCheckerTab />}
           {activeTab === "installation" && <InstallationTab />}
+          {activeTab === "courier" && <CourierTab />}
           {activeTab === "discounts" && <DiscountsTab />}
           {activeTab === "mappings" && <MappingsTab />}
           {activeTab === "history" && <HistoryTab />}

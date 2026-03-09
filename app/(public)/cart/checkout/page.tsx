@@ -15,10 +15,13 @@ import {
   calcDiscountCents,
   getInstallationTier,
   calcTransportCents,
+  calcCourierCents,
   DEFAULT_INSTALLATION_PRICING,
   DEFAULT_VOLUME_DISCOUNTS,
+  DEFAULT_COURIER_PRICING,
   type InstallationPricing,
   type VolumeDiscounts,
+  type CourierPricing,
 } from "@/types/pricing-rules";
 
 function formatRand(cents: number): string {
@@ -209,15 +212,19 @@ interface Step3Props {
   relevantFeeCents: number;
   feeLabel: string;
   distanceKmValue: string;
+  showCourierSuggestion: boolean;
+  courierCents: number;
   onDeliveryTypeChange: (v: string) => void;
   onDistanceKmChange: (v: string) => void;
   onClearDistanceError: () => void;
+  onSwitchToSelfInstall: () => void;
 }
 
 function Step3Installation({
   deliveryType, rulesLoaded, calcingDistance, distanceCalculated,
   distanceError, relevantFeeCents, feeLabel, distanceKmValue,
-  onDeliveryTypeChange, onDistanceKmChange, onClearDistanceError,
+  showCourierSuggestion, courierCents,
+  onDeliveryTypeChange, onDistanceKmChange, onClearDistanceError, onSwitchToSelfInstall,
 }: Readonly<Step3Props>) {
   return (
     <Card>
@@ -276,6 +283,24 @@ function Step3Installation({
             )}
           </div>
         )}
+        {showCourierSuggestion && (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 p-4 text-sm space-y-2">
+            <p className="font-medium text-primary">
+              Save {formatRand(relevantFeeCents - courierCents)} with self-installation!
+            </p>
+            <p className="text-muted-foreground text-xs">
+              Courier delivery costs only {formatRand(courierCents)} — cheaper than professional installation.
+              Consider having us deliver and fitting the blinds yourself or using a local installer.
+            </p>
+            <button
+              type="button"
+              onClick={onSwitchToSelfInstall}
+              className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+            >
+              Switch to self-install ({formatRand(courierCents)})
+            </button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -327,14 +352,16 @@ export default function BlindCheckoutPage() {
 
   const [installRules, setInstallRules] = useState<InstallationPricing>(DEFAULT_INSTALLATION_PRICING);
   const [discountRules, setDiscountRules] = useState<VolumeDiscounts>(DEFAULT_VOLUME_DISCOUNTS);
+  const [courierRules, setCourierRules] = useState<CourierPricing>(DEFAULT_COURIER_PRICING);
   const [rulesLoaded, setRulesLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/pricing-rules")
       .then((r) => r.json())
-      .then((d: { installation_pricing?: InstallationPricing; volume_discounts?: VolumeDiscounts }) => {
+      .then((d: { installation_pricing?: InstallationPricing; volume_discounts?: VolumeDiscounts; courier_pricing?: CourierPricing }) => {
         if (d.installation_pricing) setInstallRules(d.installation_pricing);
         if (d.volume_discounts) setDiscountRules(d.volume_discounts);
+        if (d.courier_pricing) setCourierRules(d.courier_pricing);
       })
       .finally(() => setRulesLoaded(true));
   }, []);
@@ -362,10 +389,14 @@ export default function BlindCheckoutPage() {
   const installLaborCents = installTier?.cost_cents ?? 0;
   const transportCents = distanceCalculated ? calcTransportCents(distanceKm, installRules) : 0;
 
-  // Self-install: delivery transport only. Professional: labor + transport.
-  const selfInstallFeeCents = transportCents;
+  // Self-install: courier cost by weight. Professional: labor + transport.
+  const courierCents = calcCourierCents(items, courierRules);
   const professionalFeeCents = installLaborCents + transportCents;
-  const relevantFeeCents = isProfessional ? professionalFeeCents : selfInstallFeeCents;
+  const relevantFeeCents = isProfessional ? professionalFeeCents : courierCents;
+
+  // Smart suggestion: if self-install courier is cheaper than professional, flag it
+  const showCourierSuggestion =
+    isProfessional && distanceCalculated && !calcingDistance && courierCents < professionalFeeCents;
 
   const orderTotalCents = blindsTotal + (distanceCalculated ? relevantFeeCents : 0);
 
@@ -537,11 +568,14 @@ export default function BlindCheckoutPage() {
         distanceCalculated={distanceCalculated}
         distanceError={distanceError}
         relevantFeeCents={relevantFeeCents}
-        feeLabel={isProfessional ? "Installation fee" : "Delivery fee"}
+        feeLabel={isProfessional ? "Installation fee" : "Courier delivery fee"}
         distanceKmValue={form.distance_km}
+        showCourierSuggestion={showCourierSuggestion}
+        courierCents={courierCents}
         onDeliveryTypeChange={(v) => set("delivery_type", v)}
         onDistanceKmChange={(v) => set("distance_km", v)}
         onClearDistanceError={() => setDistanceError(null)}
+        onSwitchToSelfInstall={() => set("delivery_type", "self_install")}
       />
     );
     return (
@@ -638,7 +672,7 @@ export default function BlindCheckoutPage() {
                 )}
                 {step >= 3 && (
                   <InstallFeeCell
-                    label={isProfessional ? "Installation fee" : "Delivery fee"}
+                    label={isProfessional ? "Installation fee" : "Courier delivery fee"}
                     distanceCalculated={distanceCalculated}
                     calcingDistance={calcingDistance}
                     feeCents={relevantFeeCents}
