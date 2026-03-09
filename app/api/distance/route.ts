@@ -55,30 +55,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Address and city are required" }, { status: 400 });
     }
 
-    const queryParts = [address, city, province, postal_code, "South Africa"]
-      .filter(Boolean)
-      .join(", ");
+    const nominatimHeaders = {
+      "User-Agent": "Blindly-App/1.0 (contact@blindly.co.za)",
+      "Accept-Language": "en",
+    };
 
-    const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(queryParts)}&format=json&limit=1&countrycodes=za`;
+    async function geocode(query: string): Promise<{ lat: number; lng: number } | null> {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=za`;
+      const res = await fetch(url, { headers: nominatimHeaders });
+      const data = await res.json() as { lat?: string; lon?: string }[];
+      if (!data.length || !data[0].lat || !data[0].lon) return null;
+      return { lat: Number.parseFloat(data[0].lat), lng: Number.parseFloat(data[0].lon) };
+    }
 
     try {
-      const geoRes = await fetch(nominatimUrl, {
-        headers: {
-          "User-Agent": "Blindly-App/1.0 (contact@blindly.co.za)",
-          "Accept-Language": "en",
-        },
-      });
-      const geoData = await geoRes.json() as { lat?: string; lon?: string }[];
+      // Try full address first, fall back to city + province only
+      const fullQuery = [address, city, province, postal_code, "South Africa"].filter(Boolean).join(", ");
+      const cityQuery = [city, province, "South Africa"].filter(Boolean).join(", ");
 
-      if (!geoData.length || !geoData[0].lat || !geoData[0].lon) {
+      const coords = (await geocode(fullQuery)) ?? (await geocode(cityQuery));
+
+      if (!coords) {
         return NextResponse.json(
-          { error: "Address not found. Please check the street address and city." },
+          { error: "Address not found. Please check the city name or enter distance manually." },
           { status: 422 }
         );
       }
 
-      custLat = Number.parseFloat(geoData[0].lat);
-      custLng = Number.parseFloat(geoData[0].lon);
+      custLat = coords.lat;
+      custLng = coords.lng;
     } catch {
       return NextResponse.json({ error: "Geocoding service unavailable. Please enter distance manually." }, { status: 503 });
     }
