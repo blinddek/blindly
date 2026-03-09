@@ -60,7 +60,7 @@ export async function upsertNavLink(data: {
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(error.message);
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function deleteNavLink(id: string) {
@@ -68,7 +68,7 @@ export async function deleteNavLink(id: string) {
   const supabase = createAdminClient();
   const { error } = await supabase.from("nav_links").delete().eq("id", id);
   if (error) throw new Error(error.message);
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 export async function reorderNavLinks(orderedIds: string[]) {
@@ -79,7 +79,7 @@ export async function reorderNavLinks(orderedIds: string[]) {
       supabase.from("nav_links").update({ display_order: index }).eq("id", id)
     )
   );
-  revalidatePath("/");
+  revalidatePath("/", "layout");
 }
 
 // ---- footer_sections ----

@@ -13,13 +13,147 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { LocalizedInput } from "@/components/admin/localized-input";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowUp, ArrowDown, Save } from "lucide-react";
+import { Plus, Trash2, Save, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const L = (en = "", af = ""): LocalizedString => ({ en, af });
+
+// ── Sortable row ──────────────────────────────────────────────────────────────
+
+interface RowProps {
+  link: NavLink;
+  index: number;
+  total: number;
+  onLabelChange: (id: string, v: LocalizedString) => void;
+  onHrefChange: (id: string, v: string) => void;
+  onHideToggle: (id: string) => void;
+  onSave: (link: NavLink) => void;
+  onDelete: (id: string) => void;
+}
+
+function SortableNavLinkRow({
+  link,
+  onLabelChange,
+  onHrefChange,
+  onHideToggle,
+  onSave,
+  onDelete,
+}: RowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: link.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card>
+        <CardContent className="flex flex-col gap-3">
+          {/* Drag handle + URL row */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
+              aria-label="Drag to reorder"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="h-5 w-5" />
+            </button>
+
+            {/* Href */}
+            <div className="flex flex-1 min-w-[180px] flex-col gap-1">
+              <label htmlFor={`href-${link.id}`} className="text-xs font-medium text-muted-foreground">
+                URL
+              </label>
+              <Input
+                id={`href-${link.id}`}
+                value={link.href}
+                onChange={(e) => onHrefChange(link.id, e.target.value)}
+                placeholder="/about"
+              />
+            </div>
+
+            {/* Hide in nav toggle */}
+            <div className="flex flex-col items-center gap-1 pt-5">
+              <label htmlFor={`hide-${link.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                Hide in nav
+              </label>
+              <button
+                id={`hide-${link.id}`}
+                type="button"
+                role="switch"
+                aria-checked={link.hide_in_nav}
+                onClick={() => onHideToggle(link.id)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                  link.hide_in_nav ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                    link.hide_in_nav ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-1 pt-5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onSave(link)}
+              >
+                <Save className="mr-1 h-3.5 w-3.5" />
+                Save
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => onDelete(link.id)}
+                aria-label="Delete link"
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Label - localized */}
+          <LocalizedInput
+            label="Label"
+            value={link.label}
+            onChange={(v) => onLabelChange(link.id, v)}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NavLinksPage() {
   const [links, setLinks] = useState<NavLink[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const sensors = useSensors(useSensor(PointerSensor));
 
   async function fetchLinks() {
     const supabase = createClient();
@@ -107,39 +241,22 @@ export default function NavLinksPage() {
     }
   }
 
-  async function handleMove(index: number, direction: "up" | "down") {
-    if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === links.length - 1)
-    ) {
-      return;
-    }
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-    const swapIndex = direction === "up" ? index - 1 : index + 1;
-    const updated = [...links];
-
-    // Swap display_order values
-    const tempOrder = updated[index].display_order;
-    updated[index] = {
-      ...updated[index],
-      display_order: updated[swapIndex].display_order,
-    };
-    updated[swapIndex] = {
-      ...updated[swapIndex],
-      display_order: tempOrder,
-    };
-
-    // Re-sort
-    updated.sort((a, b) => a.display_order - b.display_order);
-    setLinks(updated);
+    const oldIndex = links.findIndex((l) => l.id === active.id);
+    const newIndex = links.findIndex((l) => l.id === over.id);
+    const reordered = arrayMove(links, oldIndex, newIndex);
+    setLinks(reordered);
 
     try {
-      await reorderNavLinks(updated.map((l) => l.id));
+      await reorderNavLinks(reordered.map((l) => l.id));
       toast.success("Reordered!");
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to reorder";
+      const message = err instanceof Error ? err.message : "Failed to reorder";
       toast.error(message);
+      await fetchLinks(); // revert
     }
   }
 
@@ -163,7 +280,7 @@ export default function NavLinksPage() {
       </div>
 
       <p className="mt-1 text-sm text-muted-foreground">
-        Manage the main navigation bar links. Use arrows to reorder.
+        Manage the main navigation bar links. Drag to reorder.
       </p>
 
       <div className="mt-6 space-y-3">
@@ -173,96 +290,30 @@ export default function NavLinksPage() {
           </p>
         )}
 
-        {links.map((link, index) => (
-          <Card key={link.id}>
-            <CardContent className="flex flex-col gap-3">
-              {/* Reorder arrows + URL row */}
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-0.5">
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    disabled={index === 0}
-                    onClick={() => handleMove(index, "up")}
-                    aria-label="Move up"
-                  >
-                    <ArrowUp className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    disabled={index === links.length - 1}
-                    onClick={() => handleMove(index, "down")}
-                    aria-label="Move down"
-                  >
-                    <ArrowDown className="h-3 w-3" />
-                  </Button>
-                </div>
-
-                {/* Href */}
-                <div className="flex flex-1 min-w-[180px] flex-col gap-1">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    URL
-                  </label>
-                  <Input
-                    value={link.href}
-                    onChange={(e) => handleHrefChange(link.id, e.target.value)}
-                    placeholder="/about"
-                  />
-                </div>
-
-                {/* Hide in nav toggle */}
-                <div className="flex flex-col items-center gap-1 pt-5">
-                  <label className="text-xs text-muted-foreground whitespace-nowrap">
-                    Hide in nav
-                  </label>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={link.hide_in_nav}
-                    onClick={() => handleHideToggle(link.id)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                      link.hide_in_nav ? "bg-primary" : "bg-muted"
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                        link.hide_in_nav ? "translate-x-4" : "translate-x-0"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-1 pt-5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSave(link)}
-                  >
-                    <Save className="mr-1 h-3.5 w-3.5" />
-                    Save
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => handleDelete(link.id)}
-                    aria-label="Delete link"
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Label - localized */}
-              <LocalizedInput
-                label="Label"
-                value={link.label}
-                onChange={(v) => handleLabelChange(link.id, v)}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={links.map((l) => l.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {links.map((link, index) => (
+              <SortableNavLinkRow
+                key={link.id}
+                link={link}
+                index={index}
+                total={links.length}
+                onLabelChange={handleLabelChange}
+                onHrefChange={handleHrefChange}
+                onHideToggle={handleHideToggle}
+                onSave={handleSave}
+                onDelete={handleDelete}
               />
-            </CardContent>
-          </Card>
-        ))}
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
     </div>
   );
