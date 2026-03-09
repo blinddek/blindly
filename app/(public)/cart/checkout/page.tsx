@@ -100,6 +100,204 @@ function InstallFeeCell({
   );
 }
 
+// ── Step components ───────────────────────────────────────────────────────────
+
+function Step1Contact({ name, email, phone, onChange }: Readonly<{
+  name: string; email: string; phone: string;
+  onChange: (field: string, value: string) => void;
+}>) {
+  return (
+    <Card>
+      <CardContent className="p-5 space-y-4">
+        <h2 className="font-semibold text-lg">Contact Details</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="name">Full name *</Label>
+            <Input id="name" value={name} onChange={(e) => onChange("name", e.target.value)} placeholder="Jane Smith" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email *</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => onChange("email", e.target.value)} placeholder="jane@example.com" />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="phone">Phone number *</Label>
+            <Input id="phone" type="tel" value={phone} onChange={(e) => onChange("phone", e.target.value)} placeholder="071 234 5678" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface Step2Props {
+  manualEntry: boolean;
+  address_line_1: string;
+  city: string;
+  province: string;
+  postal_code: string;
+  onAddressSelect: (result: AddressResult) => void;
+  onChange: (field: string, value: string) => void;
+  onEnableManual: () => void;
+  onDisableManual: () => void;
+}
+
+function Step2Delivery({
+  manualEntry, address_line_1, city, province, postal_code,
+  onAddressSelect, onChange, onEnableManual, onDisableManual,
+}: Readonly<Step2Props>) {
+  function field(id: string, label: string, value: string, placeholder: string) {
+    return (
+      <div className={`space-y-1.5${id === "address" ? " sm:col-span-2" : ""}`}>
+        <Label htmlFor={id} className={manualEntry ? undefined : "text-muted-foreground"}>
+          {label}{manualEntry && (id === "address" || id === "city") ? " *" : ""}
+        </Label>
+        <Input
+          id={id}
+          readOnly={!manualEntry}
+          value={value}
+          onChange={manualEntry ? (e) => onChange(id === "address" ? "address_line_1" : id, e.target.value) : undefined}
+          placeholder={manualEntry ? placeholder : "Auto-filled"}
+          className={manualEntry ? undefined : "bg-muted/40 cursor-default"}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-5 space-y-4">
+        <h2 className="font-semibold text-lg">Delivery Address</h2>
+        {!manualEntry && (
+          <div className="space-y-1.5">
+            <Label>Search address *</Label>
+            <AddressAutocomplete onSelect={onAddressSelect} placeholder="e.g. 12 Main Street, Cape Town" />
+            <p className="text-xs text-muted-foreground">
+              Select a suggestion from the dropdown — the fields below will fill automatically.
+            </p>
+          </div>
+        )}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {field("address", "Street address", address_line_1, "12 Main Street")}
+          {field("city", "City", city, "Cape Town")}
+          {field("province", "Province", province, "Western Cape")}
+          {field("postal_code", "Postal code", postal_code, "8001")}
+        </div>
+        <div className="border-t pt-3">
+          {manualEntry ? (
+            <button type="button" onClick={onDisableManual}
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors">
+              ← Search address instead
+            </button>
+          ) : (
+            <button type="button" onClick={onEnableManual}
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors">
+              Can't find your address? Enter manually →
+            </button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface Step3Props {
+  deliveryType: "self_install" | "professional_install";
+  rulesLoaded: boolean;
+  calcingDistance: boolean;
+  distanceCalculated: boolean;
+  distanceError: string | null;
+  relevantFeeCents: number;
+  feeLabel: string;
+  distanceKmValue: string;
+  onDeliveryTypeChange: (v: string) => void;
+  onDistanceKmChange: (v: string) => void;
+  onClearDistanceError: () => void;
+}
+
+function Step3Installation({
+  deliveryType, rulesLoaded, calcingDistance, distanceCalculated,
+  distanceError, relevantFeeCents, feeLabel, distanceKmValue,
+  onDeliveryTypeChange, onDistanceKmChange, onClearDistanceError,
+}: Readonly<Step3Props>) {
+  return (
+    <Card>
+      <CardContent className="p-5 space-y-4">
+        <h2 className="font-semibold text-lg">Installation</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {([
+            { value: "self_install", label: "Self-install", desc: "We deliver, you fit" },
+            { value: "professional_install", label: "Professional install", desc: "We deliver and fit" },
+          ] as const).map((opt) => (
+            <label key={opt.value} aria-label={opt.label}
+              className={`flex cursor-pointer gap-3 rounded-lg border p-4 transition-colors ${
+                deliveryType === opt.value ? "border-primary bg-primary/5" : "hover:bg-muted/40"
+              }`}>
+              <input type="radio" name="delivery_type" value={opt.value}
+                checked={deliveryType === opt.value}
+                onChange={() => onDeliveryTypeChange(opt.value)}
+                className="mt-0.5" />
+              <div>
+                <p className="font-medium">{opt.label}</p>
+                <p className="text-sm text-muted-foreground">{opt.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+        {rulesLoaded && (
+          <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+            {calcingDistance && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Calculating fee…
+              </div>
+            )}
+            {!calcingDistance && distanceCalculated && (
+              <div className="flex items-center justify-between font-medium">
+                <span>{feeLabel}</span>
+                <span>{relevantFeeCents === 0 ? "Free" : formatRand(relevantFeeCents)}</span>
+              </div>
+            )}
+            {!calcingDistance && !distanceCalculated && !distanceError && (
+              <p className="text-muted-foreground">Fee will be shown once your delivery address is confirmed.</p>
+            )}
+            {distanceError && (
+              <div className="space-y-2">
+                <p className="text-xs text-destructive">{distanceError}</p>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="distance_manual" className="text-xs shrink-0 text-muted-foreground">
+                    Enter distance manually (km):
+                  </Label>
+                  <Input id="distance_manual" type="number" min={0} step={1}
+                    className="h-7 text-xs max-w-[80px]" value={distanceKmValue}
+                    onChange={(e) => { onDistanceKmChange(e.target.value); onClearDistanceError(); }}
+                    placeholder="0" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Step4Notes({ notes, onChange }: Readonly<{ notes: string; onChange: (v: string) => void }>) {
+  return (
+    <Card>
+      <CardContent className="p-5 space-y-3">
+        <h2 className="font-semibold text-lg">Order Notes</h2>
+        <p className="text-sm text-muted-foreground">
+          Optional — special instructions, access notes, preferred installation time, etc.
+        </p>
+        <textarea value={notes} onChange={(e) => onChange(e.target.value)}
+          placeholder="e.g. Ring the gate bell, available after 10am…"
+          rows={4}
+          className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function BlindCheckoutPage() {
@@ -107,6 +305,7 @@ export default function BlindCheckoutPage() {
   const { items, hydrated, grandTotalCents, subtotalCents, vatCents, clearCart } = useBlindCart();
 
   const [step, setStep] = useState(1);
+  const [manualEntry, setManualEntry] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -179,15 +378,20 @@ export default function BlindCheckoutPage() {
         ? { lat: Number.parseFloat(form.address_lat), lng: Number.parseFloat(form.address_lng) }
         : null);
 
-    if (!hasCoords) return;
+    // Manual entry fallback: geocode from text fields
+    if (!hasCoords && (!form.address_line_1 || !form.city)) return;
 
     setCalcingDistance(true);
     setDistanceError(null);
     try {
+      const body = hasCoords
+        ? { lat: hasCoords.lat, lng: hasCoords.lng }
+        : { address: form.address_line_1, city: form.city, province: form.province, postal_code: form.postal_code };
+
       const res = await fetch("/api/distance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat: hasCoords.lat, lng: hasCoords.lng }),
+        body: JSON.stringify(body),
       });
       const data = (await res.json()) as { distance_km?: number; error?: string };
       if (data.error) {
@@ -238,6 +442,10 @@ export default function BlindCheckoutPage() {
       return;
     }
     setError(null);
+    // In manual entry mode, trigger distance calc when leaving step 2
+    if (step === 2 && manualEntry && !distanceCalculated) {
+      calcDistance();
+    }
     setStep((s) => s + 1);
   }
 
@@ -297,197 +505,47 @@ export default function BlindCheckoutPage() {
   // ── Step content ────────────────────────────────────────────────────────────
 
   function renderStep() {
-    // Step 1 — Contact
-    if (step === 1) {
-      return (
-        <Card>
-          <CardContent className="p-5 space-y-4">
-            <h2 className="font-semibold text-lg">Contact Details</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Full name *</Label>
-                <Input
-                  id="name"
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  placeholder="Jane Smith"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => set("email", e.target.value)}
-                  placeholder="jane@example.com"
-                />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="phone">Phone number *</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => set("phone", e.target.value)}
-                  placeholder="071 234 5678"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-
-    // Step 2 — Delivery address
-    if (step === 2) {
-      return (
-        <Card>
-          <CardContent className="p-5 space-y-4">
-            <h2 className="font-semibold text-lg">Delivery Address</h2>
-            <div className="space-y-1.5">
-              <Label>Search address *</Label>
-              <AddressAutocomplete
-                onSelect={handleAddressSelect}
-                placeholder="e.g. 12 Main Street, Cape Town"
-              />
-              <p className="text-xs text-muted-foreground">
-                Select a suggestion from the dropdown — the fields below will fill automatically.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="address" className="text-muted-foreground">Street address</Label>
-                <Input id="address" readOnly value={form.address_line_1} placeholder="Auto-filled" className="bg-muted/40 cursor-default" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="city" className="text-muted-foreground">City</Label>
-                <Input id="city" readOnly value={form.city} placeholder="Auto-filled" className="bg-muted/40 cursor-default" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="province" className="text-muted-foreground">Province</Label>
-                <Input id="province" readOnly value={form.province} placeholder="Auto-filled" className="bg-muted/40 cursor-default" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="postal" className="text-muted-foreground">Postal code</Label>
-                <Input id="postal" readOnly value={form.postal_code} placeholder="Auto-filled" className="bg-muted/40 cursor-default" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-
-    // Step 3 — Installation
-    if (step === 3) {
-      return (
-        <Card>
-          <CardContent className="p-5 space-y-4">
-            <h2 className="font-semibold text-lg">Installation</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {(
-                [
-                  { value: "self_install", label: "Self-install", desc: "We deliver, you fit" },
-                  {
-                    value: "professional_install",
-                    label: "Professional install",
-                    desc: "We deliver and fit",
-                  },
-                ] as const
-              ).map((opt) => (
-                <label
-                  key={opt.value}
-                  aria-label={opt.label}
-                  className={`flex cursor-pointer gap-3 rounded-lg border p-4 transition-colors ${
-                    form.delivery_type === opt.value
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-muted/40"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="delivery_type"
-                    value={opt.value}
-                    checked={form.delivery_type === opt.value}
-                    onChange={() => set("delivery_type", opt.value)}
-                    className="mt-0.5"
-                  />
-                  <div>
-                    <p className="font-medium">{opt.label}</p>
-                    <p className="text-sm text-muted-foreground">{opt.desc}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-
-            {rulesLoaded && (
-              <div className="rounded-lg border bg-muted/30 p-4 text-sm">
-                {calcingDistance && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Calculating fee…
-                  </div>
-                )}
-                {!calcingDistance && distanceCalculated && (
-                  <div className="flex items-center justify-between font-medium">
-                    <span>{isProfessional ? "Installation fee" : "Delivery fee"}</span>
-                    <span>
-                      {relevantFeeCents === 0 ? "Free" : formatRand(relevantFeeCents)}
-                    </span>
-                  </div>
-                )}
-                {!calcingDistance && !distanceCalculated && !distanceError && (
-                  <p className="text-muted-foreground">
-                    Fee will be shown once your delivery address is confirmed.
-                  </p>
-                )}
-                {distanceError && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-destructive">{distanceError}</p>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="distance_manual" className="text-xs shrink-0 text-muted-foreground">
-                        Enter distance manually (km):
-                      </Label>
-                      <Input
-                        id="distance_manual"
-                        type="number"
-                        min={0}
-                        step={1}
-                        className="h-7 text-xs max-w-[80px]"
-                        value={form.distance_km}
-                        onChange={(e) => {
-                          set("distance_km", e.target.value);
-                          setDistanceError(null);
-                        }}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      );
-    }
-
-    // Step 4 — Notes
+    if (step === 1) return (
+      <Step1Contact name={form.name} email={form.email} phone={form.phone} onChange={set} />
+    );
+    if (step === 2) return (
+      <Step2Delivery
+        manualEntry={manualEntry}
+        address_line_1={form.address_line_1}
+        city={form.city}
+        province={form.province}
+        postal_code={form.postal_code}
+        onAddressSelect={handleAddressSelect}
+        onChange={set}
+        onEnableManual={() => {
+          setManualEntry(true);
+          setForm((f) => ({ ...f, address_lat: "", address_lng: "", distance_km: "" }));
+          setDistanceError(null);
+        }}
+        onDisableManual={() => {
+          setManualEntry(false);
+          setForm((f) => ({ ...f, address_line_1: "", city: "", province: "", postal_code: "", address_lat: "", address_lng: "", distance_km: "" }));
+          setDistanceError(null);
+        }}
+      />
+    );
+    if (step === 3) return (
+      <Step3Installation
+        deliveryType={form.delivery_type}
+        rulesLoaded={rulesLoaded}
+        calcingDistance={calcingDistance}
+        distanceCalculated={distanceCalculated}
+        distanceError={distanceError}
+        relevantFeeCents={relevantFeeCents}
+        feeLabel={isProfessional ? "Installation fee" : "Delivery fee"}
+        distanceKmValue={form.distance_km}
+        onDeliveryTypeChange={(v) => set("delivery_type", v)}
+        onDistanceKmChange={(v) => set("distance_km", v)}
+        onClearDistanceError={() => setDistanceError(null)}
+      />
+    );
     return (
-      <Card>
-        <CardContent className="p-5 space-y-3">
-          <h2 className="font-semibold text-lg">Order Notes</h2>
-          <p className="text-sm text-muted-foreground">
-            Optional — special instructions, access notes, preferred installation time, etc.
-          </p>
-          <textarea
-            value={form.notes}
-            onChange={(e) => set("notes", e.target.value)}
-            placeholder="e.g. Ring the gate bell, available after 10am…"
-            rows={4}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </CardContent>
-      </Card>
+      <Step4Notes notes={form.notes} onChange={(v) => set("notes", v)} />
     );
   }
 
