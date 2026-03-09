@@ -3,7 +3,6 @@
 import {
   createContext,
   useContext,
-  useRef,
   useState,
   useEffect,
   useCallback,
@@ -38,6 +37,7 @@ export interface BlindCartItem {
 
 interface BlindCartContextValue {
   items: BlindCartItem[];
+  hydrated: boolean;
   addItem: (item: BlindCartItem) => void;
   removeItem: (id: string) => void;
   updateLabel: (id: string, label: string) => void;
@@ -62,13 +62,23 @@ function readStoredCart(): BlindCartItem[] {
 }
 
 export function BlindCartProvider({ children }: Readonly<{ children: ReactNode }>) {
-  const [items, setItems] = useState<BlindCartItem[]>(readStoredCart);
-  const hydratedRef = useRef(globalThis.window !== undefined);
+  // Always start empty — localStorage is not available on the server.
+  // hydrated flips true after the first client-side effect, at which point
+  // the real cart is loaded and any localStorage writes are safe.
+  const [items, setItems] = useState<BlindCartItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
+  // Load cart from localStorage once on mount (client only)
   useEffect(() => {
-    if (!hydratedRef.current) return;
+    setItems(readStoredCart());
+    setHydrated(true);
+  }, []);
+
+  // Persist to localStorage whenever items change (after hydration)
+  useEffect(() => {
+    if (!hydrated) return;
     globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+  }, [items, hydrated]);
 
   const addItem = useCallback((item: BlindCartItem) => {
     setItems((prev) => [...prev, item]);
@@ -94,6 +104,7 @@ export function BlindCartProvider({ children }: Readonly<{ children: ReactNode }
   const value = useMemo<BlindCartContextValue>(
     () => ({
       items,
+      hydrated,
       addItem,
       removeItem,
       updateLabel,
@@ -103,7 +114,7 @@ export function BlindCartProvider({ children }: Readonly<{ children: ReactNode }
       vatCents,
       grandTotalCents,
     }),
-    [items, addItem, removeItem, updateLabel, clearCart, totalItems, subtotalCents, vatCents, grandTotalCents]
+    [items, hydrated, addItem, removeItem, updateLabel, clearCart, totalItems, subtotalCents, vatCents, grandTotalCents]
   );
 
   return (

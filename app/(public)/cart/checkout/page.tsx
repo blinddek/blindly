@@ -29,7 +29,7 @@ function formatRand(cents: number): string {
 
 export default function BlindCheckoutPage() {
   const router = useRouter();
-  const { items, grandTotalCents, subtotalCents, vatCents, clearCart } = useBlindCart();
+  const { items, hydrated, grandTotalCents, subtotalCents, vatCents, clearCart } = useBlindCart();
 
   const [form, setForm] = useState({
     name: "",
@@ -61,6 +61,8 @@ export default function BlindCheckoutPage() {
       })
       .finally(() => setRulesLoaded(true));
   }, []);
+
+  if (!hydrated) return null;
 
   if (items.length === 0) {
     router.replace("/cart");

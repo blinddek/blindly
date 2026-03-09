@@ -32,7 +32,7 @@ function sameBlindUrl(item: BlindCartItem): string {
 }
 
 export default function CartPage() {
-  const { items, removeItem, subtotalCents, vatCents, grandTotalCents } = useBlindCart();
+  const { items, hydrated, removeItem, subtotalCents, vatCents, grandTotalCents } = useBlindCart();
   const [discountRate, setDiscountRate] = useState(0);
   const [rulesLoaded, setRulesLoaded] = useState(false);
 
@@ -50,6 +50,14 @@ export default function CartPage() {
 
   const discountCents = calcDiscountCents(grandTotalCents, discountRate);
   const finalTotalCents = grandTotalCents - discountCents;
+
+  if (!hydrated) {
+    return (
+      <section className="mx-auto max-w-2xl px-4 py-24 text-center sm:px-6">
+        <ShoppingCart className="mx-auto mb-4 h-14 w-14 text-muted-foreground/20 animate-pulse" />
+      </section>
+    );
+  }
 
   if (items.length === 0) {
     return (

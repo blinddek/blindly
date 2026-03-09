@@ -10,6 +10,7 @@ import { LanguageSelector } from "@/components/shared/language-selector";
 import { NavbarAuthButton } from "@/components/shared/navbar-auth-button";
 import { useLocale } from "@/lib/locale";
 import { CartIcon } from "@/components/shop/cart-icon";
+import { BlindCartIcon } from "@/components/blinds/blind-cart-icon";
 import { siteConfig } from "@/config/site";
 import type { NavLink, SiteSettings } from "@/types/cms";
 
@@ -48,6 +49,7 @@ export function Navbar({ links, settings }: NavbarProps) {
           <LanguageSelector />
           <ThemeToggle />
           {siteConfig.features.shop && <CartIcon />}
+          <BlindCartIcon />
           <div className="mx-1 h-5 w-px bg-border" />
           <NavbarAuthButton />
           <Link href={settings.cta_url}>
@@ -88,6 +90,7 @@ export function Navbar({ links, settings }: NavbarProps) {
                 <LanguageSelector />
                 <ThemeToggle />
                 {siteConfig.features.shop && <CartIcon />}
+                <BlindCartIcon />
               </div>
               <div className="flex items-center gap-2">
                 <NavbarAuthButton />
