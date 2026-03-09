@@ -609,7 +609,15 @@ export default function BlindCheckoutPage() {
         courierCents={courierCents}
         packageWeightKg={packageWeightKg}
         packageDimsCm={packageDimsCm}
-        onDeliveryTypeChange={(v) => set("delivery_type", v)}
+        onDeliveryTypeChange={(v) => {
+          set("delivery_type", v);
+          if (v === "professional_install" && !distanceCalculated) {
+            const coords = form.address_lat && form.address_lng
+              ? { lat: Number.parseFloat(form.address_lat), lng: Number.parseFloat(form.address_lng) }
+              : undefined;
+            calcDistance(coords);
+          }
+        }}
         onDistanceKmChange={(v) => set("distance_km", v)}
         onClearDistanceError={() => setDistanceError(null)}
         onSwitchToSelfInstall={() => set("delivery_type", "self_install")}
