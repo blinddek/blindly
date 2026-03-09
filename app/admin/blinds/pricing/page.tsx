@@ -1,31 +1,84 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SettingsLayout } from "@/components/admin/settings-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, RotateCcw, Percent } from "lucide-react";
+import { Loader2, Save, RotateCcw, Percent, Truck, Upload, Search, ListChecks, Clock, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { setGlobalMarkup, setCategoryMarkup } from "./actions";
+import { setGlobalMarkup, setCategoryMarkup, setSupplierMarkup, addSupplier } from "./actions";
+import { ImportTab, PriceCheckerTab, MappingsTab, HistoryTab } from "@/components/admin/blinds/import-tabs";
 
-interface Category {
+// ─── Types ──────────────────────────────────────────────────
+
+interface SupplierRow {
   id: string;
   name: string;
-  markup_percent: number | null; // null = inherits global
+  slug: string;
+  markup_percent: number | null;
+}
+
+interface CategoryRow {
+  id: string;
+  name: string;
+  markup_percent: number | null;
 }
 
 interface PricingData {
   global_markup: number;
-  categories: Category[];
+  suppliers: SupplierRow[];
+  categories: CategoryRow[];
 }
 
+// ─── Page ────────────────────────────────────────────────────
+
 export default function BlindsPricingPage() {
+  return (
+    <SettingsLayout
+      title="Pricing"
+      description="Manage supplier price imports and configure profit margins."
+      tabs={[
+        { key: "margins", label: "Profit Margins", icon: Percent },
+        { key: "import", label: "Import", icon: Upload },
+        { key: "prices", label: "Prices", icon: Search },
+        { key: "mappings", label: "Mappings", icon: ListChecks },
+        { key: "history", label: "History", icon: Clock },
+      ]}
+    >
+      {(activeTab) => (
+        <>
+          {activeTab === "margins" && <ProfitMarginsTab />}
+          {activeTab === "import" && <ImportTab />}
+          {activeTab === "prices" && <PriceCheckerTab />}
+          {activeTab === "mappings" && <MappingsTab />}
+          {activeTab === "history" && <HistoryTab />}
+        </>
+      )}
+    </SettingsLayout>
+  );
+}
+
+// ─── Profit Margins Tab ──────────────────────────────────────
+
+function ProfitMarginsTab() {
   const [data, setData] = useState<PricingData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Global
   const [globalValue, setGlobalValue] = useState("");
   const [savingGlobal, setSavingGlobal] = useState(false);
+
+  // Suppliers
+  const [supplierValues, setSupplierValues] = useState<Record<string, string>>({});
+  const [savingSupplier, setSavingSupplier] = useState<string | null>(null);
+  const [newSupplierName, setNewSupplierName] = useState("");
+  const [addingSupplier, setAddingSupplier] = useState(false);
+  const [showAddSupplier, setShowAddSupplier] = useState(false);
+
+  // Categories
   const [categoryValues, setCategoryValues] = useState<Record<string, string>>({});
   const [savingCategory, setSavingCategory] = useState<string | null>(null);
 
@@ -35,9 +88,16 @@ export default function BlindsPricingPage() {
       .then((d: PricingData) => {
         setData(d);
         setGlobalValue(String(d.global_markup));
+
+        const supVals: Record<string, string> = {};
+        for (const s of d.suppliers) {
+          supVals[s.id] = s.markup_percent === null ? "" : String(s.markup_percent);
+        }
+        setSupplierValues(supVals);
+
         const catVals: Record<string, string> = {};
         for (const cat of d.categories) {
-          catVals[cat.id] = cat.markup_percent !== null ? String(cat.markup_percent) : "";
+          catVals[cat.id] = cat.markup_percent === null ? "" : String(cat.markup_percent);
         }
         setCategoryValues(catVals);
       })
@@ -45,8 +105,8 @@ export default function BlindsPricingPage() {
   }, []);
 
   async function handleSaveGlobal() {
-    const val = parseFloat(globalValue);
-    if (isNaN(val) || val < 0 || val > 1000) {
+    const val = Number.parseFloat(globalValue);
+    if (Number.isNaN(val) || val < 0 || val > 1000) {
       toast.error("Enter a valid percentage (0–1000)");
       return;
     }
@@ -61,10 +121,58 @@ export default function BlindsPricingPage() {
     }
   }
 
+  async function handleSaveSupplier(supplierId: string) {
+    const raw = supplierValues[supplierId];
+    const val = raw === "" ? null : Number.parseFloat(raw);
+    if (val !== null && (Number.isNaN(val) || val < 0 || val > 1000)) {
+      toast.error("Enter a valid percentage (0–1000)");
+      return;
+    }
+    setSavingSupplier(supplierId);
+    const result = await setSupplierMarkup(supplierId, val);
+    setSavingSupplier(null);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success(val === null ? "Supplier override removed" : "Supplier markup saved");
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              suppliers: prev.suppliers.map((s) =>
+                s.id === supplierId ? { ...s, markup_percent: val } : s
+              ),
+            }
+          : prev
+      );
+    }
+  }
+
+  async function handleAddSupplier() {
+    if (!newSupplierName.trim()) return;
+    setAddingSupplier(true);
+    const result = await addSupplier(newSupplierName.trim());
+    setAddingSupplier(false);
+    if (result.error) {
+      toast.error(result.error);
+    } else if (result.supplier) {
+      const s = result.supplier;
+      setData((prev) =>
+        prev
+          ? { ...prev, suppliers: [...prev.suppliers, { id: s.id, name: s.name, slug: s.slug, markup_percent: null }] }
+          : prev
+      );
+      setSupplierValues((prev) => ({ ...prev, [s.id]: "" }));
+      setNewSupplierName("");
+      setShowAddSupplier(false);
+      toast.success(`Supplier "${s.name}" added`);
+    }
+  }
+
   async function handleSaveCategory(categoryId: string) {
     const raw = categoryValues[categoryId];
-    const val = raw === "" ? null : parseFloat(raw);
-    if (val !== null && (isNaN(val) || val < 0 || val > 1000)) {
+    const val = raw === "" ? null : Number.parseFloat(raw);
+    if (val !== null && (Number.isNaN(val) || val < 0 || val > 1000)) {
       toast.error("Enter a valid percentage (0–1000)");
       return;
     }
@@ -100,11 +208,12 @@ export default function BlindsPricingPage() {
   if (!data) return <p className="text-destructive">Failed to load pricing data.</p>;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Blind Pricing — Profit Margin</h1>
+        <h2 className="text-base font-semibold">Profit Margin Configuration</h2>
         <p className="text-sm text-muted-foreground">
           Set the markup % added on top of supplier cost price. VAT is applied separately at checkout.
+          Cascade: Range → Type → Category → Supplier → Global.
         </p>
       </div>
 
@@ -113,7 +222,7 @@ export default function BlindsPricingPage() {
         <CardHeader>
           <CardTitle className="text-base">Global Markup</CardTitle>
           <CardDescription>
-            Applies to all blinds unless overridden per category below.
+            Applies to all blinds unless overridden at a more specific level.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -139,11 +248,110 @@ export default function BlindsPricingPage() {
               Save
             </Button>
           </div>
-
           {data.global_markup > 0 && (
             <p className="text-xs text-muted-foreground">
               Example: supplier cost R100 → selling price R{(100 * (1 + data.global_markup / 100)).toFixed(2)} (ex VAT)
             </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Per-supplier overrides */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Truck className="h-4 w-4" />
+                Supplier Overrides
+              </CardTitle>
+              <CardDescription>
+                Set a tighter margin for competitive suppliers. Overrides the global, but is overridden by category/type/range.
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setShowAddSupplier((v) => !v)}>
+              <Plus className="mr-1 h-3 w-3" />
+              Add Supplier
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {showAddSupplier && (
+            <div className="flex items-end gap-3 rounded-md border bg-muted/30 p-3">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="new-supplier">New Supplier Name</Label>
+                <Input
+                  id="new-supplier"
+                  value={newSupplierName}
+                  onChange={(e) => setNewSupplierName(e.target.value)}
+                  placeholder="e.g. Blinds Direct"
+                  onKeyDown={(e) => e.key === "Enter" && handleAddSupplier()}
+                />
+              </div>
+              <Button onClick={handleAddSupplier} disabled={addingSupplier || !newSupplierName.trim()}>
+                {addingSupplier ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+              </Button>
+              <Button variant="ghost" onClick={() => { setShowAddSupplier(false); setNewSupplierName(""); }}>
+                Cancel
+              </Button>
+            </div>
+          )}
+
+          {data.suppliers.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2">No suppliers yet. Add one above.</p>
+          ) : (
+            data.suppliers.map((s) => (
+              <div key={s.id} className="flex items-end gap-3">
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Label>{s.name}</Label>
+                    {s.markup_percent === null ? (
+                      <Badge variant="secondary" className="text-xs">inherits {data.global_markup}%</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">{s.markup_percent}% override</Badge>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={1000}
+                      step={0.5}
+                      placeholder={`Default: ${data.global_markup}%`}
+                      value={supplierValues[s.id] ?? ""}
+                      onChange={(e) =>
+                        setSupplierValues((prev) => ({ ...prev, [s.id]: e.target.value }))
+                      }
+                      className="pr-8"
+                    />
+                    <Percent className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    onClick={() => handleSaveSupplier(s.id)}
+                    disabled={savingSupplier === s.id}
+                  >
+                    {savingSupplier === s.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  </Button>
+                  {s.markup_percent !== null && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="Remove override"
+                      disabled={savingSupplier === s.id}
+                      onClick={() => {
+                        setSupplierValues((prev) => ({ ...prev, [s.id]: "" }));
+                        handleSaveSupplier(s.id);
+                      }}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))
           )}
         </CardContent>
       </Card>
@@ -153,62 +361,66 @@ export default function BlindsPricingPage() {
         <CardHeader>
           <CardTitle className="text-base">Category Overrides</CardTitle>
           <CardDescription>
-            Leave blank to inherit the global markup. Set a value to override for that category only.
+            Leave blank to inherit. Set a value to override for that category only.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {data.categories.map((cat) => (
-            <div key={cat.id} className="flex items-end gap-3">
-              <div className="flex-1 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Label>{cat.name}</Label>
-                  {cat.markup_percent === null ? (
-                    <Badge variant="secondary" className="text-xs">inherits {data.global_markup}%</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-xs">{cat.markup_percent}% override</Badge>
-                  )}
+          {data.categories.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No categories found.</p>
+          ) : (
+            data.categories.map((cat) => (
+              <div key={cat.id} className="flex items-end gap-3">
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Label>{cat.name}</Label>
+                    {cat.markup_percent === null ? (
+                      <Badge variant="secondary" className="text-xs">inherits {data.global_markup}%</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">{cat.markup_percent}% override</Badge>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={1000}
+                      step={0.5}
+                      placeholder={`Default: ${data.global_markup}%`}
+                      value={categoryValues[cat.id] ?? ""}
+                      onChange={(e) =>
+                        setCategoryValues((prev) => ({ ...prev, [cat.id]: e.target.value }))
+                      }
+                      className="pr-8"
+                    />
+                    <Percent className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  </div>
                 </div>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={1000}
-                    step={0.5}
-                    placeholder={`Default: ${data.global_markup}%`}
-                    value={categoryValues[cat.id] ?? ""}
-                    onChange={(e) =>
-                      setCategoryValues((prev) => ({ ...prev, [cat.id]: e.target.value }))
-                    }
-                    className="pr-8"
-                  />
-                  <Percent className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  size="sm"
-                  onClick={() => handleSaveCategory(cat.id)}
-                  disabled={savingCategory === cat.id}
-                >
-                  {savingCategory === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                </Button>
-                {cat.markup_percent !== null && (
+                <div className="flex gap-1">
                   <Button
                     size="sm"
-                    variant="ghost"
-                    title="Remove override"
+                    onClick={() => handleSaveCategory(cat.id)}
                     disabled={savingCategory === cat.id}
-                    onClick={() => {
-                      setCategoryValues((prev) => ({ ...prev, [cat.id]: "" }));
-                      handleSaveCategory(cat.id);
-                    }}
                   >
-                    <RotateCcw className="h-4 w-4" />
+                    {savingCategory === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   </Button>
-                )}
+                  {cat.markup_percent !== null && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      title="Remove override"
+                      disabled={savingCategory === cat.id}
+                      onClick={() => {
+                        setCategoryValues((prev) => ({ ...prev, [cat.id]: "" }));
+                        handleSaveCategory(cat.id);
+                      }}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
     </div>

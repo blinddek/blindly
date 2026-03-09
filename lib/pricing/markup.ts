@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 
 interface MarkupResult {
   markup_percent: number;
-  source: "range" | "type" | "category" | "global";
+  source: "range" | "type" | "category" | "supplier" | "global";
 }
 
 /**
@@ -10,22 +10,22 @@ interface MarkupResult {
  * 1. Range-specific markup
  * 2. Type-specific markup
  * 3. Category-specific markup
- * 4. Global fallback (always exists, seeded at 40%)
+ * 4. Supplier-specific markup
+ * 5. Global fallback (always exists, seeded at 40%)
  */
 export async function resolveMarkup(
   blindRangeId: string
 ): Promise<MarkupResult> {
   const supabase = await createClient();
 
-  // Get the range → type → category chain
+  // Get the range → type → category chain + supplier slug
   const { data: range } = await supabase
     .from("blind_ranges")
-    .select("id, blind_type_id")
+    .select("id, blind_type_id, supplier")
     .eq("id", blindRangeId)
     .single();
 
   if (!range) {
-    // Fallback to global if range not found
     return getGlobalMarkup();
   }
 
@@ -39,10 +39,7 @@ export async function resolveMarkup(
     .single();
 
   if (rangeMarkup) {
-    return {
-      markup_percent: Number(rangeMarkup.markup_percent),
-      source: "range",
-    };
+    return { markup_percent: Number(rangeMarkup.markup_percent), source: "range" };
   }
 
   // Get type for the range
@@ -63,10 +60,7 @@ export async function resolveMarkup(
       .single();
 
     if (typeMarkup) {
-      return {
-        markup_percent: Number(typeMarkup.markup_percent),
-        source: "type",
-      };
+      return { markup_percent: Number(typeMarkup.markup_percent), source: "type" };
     }
 
     // Check category-specific markup
@@ -79,10 +73,31 @@ export async function resolveMarkup(
       .single();
 
     if (catMarkup) {
-      return {
-        markup_percent: Number(catMarkup.markup_percent),
-        source: "category",
-      };
+      return { markup_percent: Number(catMarkup.markup_percent), source: "category" };
+    }
+  }
+
+  // Check supplier-specific markup (resolve slug → UUID)
+  if (range.supplier) {
+    const { data: supplierRow } = await supabase
+      .from("suppliers")
+      .select("id")
+      .eq("slug", range.supplier)
+      .eq("is_active", true)
+      .single();
+
+    if (supplierRow) {
+      const { data: supplierMarkup } = await supabase
+        .from("markup_config")
+        .select("markup_percent")
+        .eq("scope_type", "supplier")
+        .eq("scope_id", supplierRow.id)
+        .eq("is_active", true)
+        .single();
+
+      if (supplierMarkup) {
+        return { markup_percent: Number(supplierMarkup.markup_percent), source: "supplier" };
+      }
     }
   }
 
