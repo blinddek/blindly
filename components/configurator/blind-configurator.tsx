@@ -155,7 +155,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          range_id: state.range_id,
+          blind_range_id: state.range_id,
           width_mm: state.width_mm,
           drop_mm: state.drop_mm,
           mount_type: state.mount_type,
