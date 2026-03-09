@@ -340,19 +340,26 @@ export default function BlindCheckoutPage() {
 
   const [step, setStep] = useState(1);
   const [manualEntry, setManualEntry] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address_line_1: "",
-    city: "",
-    province: "",
-    postal_code: "",
-    address_lat: "",
-    address_lng: "",
-    delivery_type: "self_install" as "self_install" | "professional_install",
-    distance_km: "",
-    notes: "",
+  const [form, setForm] = useState(() => {
+    const defaults = {
+      name: "",
+      email: "",
+      phone: "",
+      address_line_1: "",
+      city: "",
+      province: "",
+      postal_code: "",
+      address_lat: "",
+      address_lng: "",
+      delivery_type: "self_install" as "self_install" | "professional_install",
+      distance_km: "",
+      notes: "",
+    };
+    try {
+      const saved = globalThis.window ? localStorage.getItem("blindly_checkout") : null;
+      if (saved) return { ...defaults, ...(JSON.parse(saved) as typeof defaults) };
+    } catch { /* ignore */ }
+    return defaults;
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -374,6 +381,11 @@ export default function BlindCheckoutPage() {
       })
       .finally(() => setRulesLoaded(true));
   }, []);
+
+  // Persist form so returning visitors don't retype their details
+  useEffect(() => {
+    try { localStorage.setItem("blindly_checkout", JSON.stringify(form)); } catch { /* ignore */ }
+  }, [form]);
 
   if (!hydrated) return null;
   if (items.length === 0) {
@@ -547,6 +559,7 @@ export default function BlindCheckoutPage() {
       }
       sessionStorage.setItem("blindly_order_ref", data.reference);
       clearCart();
+      try { localStorage.removeItem("blindly_checkout"); } catch { /* ignore */ }
       globalThis.location.href = data.authorization_url;
     } catch {
       setError("Something went wrong. Please try again.");
