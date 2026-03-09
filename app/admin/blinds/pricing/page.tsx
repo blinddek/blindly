@@ -41,9 +41,9 @@ export default function BlindsPricingPage() {
       title="Pricing"
       description="Manage supplier price imports and configure profit margins."
       tabs={[
-        { key: "margins", label: "Profit Margins", icon: Percent },
         { key: "import", label: "Import", icon: Upload },
         { key: "prices", label: "Prices", icon: Search },
+        { key: "margins", label: "Profit Margins", icon: Percent },
         { key: "mappings", label: "Mappings", icon: ListChecks },
         { key: "history", label: "History", icon: Clock },
       ]}
