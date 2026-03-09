@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, MapPin } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,39 @@ function formatRand(cents: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function InstallFeeCell({
+  distanceCalculated,
+  calcingDistance,
+  installFeeCents,
+}: Readonly<{
+  distanceCalculated: boolean;
+  calcingDistance: boolean;
+  installFeeCents: number;
+}>) {
+  if (distanceCalculated) {
+    return (
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Installation fee</span>
+        <span>{installFeeCents === 0 ? "Free" : formatRand(installFeeCents)}</span>
+      </div>
+    );
+  }
+  if (calcingDistance) {
+    return (
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Installation fee</span>
+        <Loader2 className="h-3.5 w-3.5 animate-spin self-center" />
+      </div>
+    );
+  }
+  return (
+    <div className="flex justify-between">
+      <span className="text-muted-foreground">Installation fee</span>
+      <span className="text-muted-foreground">—</span>
+    </div>
+  );
 }
 
 export default function BlindCheckoutPage() {
@@ -99,11 +132,13 @@ export default function BlindCheckoutPage() {
 
   const isProfessional = form.delivery_type === "professional_install";
   const distanceKm = Number.parseFloat(form.distance_km) || 0;
+  const distanceCalculated = form.distance_km !== "";
   const installTier = isProfessional ? getInstallationTier(items.length, installRules) : null;
   const installCents = installTier?.cost_cents ?? 0;
   const transportCents = isProfessional ? calcTransportCents(distanceKm, installRules) : 0;
+  const installFeeCents = installCents + transportCents;
 
-  const orderTotalCents = blindsTotal + installCents + transportCents;
+  const orderTotalCents = blindsTotal + (isProfessional && distanceCalculated ? installFeeCents : 0);
 
   async function calcDistance(coords?: { lat: number; lng: number }) {
     const hasCoords = coords ?? (form.address_lat && form.address_lng
@@ -375,63 +410,46 @@ export default function BlindCheckoutPage() {
                   ))}
                 </div>
 
-                {/* Distance input — only for professional install */}
+                {/* Installation fee status — calculated automatically from delivery address */}
                 {isProfessional && rulesLoaded && (
-                  <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="distance">Distance from us (km)</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="distance"
-                          type="number"
-                          min={0}
-                          step={1}
-                          className="max-w-[120px]"
-                          value={form.distance_km}
-                          onChange={(e) => { set("distance_km", e.target.value); setDistanceError(null); }}
-                          placeholder="0"
-                        />
-                        <span className="text-sm text-muted-foreground">km</span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={calcDistance}
-                          disabled={calcingDistance}
-                          className="ml-1"
-                        >
-                          {calcingDistance
-                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            : <MapPin className="h-3.5 w-3.5" />}
-                          {calcingDistance ? "Calculating…" : "Auto-calculate"}
-                        </Button>
-                      </div>
-                      {distanceError && (
-                        <p className="text-xs text-destructive">{distanceError}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Within {installRules.transport_free_radius_km} km — no transport fee.
-                        Beyond that, R{(installRules.price_per_km_cents / 100).toFixed(2)}/km × 2 (round trip).
+                  <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+                    {!form.address_lat && (
+                      <p className="text-muted-foreground">
+                        Select your delivery address above to calculate the installation fee.
                       </p>
-                    </div>
-
-                    {/* Installation cost breakdown */}
-                    <div className="mt-2 space-y-1 text-sm border-t pt-3">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Installation ({items.length} blind{items.length === 1 ? "" : "s"})
-                        </span>
-                        <span>{installCents === 0 ? "Free" : formatRand(installCents)}</span>
+                    )}
+                    {form.address_lat && calcingDistance && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Calculating installation fee…
                       </div>
-                      {distanceKm > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Transport ({distanceKm} km round trip)
-                          </span>
-                          <span>{transportCents === 0 ? "Free" : formatRand(transportCents)}</span>
+                    )}
+                    {form.address_lat && !calcingDistance && distanceCalculated && (
+                      <div className="flex items-center justify-between font-medium">
+                        <span>Installation fee</span>
+                        <span>{installFeeCents === 0 ? "Free" : formatRand(installFeeCents)}</span>
+                      </div>
+                    )}
+                    {distanceError && (
+                      <div className="mt-2 space-y-2">
+                        <p className="text-xs text-destructive">{distanceError}</p>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="distance_manual" className="text-xs shrink-0 text-muted-foreground">
+                            Enter distance manually (km):
+                          </Label>
+                          <Input
+                            id="distance_manual"
+                            type="number"
+                            min={0}
+                            step={1}
+                            className="h-7 text-xs max-w-[80px]"
+                            value={form.distance_km}
+                            onChange={(e) => { set("distance_km", e.target.value); setDistanceError(null); }}
+                            placeholder="0"
+                          />
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -487,18 +505,11 @@ export default function BlindCheckoutPage() {
                   )}
 
                   {isProfessional && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Installation</span>
-                        <span>{installCents === 0 ? "Free" : formatRand(installCents)}</span>
-                      </div>
-                      {distanceKm > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Transport</span>
-                          <span>{transportCents === 0 ? "Free" : formatRand(transportCents)}</span>
-                        </div>
-                      )}
-                    </>
+                    <InstallFeeCell
+                      distanceCalculated={distanceCalculated}
+                      calcingDistance={calcingDistance}
+                      installFeeCents={installFeeCents}
+                    />
                   )}
 
                   <div className="flex justify-between font-bold border-t pt-2">
