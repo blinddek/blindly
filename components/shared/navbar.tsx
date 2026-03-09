@@ -30,9 +30,9 @@ export function Navbar({ links, settings }: NavbarProps) {
           <Image src="/logo.svg" alt={settings.logo_text} width={140} height={36} className="h-9 w-auto dark:invert" priority />
         </Link>
 
-        {/* Desktop nav */}
+        {/* Desktop nav — exclude any link that duplicates the CTA button */}
         <nav className="hidden items-center gap-1 md:flex">
-          {links.map((link) => (
+          {links.filter((l) => l.href !== settings.cta_url).map((link) => (
             <Link
               key={link.id}
               href={link.href}
@@ -73,7 +73,7 @@ export function Navbar({ links, settings }: NavbarProps) {
       {mobileOpen && (
         <div className="border-t border-border bg-background md:hidden">
           <nav className="flex flex-col px-4 py-4">
-            {links.map((link) => (
+            {links.filter((l) => l.href !== settings.cta_url).map((link) => (
               <Link
                 key={link.id}
                 href={link.href}

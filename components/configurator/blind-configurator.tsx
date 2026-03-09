@@ -41,6 +41,7 @@ export interface RangeOption {
   slug: string;
   description: string | null;
   colour_options: ColourOption[];
+  starting_price_cents: number | null;
 }
 
 export interface ColourOption {

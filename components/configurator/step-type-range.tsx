@@ -87,7 +87,14 @@ export function StepTypeRange({
                     : "border-border"
                 )}
               >
-                <div className="font-medium">{r.name}</div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-medium">{r.name}</div>
+                  {r.starting_price_cents != null && r.starting_price_cents > 0 && (
+                    <span className="shrink-0 text-xs font-medium text-primary">
+                      From R{(r.starting_price_cents / 100).toLocaleString("en-ZA", { maximumFractionDigits: 0 })}
+                    </span>
+                  )}
+                </div>
                 {r.description && (
                   <div className="mt-0.5 text-sm text-muted-foreground line-clamp-2">
                     {r.description}
