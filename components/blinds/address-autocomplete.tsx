@@ -32,8 +32,8 @@ export interface AddressResult {
 }
 
 interface Props {
-  onSelect: (result: AddressResult) => void;
-  placeholder?: string;
+  readonly onSelect: (result: AddressResult) => void;
+  readonly placeholder?: string;
 }
 
 export function AddressAutocomplete({
@@ -78,7 +78,9 @@ export function AddressAutocomplete({
     const province = address.state || "";
     const postal_code = address.postcode || "";
 
-    setQuery(result.display_name);
+    // Show a clean summary in the search box instead of the verbose Nominatim string
+    const label = [street, city, postal_code].filter(Boolean).join(", ");
+    setQuery(label || result.display_name);
     setSuggestions([]);
     setOpen(false);
 

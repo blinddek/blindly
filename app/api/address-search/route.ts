@@ -9,9 +9,12 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q") ?? "";
   if (q.length < 4) return NextResponse.json([]);
 
+  // Appending the country name improves Nominatim accuracy for ZA addresses
+  const query = q.toLowerCase().includes("south africa") ? q : `${q}, South Africa`;
+
   const url =
     `https://nominatim.openstreetmap.org/search` +
-    `?q=${encodeURIComponent(q)}&countrycodes=za&format=json&addressdetails=1&limit=6`;
+    `?q=${encodeURIComponent(query)}&countrycodes=za&format=json&addressdetails=1&limit=6`;
 
   try {
     const res = await fetch(url, {

@@ -156,6 +156,10 @@ export default function BlindCheckoutPage() {
 
   async function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
+    if (!form.address_line_1 || !form.city) {
+      setError("Please search and select a delivery address above.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -277,50 +281,50 @@ export default function BlindCheckoutPage() {
                     placeholder="e.g. 12 Main Street, Cape Town"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Select from the dropdown to auto-fill the fields below.
+                    Select a suggestion from the dropdown — the fields below will fill automatically.
                   </p>
                 </div>
 
-                {/* Editable fields — pre-filled by autocomplete, correctable by hand */}
+                {/* Read-only fields — auto-filled by autocomplete */}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor="address">Street address *</Label>
+                    <Label htmlFor="address" className="text-muted-foreground">Street address</Label>
                     <Input
                       id="address"
-                      required
+                      readOnly
                       value={form.address_line_1}
-                      onChange={(e) => set("address_line_1", e.target.value)}
-                      placeholder="12 Main Street"
+                      placeholder="Auto-filled"
+                      className="bg-muted/40 cursor-default"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="city">City *</Label>
+                    <Label htmlFor="city" className="text-muted-foreground">City</Label>
                     <Input
                       id="city"
-                      required
+                      readOnly
                       value={form.city}
-                      onChange={(e) => set("city", e.target.value)}
-                      placeholder="Cape Town"
+                      placeholder="Auto-filled"
+                      className="bg-muted/40 cursor-default"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="province">Province *</Label>
+                    <Label htmlFor="province" className="text-muted-foreground">Province</Label>
                     <Input
                       id="province"
-                      required
+                      readOnly
                       value={form.province}
-                      onChange={(e) => set("province", e.target.value)}
-                      placeholder="Western Cape"
+                      placeholder="Auto-filled"
+                      className="bg-muted/40 cursor-default"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="postal">Postal code *</Label>
+                    <Label htmlFor="postal" className="text-muted-foreground">Postal code</Label>
                     <Input
                       id="postal"
-                      required
+                      readOnly
                       value={form.postal_code}
-                      onChange={(e) => set("postal_code", e.target.value)}
-                      placeholder="8001"
+                      placeholder="Auto-filled"
+                      className="bg-muted/40 cursor-default"
                     />
                   </div>
                 </div>
