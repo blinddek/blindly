@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -9,6 +9,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useBlindCart } from "@/components/blinds/blind-cart-provider";
+import {
+  getDiscountRate,
+  calcDiscountCents,
+  getInstallationTier,
+  calcTransportCents,
+  DEFAULT_INSTALLATION_PRICING,
+  DEFAULT_VOLUME_DISCOUNTS,
+  type InstallationPricing,
+  type VolumeDiscounts,
+} from "@/types/pricing-rules";
 
 function formatRand(cents: number): string {
   return `R${(cents / 100).toLocaleString("en-ZA", {
@@ -30,10 +40,25 @@ export default function BlindCheckoutPage() {
     province: "",
     postal_code: "",
     delivery_type: "self_install" as "self_install" | "professional_install",
+    distance_km: "",
     notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [installRules, setInstallRules] = useState<InstallationPricing>(DEFAULT_INSTALLATION_PRICING);
+  const [discountRules, setDiscountRules] = useState<VolumeDiscounts>(DEFAULT_VOLUME_DISCOUNTS);
+  const [rulesLoaded, setRulesLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/pricing-rules")
+      .then((r) => r.json())
+      .then((d: { installation_pricing?: InstallationPricing; volume_discounts?: VolumeDiscounts }) => {
+        if (d.installation_pricing) setInstallRules(d.installation_pricing);
+        if (d.volume_discounts) setDiscountRules(d.volume_discounts);
+      })
+      .finally(() => setRulesLoaded(true));
+  }, []);
 
   if (items.length === 0) {
     router.replace("/cart");
@@ -44,7 +69,20 @@ export default function BlindCheckoutPage() {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  // Derived pricing
+  const discountRate = getDiscountRate(grandTotalCents, discountRules);
+  const discountCents = calcDiscountCents(grandTotalCents, discountRate);
+  const blindsTotal = grandTotalCents - discountCents;
+
+  const isProfessional = form.delivery_type === "professional_install";
+  const distanceKm = Number.parseFloat(form.distance_km) || 0;
+  const installTier = isProfessional ? getInstallationTier(items.length, installRules) : null;
+  const installCents = installTier?.cost_cents ?? 0;
+  const transportCents = isProfessional ? calcTransportCents(distanceKm, installRules) : 0;
+
+  const orderTotalCents = blindsTotal + installCents + transportCents;
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
@@ -77,6 +115,7 @@ export default function BlindCheckoutPage() {
             postal_code: form.postal_code,
           },
           delivery_type: form.delivery_type,
+          distance_km: distanceKm || null,
           customer_notes: form.notes,
         }),
       });
@@ -88,10 +127,9 @@ export default function BlindCheckoutPage() {
         return;
       }
 
-      // Store reference so success page can display it
       sessionStorage.setItem("blindly_order_ref", data.reference);
       clearCart();
-      window.location.href = data.authorization_url;
+      globalThis.location.href = data.authorization_url;
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -226,6 +264,7 @@ export default function BlindCheckoutPage() {
                   ).map((opt) => (
                     <label
                       key={opt.value}
+                      aria-label={opt.label}
                       className={`flex cursor-pointer gap-3 rounded-lg border p-4 transition-colors ${
                         form.delivery_type === opt.value
                           ? "border-primary bg-primary/5"
@@ -247,6 +286,50 @@ export default function BlindCheckoutPage() {
                     </label>
                   ))}
                 </div>
+
+                {/* Distance input — only for professional install */}
+                {isProfessional && rulesLoaded && (
+                  <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="distance">Approximate distance from us (km)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="distance"
+                          type="number"
+                          min={0}
+                          step={1}
+                          className="max-w-[160px]"
+                          value={form.distance_km}
+                          onChange={(e) => set("distance_km", e.target.value)}
+                          placeholder="0"
+                        />
+                        <span className="text-sm text-muted-foreground">km</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Within {installRules.transport_free_radius_km} km — no transport fee.
+                        Beyond that, R{(installRules.price_per_km_cents / 100).toFixed(2)}/km × 2 (round trip).
+                      </p>
+                    </div>
+
+                    {/* Installation cost breakdown */}
+                    <div className="mt-2 space-y-1 text-sm border-t pt-3">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Installation ({items.length} blind{items.length !== 1 ? "s" : ""})
+                        </span>
+                        <span>{installCents === 0 ? "Free" : formatRand(installCents)}</span>
+                      </div>
+                      {distanceKm > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            Transport ({distanceKm} km round trip)
+                          </span>
+                          <span>{transportCents === 0 ? "Free" : formatRand(transportCents)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -291,15 +374,34 @@ export default function BlindCheckoutPage() {
                     <span className="text-muted-foreground">VAT (15%)</span>
                     <span>{formatRand(vatCents)}</span>
                   </div>
-                  <div className="flex justify-between font-bold">
+
+                  {discountRate > 0 && (
+                    <div className="flex justify-between text-primary font-medium">
+                      <span>Volume discount ({(discountRate * 100).toFixed(1)}%)</span>
+                      <span>−{formatRand(discountCents)}</span>
+                    </div>
+                  )}
+
+                  {isProfessional && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Installation</span>
+                        <span>{installCents === 0 ? "Free" : formatRand(installCents)}</span>
+                      </div>
+                      {distanceKm > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Transport</span>
+                          <span>{transportCents === 0 ? "Free" : formatRand(transportCents)}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <div className="flex justify-between font-bold border-t pt-2">
                     <span>Total</span>
-                    <span className="text-primary">{formatRand(grandTotalCents)}</span>
+                    <span className="text-primary">{formatRand(orderTotalCents)}</span>
                   </div>
                 </div>
-
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Delivery fee will be confirmed after checkout.
-                </p>
 
                 {error && (
                   <p className="mt-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -319,7 +421,7 @@ export default function BlindCheckoutPage() {
                       Processing...
                     </>
                   ) : (
-                    `Pay ${formatRand(grandTotalCents)}`
+                    `Pay ${formatRand(orderTotalCents)}`
                   )}
                 </Button>
 

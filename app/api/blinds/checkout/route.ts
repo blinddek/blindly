@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { lookupPrice } from "@/lib/pricing";
 import { initializeTransaction, generateReference } from "@/lib/paystack/client";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getInstallationPricing, getVolumeDiscounts } from "@/lib/pricing-rules";
+import {
+  getDiscountRate,
+  calcDiscountCents,
+  getInstallationTier,
+  calcTransportCents,
+} from "@/types/pricing-rules";
 import { siteConfig } from "@/config/site";
 import type { MountType } from "@/types/blinds";
 
@@ -31,6 +38,7 @@ interface CheckoutBody {
     postal_code: string;
   };
   delivery_type: "self_install" | "professional_install";
+  distance_km?: number | null;
   customer_notes?: string;
 }
 
@@ -42,7 +50,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { items, customer, delivery_address, delivery_type, customer_notes } = body;
+  const { items, customer, delivery_address, delivery_type, distance_km, customer_notes } = body;
 
   if (!items?.length || !customer?.email || !customer?.name || !customer?.phone) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -68,10 +76,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: pricedItems.error }, { status: 400 });
   }
 
-  // Totals (cents)
+  // Blind totals (cents)
   const subtotalCents = pricedItems.reduce((s, { price }) => s + price.customer_price_cents, 0);
   const vatCents = pricedItems.reduce((s, { price }) => s + price.vat_cents, 0);
-  const totalCents = pricedItems.reduce((s, { price }) => s + price.total_with_vat_cents, 0);
+  const blindsGrandTotal = pricedItems.reduce((s, { price }) => s + price.total_with_vat_cents, 0);
+
+  // Load pricing rules server-side
+  const [installRules, discountRules] = await Promise.all([
+    getInstallationPricing(),
+    getVolumeDiscounts(),
+  ]);
+
+  // Volume discount (applied to VAT-inclusive blind total)
+  const discountRate = getDiscountRate(blindsGrandTotal, discountRules);
+  const discountCents = calcDiscountCents(blindsGrandTotal, discountRate);
+
+  // Installation & transport (professional install only)
+  let installationFeeCents = 0;
+  let deliveryFeeCents = 0;
+  if (delivery_type === "professional_install") {
+    const tier = getInstallationTier(items.length, installRules);
+    installationFeeCents = tier?.cost_cents ?? 0;
+    if (distance_km != null && distance_km > 0) {
+      deliveryFeeCents = calcTransportCents(distance_km, installRules);
+    }
+  }
+
+  const totalCents = blindsGrandTotal - discountCents + installationFeeCents + deliveryFeeCents;
 
   const supabase = createAdminClient();
   const reference = generateReference(crypto.randomUUID());
@@ -80,7 +111,7 @@ export async function POST(request: Request) {
   const { data: order, error: orderError } = await supabase
     .from("blindly_orders")
     .insert({
-      order_number: "",            // trigger fills this
+      order_number: "",
       customer_name: customer.name,
       customer_email: customer.email,
       customer_phone: customer.phone,
@@ -89,6 +120,11 @@ export async function POST(request: Request) {
       customer_notes: customer_notes ?? null,
       subtotal_cents: subtotalCents,
       vat_cents: vatCents,
+      discount_rate: discountRate,
+      discount_cents: discountCents,
+      installation_fee_cents: installationFeeCents,
+      delivery_fee_cents: deliveryFeeCents,
+      distance_km: distance_km ?? null,
       total_cents: totalCents,
       paystack_reference: reference,
       payment_status: "pending",
@@ -129,7 +165,6 @@ export async function POST(request: Request) {
 
   if (itemsError) {
     console.error("[blinds/checkout] Items insert failed:", itemsError);
-    // Cancel the order
     await supabase
       .from("blindly_orders")
       .update({ order_status: "cancelled" })
