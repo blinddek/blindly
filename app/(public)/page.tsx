@@ -126,7 +126,7 @@ export default async function HomePage() {
               <Image src={hero.background_image} alt="" fill priority className="object-cover" />
             )}
           </video>
-          <div className="absolute inset-0 bg-primary/80" />
+          <div className="absolute inset-0 bg-primary/40" />
 
           <div className="relative z-10 mx-auto max-w-3xl px-4 py-20 text-center">
             <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
