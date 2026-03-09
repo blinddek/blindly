@@ -209,25 +209,22 @@ interface Step3Props {
   rulesLoaded: boolean;
   calcingDistance: boolean;
   distanceCalculated: boolean;
-  distanceError: string | null;
   relevantFeeCents: number;
+  laborCents: number;
   feeLabel: string;
-  distanceKmValue: string;
   showCourierSuggestion: boolean;
   courierCents: number;
   packageWeightKg: number;
   packageDimsCm: [number, number];
   onDeliveryTypeChange: (v: string) => void;
-  onDistanceKmChange: (v: string) => void;
-  onClearDistanceError: () => void;
   onSwitchToSelfInstall: () => void;
 }
 
 function Step3Installation({
   deliveryType, rulesLoaded, calcingDistance, distanceCalculated,
-  distanceError, relevantFeeCents, feeLabel, distanceKmValue,
+  relevantFeeCents, laborCents, feeLabel,
   showCourierSuggestion, courierCents, packageWeightKg, packageDimsCm,
-  onDeliveryTypeChange, onDistanceKmChange, onClearDistanceError, onSwitchToSelfInstall,
+  onDeliveryTypeChange, onSwitchToSelfInstall,
 }: Readonly<Step3Props>) {
   const isSelfInstall = deliveryType === "self_install";
   return (
@@ -273,22 +270,14 @@ function Step3Installation({
                 <span>{relevantFeeCents === 0 ? "Free" : formatRand(relevantFeeCents)}</span>
               </div>
             )}
-            {!isSelfInstall && !calcingDistance && !distanceCalculated && !distanceError && (
-              <p className="text-muted-foreground">Fee will be shown once your delivery address is confirmed.</p>
-            )}
-            {!isSelfInstall && distanceError && (
-              <div className="space-y-2">
-                <p className="text-xs text-destructive">{distanceError}</p>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="distance_manual" className="text-xs shrink-0 text-muted-foreground">
-                    Enter distance manually (km):
-                  </Label>
-                  <Input id="distance_manual" type="number" min={0} step={1}
-                    className="h-7 text-xs max-w-[80px]" value={distanceKmValue}
-                    onChange={(e) => { onDistanceKmChange(e.target.value); onClearDistanceError(); }}
-                    placeholder="0" />
+            {!isSelfInstall && !calcingDistance && !distanceCalculated && (
+              <>
+                <div className="flex items-center justify-between font-medium">
+                  <span>Installation (labour)</span>
+                  <span>{laborCents === 0 ? "Free" : formatRand(laborCents)}</span>
                 </div>
-              </div>
+                <p className="text-xs text-muted-foreground">Transport fee will be confirmed before installation.</p>
+              </>
             )}
           </div>
         )}
@@ -364,7 +353,6 @@ export default function BlindCheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [calcingDistance, setCalcingDistance] = useState(false);
-  const [distanceError, setDistanceError] = useState<string | null>(null);
 
   const [installRules, setInstallRules] = useState<InstallationPricing>(DEFAULT_INSTALLATION_PRICING);
   const [discountRules, setDiscountRules] = useState<VolumeDiscounts>(DEFAULT_VOLUME_DISCOUNTS);
@@ -443,7 +431,6 @@ export default function BlindCheckoutPage() {
     if (!hasCoords && (!form.address_line_1 || !form.city)) return;
 
     setCalcingDistance(true);
-    setDistanceError(null);
     try {
       const body = hasCoords
         ? { lat: hasCoords.lat, lng: hasCoords.lng }
@@ -455,13 +442,12 @@ export default function BlindCheckoutPage() {
         body: JSON.stringify(body),
       });
       const data = (await res.json()) as { distance_km?: number; error?: string };
-      if (data.error) {
-        setDistanceError(data.error);
-      } else if (data.distance_km != null) {
+      if (data.distance_km != null) {
         set("distance_km", String(data.distance_km));
       }
+      // If geocoding fails, distance stays unknown — transport shown as "to be confirmed"
     } catch {
-      setDistanceError("Could not calculate distance.");
+      // Silently swallow — transport shown as "to be confirmed"
     } finally {
       setCalcingDistance(false);
     }
@@ -586,12 +572,10 @@ export default function BlindCheckoutPage() {
         onEnableManual={() => {
           setManualEntry(true);
           setForm((f) => ({ ...f, address_lat: "", address_lng: "", distance_km: "" }));
-          setDistanceError(null);
         }}
         onDisableManual={() => {
           setManualEntry(false);
           setForm((f) => ({ ...f, address_line_1: "", city: "", province: "", postal_code: "", address_lat: "", address_lng: "", distance_km: "" }));
-          setDistanceError(null);
         }}
       />
     );
@@ -601,8 +585,8 @@ export default function BlindCheckoutPage() {
         rulesLoaded={rulesLoaded}
         calcingDistance={calcingDistance}
         distanceCalculated={distanceCalculated}
-        distanceError={distanceError}
         relevantFeeCents={relevantFeeCents}
+        laborCents={installLaborCents}
         feeLabel={isProfessional ? "Installation fee" : "Courier delivery fee"}
         distanceKmValue={form.distance_km}
         showCourierSuggestion={showCourierSuggestion}
@@ -618,8 +602,6 @@ export default function BlindCheckoutPage() {
             calcDistance(coords);
           }
         }}
-        onDistanceKmChange={(v) => set("distance_km", v)}
-        onClearDistanceError={() => setDistanceError(null)}
         onSwitchToSelfInstall={() => set("delivery_type", "self_install")}
       />
     );
