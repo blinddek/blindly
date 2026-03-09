@@ -30,6 +30,7 @@ import {
   Scale,
   Tag,
   Users,
+  Percent,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminSignOutButton } from "@/components/auth/admin-sign-out-button";
@@ -110,7 +111,10 @@ function buildSidebarNav(): NavGroup[] {
     manageItems.push({ href: "/admin/clients/import", label: "Client Import", icon: Users });
   }
   if (isEnabled("blindsImport")) {
-    manageItems.push({ href: "/admin/blinds/import", label: "Price Import", icon: FileText });
+    manageItems.push(
+      { href: "/admin/blinds/import", label: "Price Import", icon: FileText },
+      { href: "/admin/blinds/pricing", label: "Profit Margins", icon: Percent },
+    );
   }
   groups.push({ title: "Manage", items: manageItems });
 
