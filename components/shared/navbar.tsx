@@ -19,6 +19,13 @@ interface NavbarProps {
   readonly settings: SiteSettings;
 }
 
+// Blinds cart takes priority; fall back to shop cart; show nothing if neither.
+function CartButton() {
+  if (siteConfig.features.blindsImport) return <BlindCartIcon />;
+  if (siteConfig.features.shop) return <CartIcon />;
+  return null;
+}
+
 export function Navbar({ links, settings }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { t } = useLocale();
@@ -48,8 +55,7 @@ export function Navbar({ links, settings }: NavbarProps) {
         <div className="hidden items-center gap-1 md:flex">
           <LanguageSelector />
           <ThemeToggle />
-          {siteConfig.features.shop && <CartIcon />}
-          <BlindCartIcon />
+          <CartButton />
           <div className="mx-1 h-5 w-px bg-border" />
           <NavbarAuthButton />
           <Link href={settings.cta_url}>
@@ -89,8 +95,7 @@ export function Navbar({ links, settings }: NavbarProps) {
               <div className="flex items-center gap-1">
                 <LanguageSelector />
                 <ThemeToggle />
-                {siteConfig.features.shop && <CartIcon />}
-                <BlindCartIcon />
+                <CartButton />
               </div>
               <div className="flex items-center gap-2">
                 <NavbarAuthButton />
