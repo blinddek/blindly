@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,8 @@ export default function BlindCheckoutPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [calcingDistance, setCalcingDistance] = useState(false);
+  const [distanceError, setDistanceError] = useState<string | null>(null);
 
   const [installRules, setInstallRules] = useState<InstallationPricing>(DEFAULT_INSTALLATION_PRICING);
   const [discountRules, setDiscountRules] = useState<VolumeDiscounts>(DEFAULT_VOLUME_DISCOUNTS);
@@ -81,6 +83,37 @@ export default function BlindCheckoutPage() {
   const transportCents = isProfessional ? calcTransportCents(distanceKm, installRules) : 0;
 
   const orderTotalCents = blindsTotal + installCents + transportCents;
+
+  async function calcDistance() {
+    if (!form.address_line_1 || !form.city) {
+      setDistanceError("Enter street address and city first.");
+      return;
+    }
+    setCalcingDistance(true);
+    setDistanceError(null);
+    try {
+      const res = await fetch("/api/distance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: form.address_line_1,
+          city: form.city,
+          province: form.province,
+          postal_code: form.postal_code,
+        }),
+      });
+      const data = await res.json() as { distance_km?: number; error?: string };
+      if (data.error) {
+        setDistanceError(data.error);
+      } else if (data.distance_km != null) {
+        set("distance_km", String(data.distance_km));
+      }
+    } catch {
+      setDistanceError("Could not calculate distance. Enter manually.");
+    } finally {
+      setCalcingDistance(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -291,20 +324,36 @@ export default function BlindCheckoutPage() {
                 {isProfessional && rulesLoaded && (
                   <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="distance">Approximate distance from us (km)</Label>
+                      <Label htmlFor="distance">Distance from us (km)</Label>
                       <div className="flex items-center gap-2">
                         <Input
                           id="distance"
                           type="number"
                           min={0}
                           step={1}
-                          className="max-w-[160px]"
+                          className="max-w-[120px]"
                           value={form.distance_km}
-                          onChange={(e) => set("distance_km", e.target.value)}
+                          onChange={(e) => { set("distance_km", e.target.value); setDistanceError(null); }}
                           placeholder="0"
                         />
                         <span className="text-sm text-muted-foreground">km</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={calcDistance}
+                          disabled={calcingDistance}
+                          className="ml-1"
+                        >
+                          {calcingDistance
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <MapPin className="h-3.5 w-3.5" />}
+                          {calcingDistance ? "Calculating…" : "Auto-calculate"}
+                        </Button>
                       </div>
+                      {distanceError && (
+                        <p className="text-xs text-destructive">{distanceError}</p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Within {installRules.transport_free_radius_km} km — no transport fee.
                         Beyond that, R{(installRules.price_per_km_cents / 100).toFixed(2)}/km × 2 (round trip).
