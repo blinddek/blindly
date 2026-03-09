@@ -10,7 +10,6 @@ import {
   Settings,
   FileText,
   Globe,
-  ShoppingBag,
   CalendarDays,
   GraduationCap,
   Newspaper,
@@ -31,6 +30,7 @@ import {
   Tag,
   Users,
   Percent,
+  Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminSignOutButton } from "@/components/auth/admin-sign-out-button";
@@ -70,8 +70,8 @@ function buildSidebarNav(): NavGroup[] {
   if (isEnabled("portfolio")) {
     contentItems.push({ href: "/admin/portfolio", label: "Portfolio", icon: Image });
   }
-  if (isEnabled("shop")) {
-    contentItems.push({ href: "/admin/shop", label: "Shop", icon: ShoppingBag });
+  if (isEnabled("blindsImport")) {
+    contentItems.push({ href: "/admin/products", label: "Products", icon: Package });
   }
   if (isEnabled("booking")) {
     contentItems.push({ href: "/admin/booking", label: "Booking", icon: CalendarDays });
