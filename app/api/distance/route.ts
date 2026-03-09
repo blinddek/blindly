@@ -69,11 +69,15 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      // Try full address first, fall back to city + province only
+      // Try progressively broader queries until one resolves
       const fullQuery = [address, city, province, postal_code, "South Africa"].filter(Boolean).join(", ");
-      const cityQuery = [city, province, "South Africa"].filter(Boolean).join(", ");
+      const cityProvinceQuery = [city, province, "South Africa"].filter(Boolean).join(", ");
+      const cityOnlyQuery = [city, "South Africa"].filter(Boolean).join(", ");
 
-      const coords = (await geocode(fullQuery)) ?? (await geocode(cityQuery));
+      const coords =
+        (await geocode(fullQuery)) ??
+        (await geocode(cityProvinceQuery)) ??
+        (await geocode(cityOnlyQuery));
 
       if (!coords) {
         return NextResponse.json(
