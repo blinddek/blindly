@@ -6,6 +6,8 @@ import { BlindCartProvider } from "@/components/blinds/blind-cart-provider";
 import { getLayoutData } from "@/lib/cms/queries";
 import { isEnabled } from "@/config/features";
 
+export const dynamic = "force-dynamic";
+
 export default async function PublicLayout({
   children,
 }: {

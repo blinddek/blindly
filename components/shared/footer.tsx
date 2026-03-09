@@ -58,22 +58,17 @@ export function Footer({ sections, settings }: FooterProps) {
               {t({ en: "All rights reserved.", af: "Alle regte voorbehou." })}
             </p>
           </div>
-          <div className="flex flex-col items-center gap-1 md:items-end">
-            <p className="text-sm text-muted-foreground">
-              {t(settings.company_tagline)}
-            </p>
-            <p className="text-xs text-muted-foreground/60">
-              Your windows, your way. Powered by{" "}
-              <a
-                href="https://yoros.co.za"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-muted-foreground transition-colors"
-              >
-                Yoros
-              </a>
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground/60">
+            Your windows, your way. Powered by{" "}
+            <a
+              href="https://yoros.co.za"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-muted-foreground transition-colors"
+            >
+              Yoros
+            </a>
+          </p>
         </div>
       </div>
     </footer>
