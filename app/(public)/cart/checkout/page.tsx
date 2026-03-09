@@ -276,7 +276,7 @@ function Step3Installation({
             {!isSelfInstall && !calcingDistance && !distanceCalculated && !distanceError && (
               <p className="text-muted-foreground">Fee will be shown once your delivery address is confirmed.</p>
             )}
-            {distanceError && (
+            {!isSelfInstall && distanceError && (
               <div className="space-y-2">
                 <p className="text-xs text-destructive">{distanceError}</p>
                 <div className="flex items-center gap-2">
@@ -411,7 +411,8 @@ export default function BlindCheckoutPage() {
   const showCourierSuggestion =
     isProfessional && distanceCalculated && !calcingDistance && courierCents < professionalFeeCents;
 
-  const orderTotalCents = blindsTotal + (distanceCalculated ? relevantFeeCents : 0);
+  const feeKnown = isProfessional ? distanceCalculated : true; // courier fee always known for self-install
+  const orderTotalCents = blindsTotal + (feeKnown ? relevantFeeCents : 0);
 
   // ── Distance calculation ────────────────────────────────────────────────────
 
@@ -461,7 +462,9 @@ export default function BlindCheckoutPage() {
       address_lng: String(result.lng),
       distance_km: "", // reset when address changes
     }));
-    calcDistance({ lat: result.lat, lng: result.lng });
+    if (form.delivery_type === "professional_install") {
+      calcDistance({ lat: result.lat, lng: result.lng });
+    }
   }
 
   // ── Step navigation ─────────────────────────────────────────────────────────
@@ -486,8 +489,8 @@ export default function BlindCheckoutPage() {
       return;
     }
     setError(null);
-    // In manual entry mode, trigger distance calc when leaving step 2
-    if (step === 2 && manualEntry && !distanceCalculated) {
+    // In manual entry mode, trigger distance calc when leaving step 2 (professional only)
+    if (step === 2 && manualEntry && !distanceCalculated && form.delivery_type === "professional_install") {
       calcDistance();
     }
     setStep((s) => s + 1);
