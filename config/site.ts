@@ -128,7 +128,7 @@ export const siteConfig: SiteConfig = {
     facebookPixel: false,
     googleCalendar: false,
     sessionCredits: false,
-    billing: false,
+    billing: true,
     legalDocs: false,
     clientOnboarding: false,
     emailCampaigns: true,
