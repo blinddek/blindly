@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Save, ChevronDown, ChevronUp, Layers, Blinds, Palette } from "lucide-react";
+import { Loader2, Plus, Trash2, Save, ChevronDown, ChevronUp, Layers, Blinds, Palette, Upload, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { upsertCategory, deleteCategory, upsertType, deleteType, upsertRange, deleteRange } from "./actions";
 
@@ -72,6 +72,79 @@ interface Range {
 
 function slugify(text: string) {
   return text.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-").replaceAll(/(^-|-$)/g, "");
+}
+
+// ─── Image Upload ─────────────────────────────────────────────
+
+function ImageUpload({
+  value,
+  onChange,
+  folder,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  folder: "categories" | "ranges";
+}) {
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) { toast.error("File too large — maximum 15 MB"); return; }
+
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${folder}/${Date.now()}-${file.name.replaceAll(/[^a-z0-9.]/gi, "-").toLowerCase()}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("images")
+        .upload(path, file, { contentType: file.type, upsert: false });
+
+      if (uploadError) { toast.error(uploadError.message); return; }
+
+      // Signed URL valid for 10 years
+      const { data: signed, error: signError } = await supabase.storage
+        .from("images")
+        .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+
+      if (signError || !signed?.signedUrl) { toast.error("Upload succeeded but could not generate URL"); return; }
+
+      onChange(signed.signedUrl);
+      toast.success("Image uploaded");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleRemove() {
+    onChange("");
+  }
+
+  return (
+    <div className="space-y-2">
+      {value && (
+        <div className="relative inline-block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={value} alt="Preview" className="h-24 w-36 rounded-md border object-cover" />
+          <button
+            type="button"
+            onClick={handleRemove}
+            className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+      <label className={`flex cursor-pointer items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm transition-colors hover:bg-muted/40 ${uploading ? "pointer-events-none opacity-50" : ""}`}>
+        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 text-muted-foreground" />}
+        <span className="text-muted-foreground">{uploading ? "Uploading…" : value ? "Replace image" : "Choose image"}</span>
+        <input type="file" accept="image/*" className="sr-only" onChange={handleFile} disabled={uploading} />
+      </label>
+    </div>
+  );
 }
 
 // ─── Page ─────────────────────────────────────────────────────
@@ -196,8 +269,8 @@ function CategoriesTab() {
                 <Input value={item.description} onChange={(e) => update(i, "description", e.target.value)} placeholder="Short description for the category page" />
               </div>
               <div className="space-y-1.5">
-                <Label>Image URL</Label>
-                <Input value={item.image_url ?? ""} onChange={(e) => update(i, "image_url", e.target.value)} placeholder="https://..." />
+                <Label>Image</Label>
+                <ImageUpload value={item.image_url ?? ""} onChange={(url) => update(i, "image_url", url)} folder="categories" />
               </div>
               <div className="space-y-1.5">
                 <Label>Display Order</Label>
@@ -605,8 +678,8 @@ function RangesTab() {
                   <Input value={item.description} onChange={(e) => update(i, "description", e.target.value)} placeholder="Short description shown on the product page" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Lifestyle Image URL</Label>
-                  <Input value={item.lifestyle_image_url} onChange={(e) => update(i, "lifestyle_image_url", e.target.value)} placeholder="https://..." />
+                  <Label>Lifestyle Image</Label>
+                  <ImageUpload value={item.lifestyle_image_url} onChange={(url) => update(i, "lifestyle_image_url", url)} folder="ranges" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Supplier</Label>
