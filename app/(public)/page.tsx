@@ -129,11 +129,11 @@ export default async function HomePage() {
           <div className="absolute inset-0 bg-primary/40" />
 
           <div className="relative z-10 mx-auto max-w-3xl px-4 py-20 text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 className="text-4xl font-black tracking-tight text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.9)] sm:text-5xl lg:text-6xl">
               {hero.heading?.en ?? "Welcome"}
             </h1>
             {hero.subheading?.en && (
-              <p className="mx-auto mt-6 max-w-2xl text-lg text-white/80">
+              <p className="mx-auto mt-6 max-w-2xl text-lg font-medium text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.8)]">
                 {hero.subheading.en}
               </p>
             )}
