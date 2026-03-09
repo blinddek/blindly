@@ -5,14 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Home,
   Navigation,
   Settings,
   FileText,
   Globe,
   CalendarDays,
   GraduationCap,
-  Newspaper,
   Search as SearchIcon,
   Menu,
   X,
@@ -21,11 +19,7 @@ import {
   Image,
   Layers,
   MapPin,
-  MessageSquare,
-  Activity,
   Receipt,
-  Megaphone,
-  MessageCircle as MessageCircleIcon,
   Scale,
   Tag,
   Users,
@@ -62,7 +56,6 @@ function buildSidebarNav(): NavGroup[] {
   // Content
   const contentItems: NavItem[] = [
     { href: "/admin/pages", label: "Pages", icon: Layers },
-    { href: "/admin/homepage", label: "Homepage", icon: Home },
   ];
   if (isEnabled("blog")) {
     contentItems.push({ href: "/admin/blog", label: "Blog", icon: FileText });
@@ -79,9 +72,6 @@ function buildSidebarNav(): NavGroup[] {
   if (isEnabled("lms")) {
     contentItems.push({ href: "/admin/lms", label: "Courses", icon: GraduationCap });
   }
-  if (isEnabled("newsletter")) {
-    contentItems.push({ href: "/admin/newsletter", label: "Newsletter", icon: Newspaper });
-  }
   if (isEnabled("serviceAreaPages")) {
     contentItems.push({ href: "/admin/areas", label: "Service Areas", icon: MapPin });
   }
@@ -91,18 +81,9 @@ function buildSidebarNav(): NavGroup[] {
   groups.push({ title: "Content", items: contentItems });
 
   // Manage
-  const manageItems: NavItem[] = [
-    { href: "/admin/contact", label: "Messages", icon: MessageSquare },
-    { href: "/admin/activity", label: "Activity Log", icon: Activity },
-  ];
+  const manageItems: NavItem[] = [];
   if (isEnabled("billing")) {
     manageItems.push({ href: "/admin/billing", label: "Billing", icon: Receipt });
-  }
-  if (isEnabled("emailCampaigns") || isEnabled("dripEmails")) {
-    manageItems.push({ href: "/admin/campaigns", label: "Campaigns", icon: Megaphone });
-  }
-  if (isEnabled("whatsapp")) {
-    manageItems.push({ href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircleIcon });
   }
   if (isEnabled("coupons") || isEnabled("gifts") || isEnabled("hybridPackages")) {
     manageItems.push({ href: "/admin/commerce", label: "Commerce", icon: Tag });
@@ -113,7 +94,9 @@ function buildSidebarNav(): NavGroup[] {
   if (isEnabled("blindsImport")) {
     manageItems.push({ href: "/admin/blinds/pricing", label: "Pricing", icon: Percent });
   }
-  groups.push({ title: "Manage", items: manageItems });
+  if (manageItems.length > 0) {
+    groups.push({ title: "Manage", items: manageItems });
+  }
 
   // Site
   const siteItems: NavItem[] = [

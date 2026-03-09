@@ -4,10 +4,8 @@ import Link from "next/link";
 import {
   Home,
   Info,
-  Wrench,
   Phone,
   HelpCircle,
-  Image,
   ArrowRight,
 } from "lucide-react";
 import {
@@ -31,12 +29,6 @@ const pages = [
     href: "/admin/pages/about",
   },
   {
-    label: "Services",
-    description: "Service detail page — heading, intro, and individual service items.",
-    icon: Wrench,
-    href: "/admin/pages/services",
-  },
-  {
     label: "Contact",
     description: "Contact details, business hours, map, and WhatsApp — managed in Site Settings.",
     icon: Phone,
@@ -47,12 +39,6 @@ const pages = [
     description: "Frequently asked questions displayed on the /faq page.",
     icon: HelpCircle,
     href: "/admin/pages/faq",
-  },
-  {
-    label: "Portfolio",
-    description: "Gallery items — before & after photos and project case studies.",
-    icon: Image,
-    href: "/admin/portfolio",
   },
 ];
 
