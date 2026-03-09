@@ -204,7 +204,7 @@ export default async function HomePage() {
             )}
             <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
               {howItWorks.items.map((item, i) => (
-                <div key={i} className="text-center">
+                <div key={item.step ?? item.title?.en ?? i} className="text-center">
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
                     {item.step ?? i + 1}
                   </div>
@@ -239,7 +239,7 @@ export default async function HomePage() {
                 {products.subheading.en}
               </p>
             )}
-            <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
               {blindCategories.length > 0
                 ? blindCategories.map((cat) => (
                     <Link
@@ -369,7 +369,7 @@ export default async function HomePage() {
             )}
             <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {testimonials.items.map((item, i) => (
-                <div key={i} className="rounded-xl border bg-card p-6">
+                <div key={item.name ?? i} className="rounded-xl border bg-card p-6">
                   {item.quote?.en && (
                     <p className="text-sm italic text-muted-foreground">
                       &ldquo;{item.quote.en}&rdquo;
