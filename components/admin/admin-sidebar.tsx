@@ -239,7 +239,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
+      <aside className="hidden h-screen w-64 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
         <div className="flex h-16 items-center border-b px-6">
           <Link href="/admin" className="text-lg font-semibold">
             {adminTitle}

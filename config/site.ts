@@ -116,7 +116,7 @@ export const siteConfig: SiteConfig = {
     booking: false,
     shop: false,
     lms: false,
-    newsletter: true,
+    newsletter: false,
     i18n: true,
     customerAuth: true,
     portal: true,

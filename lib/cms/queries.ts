@@ -78,6 +78,18 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   return (data?.content as SiteSettings) ?? defaultSiteSettings;
 }
 
+// ---------- Blind Categories ----------
+
+export async function getBlindCategories(): Promise<{ id: string; name: string; slug: string; description: string; image_url: string }[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("blind_categories")
+    .select("id, name, slug, description, image_url")
+    .eq("is_active", true)
+    .order("display_order");
+  return (data ?? []) as { id: string; name: string; slug: string; description: string; image_url: string }[];
+}
+
 // ---------- Homepage Sections ----------
 
 export async function getHomepageSections(): Promise<HomepageSection[]> {

@@ -5,6 +5,7 @@ import {
   getHomepageSections,
   getSiteSettings,
   getSiteContent,
+  getBlindCategories,
 } from "@/lib/cms/queries";
 import { organizationSchema } from "@/lib/seo/structured-data";
 import { DynamicIcon } from "@/components/shared/dynamic-icon";
@@ -80,10 +81,11 @@ interface CtaContent {
 /* ---------- Page ---------- */
 
 export default async function HomePage() {
-  const [sections, settings, trustStripContent] = await Promise.all([
+  const [sections, settings, trustStripContent, blindCategories] = await Promise.all([
     getHomepageSections(),
     getSiteSettings(),
     getSiteContent("trust_strip"),
+    getBlindCategories(),
   ]);
 
   const sectionMap = Object.fromEntries(
@@ -232,65 +234,102 @@ export default async function HomePage() {
       )}
 
       {/* ───── 4. Product Range ───── */}
-      {products?.items && products.items.length > 0 && (
+      {(blindCategories.length > 0 || (products?.items && products.items.length > 0)) && (
         <section className="bg-muted/30 py-20">
           <div className="mx-auto max-w-[1280px] px-4 md:px-8">
-            {products.heading?.en && (
+            {products?.heading?.en && (
               <h2 className="text-center text-3xl font-bold">
                 {products.heading.en}
               </h2>
             )}
-            {products.subheading?.en && (
+            {products?.subheading?.en && (
               <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">
                 {products.subheading.en}
               </p>
             )}
             <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {products.items.map((item, i) => (
-                <Link
-                  key={i}
-                  href={item.href ?? "/shop"}
-                  className="group overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md"
-                >
-                  {item.image ? (
-                    <div className="relative aspect-[3/2] overflow-hidden bg-muted">
-                      <Image
-                        src={item.image}
-                        alt={item.title?.en ?? ""}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex aspect-[3/2] items-center justify-center bg-muted">
-                      {item.icon ? (
-                        <DynamicIcon
-                          name={item.icon}
-                          className="h-16 w-16 text-muted-foreground/30"
-                        />
+              {blindCategories.length > 0
+                ? blindCategories.map((cat) => (
+                    <Link
+                      key={cat.id}
+                      href="/shop"
+                      className="group overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md"
+                    >
+                      {cat.image_url ? (
+                        <div className="relative aspect-[3/2] overflow-hidden bg-muted">
+                          <Image
+                            src={cat.image_url}
+                            alt={cat.name}
+                            fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
                       ) : (
-                        <span className="text-5xl text-muted-foreground/30">
-                          {item.title?.en?.charAt(0) ?? "B"}
-                        </span>
+                        <div className="flex aspect-[3/2] items-center justify-center bg-muted">
+                          <span className="text-5xl text-muted-foreground/30">
+                            {cat.name.charAt(0)}
+                          </span>
+                        </div>
                       )}
-                    </div>
-                  )}
-                  <div className="p-5">
-                    {item.title?.en && (
-                      <h3 className="text-lg font-semibold">{item.title.en}</h3>
-                    )}
-                    {item.description?.en && (
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {item.description.en}
-                      </p>
-                    )}
-                    <span className="mt-3 inline-block text-sm font-medium text-primary">
-                      Configure &rarr;
-                    </span>
-                  </div>
-                </Link>
-              ))}
+                      <div className="p-5">
+                        <h3 className="text-lg font-semibold">{cat.name}</h3>
+                        {cat.description && (
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            {cat.description}
+                          </p>
+                        )}
+                        <span className="mt-3 inline-block text-sm font-medium text-primary">
+                          Configure &rarr;
+                        </span>
+                      </div>
+                    </Link>
+                  ))
+                : products!.items!.map((item) => (
+                    <Link
+                      key={item.href ?? item.title?.en}
+                      href={item.href ?? "/shop"}
+                      className="group overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md"
+                    >
+                      {item.image ? (
+                        <div className="relative aspect-[3/2] overflow-hidden bg-muted">
+                          <Image
+                            src={item.image}
+                            alt={item.title?.en ?? ""}
+                            fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex aspect-[3/2] items-center justify-center bg-muted">
+                          {item.icon ? (
+                            <DynamicIcon
+                              name={item.icon}
+                              className="h-16 w-16 text-muted-foreground/30"
+                            />
+                          ) : (
+                            <span className="text-5xl text-muted-foreground/30">
+                              {item.title?.en?.charAt(0) ?? "B"}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <div className="p-5">
+                        {item.title?.en && (
+                          <h3 className="text-lg font-semibold">{item.title.en}</h3>
+                        )}
+                        {item.description?.en && (
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            {item.description.en}
+                          </p>
+                        )}
+                        <span className="mt-3 inline-block text-sm font-medium text-primary">
+                          Configure &rarr;
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
             </div>
           </div>
         </section>
