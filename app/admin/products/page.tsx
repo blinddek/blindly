@@ -80,11 +80,11 @@ function ImageUpload({
   value,
   onChange,
   folder,
-}: {
+}: Readonly<{
   value: string;
   onChange: (url: string) => void;
   folder: "categories" | "ranges";
-}) {
+}>) {
   const [uploading, setUploading] = useState(false);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -94,24 +94,13 @@ function ImageUpload({
 
     setUploading(true);
     try {
-      const supabase = createClient();
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${folder}/${Date.now()}-${file.name.replaceAll(/[^a-z0-9.]/gi, "-").toLowerCase()}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("images")
-        .upload(path, file, { contentType: file.type, upsert: false });
-
-      if (uploadError) { toast.error(uploadError.message); return; }
-
-      // Signed URL valid for 10 years
-      const { data: signed, error: signError } = await supabase.storage
-        .from("images")
-        .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
-
-      if (signError || !signed?.signedUrl) { toast.error("Upload succeeded but could not generate URL"); return; }
-
-      onChange(signed.signedUrl);
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", folder);
+      const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) { toast.error(data.error ?? "Upload failed"); return; }
+      onChange(data.url);
       toast.success("Image uploaded");
     } finally {
       setUploading(false);
@@ -140,7 +129,7 @@ function ImageUpload({
       )}
       <label className={`flex cursor-pointer items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm transition-colors hover:bg-muted/40 ${uploading ? "pointer-events-none opacity-50" : ""}`}>
         {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 text-muted-foreground" />}
-        <span className="text-muted-foreground">{uploading ? "Uploading…" : value ? "Replace image" : "Choose image"}</span>
+        <span className="text-muted-foreground">{uploading ? "Uploading…" : (value ? "Replace image" : "Choose image")}</span>
         <input type="file" accept="image/*" className="sr-only" onChange={handleFile} disabled={uploading} />
       </label>
     </div>
