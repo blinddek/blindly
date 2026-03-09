@@ -63,9 +63,6 @@ function buildSidebarNav(): NavGroup[] {
   if (isEnabled("portfolio")) {
     contentItems.push({ href: "/admin/portfolio", label: "Portfolio", icon: Image });
   }
-  if (isEnabled("blindsImport")) {
-    contentItems.push({ href: "/admin/products", label: "Products", icon: Package });
-  }
   if (isEnabled("booking")) {
     contentItems.push({ href: "/admin/booking", label: "Booking", icon: CalendarDays });
   }
@@ -92,7 +89,10 @@ function buildSidebarNav(): NavGroup[] {
     manageItems.push({ href: "/admin/clients/import", label: "Client Import", icon: Users });
   }
   if (isEnabled("blindsImport")) {
-    manageItems.push({ href: "/admin/blinds/pricing", label: "Pricing", icon: Percent });
+    manageItems.push(
+      { href: "/admin/products", label: "Products", icon: Package },
+      { href: "/admin/blinds/pricing", label: "Pricing", icon: Percent },
+    );
   }
   if (manageItems.length > 0) {
     groups.push({ title: "Manage", items: manageItems });

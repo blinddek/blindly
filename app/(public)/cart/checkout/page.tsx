@@ -13,9 +13,10 @@ import { AddressAutocomplete, type AddressResult } from "@/components/blinds/add
 import {
   getDiscountRate,
   calcDiscountCents,
-  getInstallationTier,
+  calcInstallationCents,
   calcTransportCents,
   calcCourierCents,
+  calcTotalWeightKg,
   DEFAULT_INSTALLATION_PRICING,
   DEFAULT_VOLUME_DISCOUNTS,
   DEFAULT_COURIER_PRICING,
@@ -214,6 +215,8 @@ interface Step3Props {
   distanceKmValue: string;
   showCourierSuggestion: boolean;
   courierCents: number;
+  packageWeightKg: number;
+  packageDimsCm: [number, number];
   onDeliveryTypeChange: (v: string) => void;
   onDistanceKmChange: (v: string) => void;
   onClearDistanceError: () => void;
@@ -223,9 +226,10 @@ interface Step3Props {
 function Step3Installation({
   deliveryType, rulesLoaded, calcingDistance, distanceCalculated,
   distanceError, relevantFeeCents, feeLabel, distanceKmValue,
-  showCourierSuggestion, courierCents,
+  showCourierSuggestion, courierCents, packageWeightKg, packageDimsCm,
   onDeliveryTypeChange, onDistanceKmChange, onClearDistanceError, onSwitchToSelfInstall,
 }: Readonly<Step3Props>) {
+  const isSelfInstall = deliveryType === "self_install";
   return (
     <Card>
       <CardContent className="p-5 space-y-4">
@@ -251,20 +255,25 @@ function Step3Installation({
           ))}
         </div>
         {rulesLoaded && (
-          <div className="rounded-lg border bg-muted/30 p-4 text-sm">
-            {calcingDistance && (
+          <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-2">
+            {isSelfInstall && (
+              <p className="text-xs text-muted-foreground">
+                Your package is estimated at {packageDimsCm[0]} cm × {packageDimsCm[1]} cm and weighs approximately {packageWeightKg.toFixed(1)} kg
+              </p>
+            )}
+            {!isSelfInstall && calcingDistance && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Calculating fee…
               </div>
             )}
-            {!calcingDistance && distanceCalculated && (
+            {(isSelfInstall || (!calcingDistance && distanceCalculated)) && (
               <div className="flex items-center justify-between font-medium">
                 <span>{feeLabel}</span>
                 <span>{relevantFeeCents === 0 ? "Free" : formatRand(relevantFeeCents)}</span>
               </div>
             )}
-            {!calcingDistance && !distanceCalculated && !distanceError && (
+            {!isSelfInstall && !calcingDistance && !distanceCalculated && !distanceError && (
               <p className="text-muted-foreground">Fee will be shown once your delivery address is confirmed.</p>
             )}
             {distanceError && (
@@ -385,12 +394,16 @@ export default function BlindCheckoutPage() {
   const distanceKm = Number.parseFloat(form.distance_km) || 0;
   const distanceCalculated = form.distance_km !== "";
 
-  const installTier = isProfessional ? getInstallationTier(items.length, installRules) : null;
-  const installLaborCents = installTier?.cost_cents ?? 0;
+  const installLaborCents = isProfessional ? calcInstallationCents(items.length, installRules) : 0;
   const transportCents = distanceCalculated ? calcTransportCents(distanceKm, installRules) : 0;
 
   // Self-install: courier cost by weight. Professional: labor + transport.
   const courierCents = calcCourierCents(items, courierRules);
+  const packageWeightKg = Math.round(calcTotalWeightKg(items, courierRules) * 10) / 10;
+  // Dimensions: length = widest blind (cm), depth = ~6 cm per blind stacked (min 10 cm)
+  const maxWidthCm = Math.ceil(Math.max(...items.map((i) => i.width_mm), 0) / 10);
+  const stackDepthCm = Math.max(10, items.length * 6);
+  const packageDimsCm: [number, number] = [maxWidthCm, stackDepthCm];
   const professionalFeeCents = installLaborCents + transportCents;
   const relevantFeeCents = isProfessional ? professionalFeeCents : courierCents;
 
@@ -572,6 +585,8 @@ export default function BlindCheckoutPage() {
         distanceKmValue={form.distance_km}
         showCourierSuggestion={showCourierSuggestion}
         courierCents={courierCents}
+        packageWeightKg={packageWeightKg}
+        packageDimsCm={packageDimsCm}
         onDeliveryTypeChange={(v) => set("delivery_type", v)}
         onDistanceKmChange={(v) => set("distance_km", v)}
         onClearDistanceError={() => setDistanceError(null)}

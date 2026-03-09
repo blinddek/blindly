@@ -6,7 +6,7 @@ import { getInstallationPricing, getVolumeDiscounts } from "@/lib/pricing-rules"
 import {
   getDiscountRate,
   calcDiscountCents,
-  getInstallationTier,
+  calcInstallationCents,
   calcTransportCents,
 } from "@/types/pricing-rules";
 import { siteConfig } from "@/config/site";
@@ -95,8 +95,7 @@ export async function POST(request: Request) {
   let installationFeeCents = 0;
   let deliveryFeeCents = 0;
   if (delivery_type === "professional_install") {
-    const tier = getInstallationTier(items.length, installRules);
-    installationFeeCents = tier?.cost_cents ?? 0;
+    installationFeeCents = calcInstallationCents(items.length, installRules);
     if (distance_km != null && distance_km > 0) {
       deliveryFeeCents = calcTransportCents(distance_km, installRules);
     }

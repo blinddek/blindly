@@ -60,6 +60,16 @@ export function getInstallationTier(
   );
 }
 
+/** Installation labour cost: blindCount × tier rate (per blind). */
+export function calcInstallationCents(
+  blindCount: number,
+  pricing: InstallationPricing
+): number {
+  const tier = getInstallationTier(blindCount, pricing);
+  if (!tier) return 0;
+  return tier.cost_cents * blindCount;
+}
+
 /** Transport cost for a given distance (round trip). Free within free radius. */
 export function calcTransportCents(
   distanceKm: number,

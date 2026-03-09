@@ -197,7 +197,7 @@ function CategoriesTab() {
               </div>
               <div className="space-y-1.5">
                 <Label>Image URL</Label>
-                <Input value={item.image_url} onChange={(e) => update(i, "image_url", e.target.value)} placeholder="https://..." />
+                <Input value={item.image_url ?? ""} onChange={(e) => update(i, "image_url", e.target.value)} placeholder="https://..." />
               </div>
               <div className="space-y-1.5">
                 <Label>Display Order</Label>
