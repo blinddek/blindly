@@ -1,18 +1,19 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type { TypeOption, RangeOption } from "./blind-configurator";
 import { BlindIllustration, ColourSwatch, SwatchTextureDefs, getMaterialType } from "./blind-illustrations";
 
 interface Props {
-  types: TypeOption[];
-  ranges: RangeOption[];
-  typeId: string;
-  rangeId: string;
-  categorySlug: string;
-  onChangeType: (id: string) => void;
-  onChangeRange: (id: string) => void;
+  readonly types: TypeOption[];
+  readonly ranges: RangeOption[];
+  readonly typeId: string;
+  readonly rangeId: string;
+  readonly categorySlug: string;
+  readonly onChangeType: (id: string) => void;
+  readonly onChangeRange: (id: string) => void;
 }
 
 export function StepTypeRange({
@@ -25,6 +26,13 @@ export function StepTypeRange({
   onChangeRange,
 }: Props) {
   const materialType = getMaterialType(categorySlug);
+
+  // Auto-select the only type so ranges show immediately
+  useEffect(() => {
+    if (!typeId && types.length === 1) {
+      onChangeType(types[0].id);
+    }
+  }, [types, typeId, onChangeType]);
   return (
     <div className="space-y-6">
       <SwatchTextureDefs />
