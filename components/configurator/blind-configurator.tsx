@@ -103,6 +103,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
   const [ranges, setRanges] = useState<RangeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedExtras, setSelectedExtras] = useState<SelectedExtra[]>([]);
+  const [measurementsApproved, setMeasurementsApproved] = useState(false);
   const [quote, setQuote] = useState<BlindPriceResult | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -190,6 +191,11 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
     setSelectedExtras([]);
   }, [state.range_id, state.width_mm, state.drop_mm]);
 
+  // Reset approval when anything that affects the matched size changes
+  useEffect(() => {
+    setMeasurementsApproved(false);
+  }, [state.range_id, state.width_mm, state.drop_mm, state.mount_type]);
+
   // Trigger price when reaching quote step
   useEffect(() => {
     if (step === 5) calculatePrice();
@@ -238,7 +244,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
       case 0: return !!state.category_id;
       case 1: return !!state.type_id && !!state.range_id;
       case 2: return !!state.colour;
-      case 3: return state.width_mm >= 300 && state.drop_mm >= 300;
+      case 3: return state.width_mm >= 300 && state.drop_mm >= 300 && measurementsApproved;
       case 4: return true; // accessories are optional
       default: return false;
     }
@@ -326,10 +332,13 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
               dropMm={state.drop_mm}
               mountType={state.mount_type}
               controlSide={state.control_side}
+              rangeId={state.range_id}
+              approved={measurementsApproved}
               onChangeWidth={(v) => update({ width_mm: v })}
               onChangeDrop={(v) => update({ drop_mm: v })}
               onChangeMountType={(v) => update({ mount_type: v })}
               onChangeControlSide={(v) => update({ control_side: v })}
+              onApproveChange={setMeasurementsApproved}
               selectedType={types.find((t) => t.id === state.type_id)}
             />
           )}
