@@ -525,6 +525,7 @@ export default function BlindCheckoutPage() {
             matched_width_cm: item.matched_width_cm,
             matched_drop_cm: item.matched_drop_cm,
             location_label: item.location_label ?? "",
+            selected_extras: item.selected_extras ?? [],
           })),
           customer: { name: form.name, email: form.email, phone: form.phone },
           delivery_address: {

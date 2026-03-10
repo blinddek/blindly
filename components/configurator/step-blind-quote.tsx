@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, ShoppingCart, Check } from "lucide-react";
+import type { SelectedExtra } from "@/types/blinds";
 import type {
   BlindPriceResult,
   BlindState,
@@ -19,6 +20,7 @@ interface Props {
   readonly categories: CategoryOption[];
   readonly types: TypeOption[];
   readonly ranges: RangeOption[];
+  readonly selectedExtras: SelectedExtra[];
   readonly onRecalculate: () => void;
   readonly onAddToCart: () => void;
 }
@@ -38,6 +40,7 @@ export function StepBlindQuote({
   categories,
   types,
   ranges,
+  selectedExtras,
   onRecalculate,
   onAddToCart,
 }: Props) {
@@ -120,24 +123,33 @@ export function StepBlindQuote({
       </div>
 
       {/* Price */}
-      <div className="divide-y rounded-lg border">
-        <div className="flex justify-between px-4 py-2 text-sm">
-          <span className="text-muted-foreground">Blind price</span>
-          <span className="tabular-nums">
-            {formatRand(quote.customer_price_cents)}
-          </span>
-        </div>
-        <div className="flex justify-between px-4 py-2 text-sm">
-          <span className="text-muted-foreground">VAT (15%)</span>
-          <span className="tabular-nums">{formatRand(quote.vat_cents)}</span>
-        </div>
-        <div className="flex justify-between bg-primary/5 px-4 py-3">
-          <span className="text-base font-bold">Total</span>
-          <span className="text-xl font-bold text-primary">
-            {formatRand(quote.total_with_vat_cents)}
-          </span>
-        </div>
-      </div>
+      {(() => {
+        const extrasCents = selectedExtras.reduce((s, e) => s + e.price_cents, 0);
+        const extrasVatCents = Math.round(extrasCents * 0.15);
+        const grandTotal = quote.total_with_vat_cents + extrasCents + extrasVatCents;
+        return (
+          <div className="divide-y rounded-lg border">
+            <div className="flex justify-between px-4 py-2 text-sm">
+              <span className="text-muted-foreground">Blind price (ex-VAT)</span>
+              <span className="tabular-nums">{formatRand(quote.customer_price_cents)}</span>
+            </div>
+            {selectedExtras.map((e) => (
+              <div key={e.extra_id} className="flex justify-between px-4 py-2 text-sm">
+                <span className="text-muted-foreground">{e.name} (ex-VAT)</span>
+                <span className="tabular-nums">+ {formatRand(e.price_cents)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between px-4 py-2 text-sm">
+              <span className="text-muted-foreground">VAT (15%)</span>
+              <span className="tabular-nums">{formatRand(quote.vat_cents + extrasVatCents)}</span>
+            </div>
+            <div className="flex justify-between bg-primary/5 px-4 py-3">
+              <span className="text-base font-bold">Total</span>
+              <span className="text-xl font-bold text-primary">{formatRand(grandTotal)}</span>
+            </div>
+          </div>
+        );
+      })()}
 
       <p className="text-center text-xs text-muted-foreground">
         Price is for a single blind. Add multiple blinds to your cart for

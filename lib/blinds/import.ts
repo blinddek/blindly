@@ -321,17 +321,23 @@ async function upsertExtras(data: ExtrasResult): Promise<number> {
   const supabase = await createClient();
   let count = 0;
 
+  // Load all extras once for name-based fallback matching
+  const { data: allExtras } = await supabase
+    .from("blind_extras")
+    .select("id, name, slug");
+
   for (const item of data.items) {
     const slug = item.name
       .toLowerCase()
       .replaceAll(/[^a-z0-9]+/g, "-")
       .replaceAll(/(^-)|(-$)/g, "");
 
-    const { data: extra } = await supabase
-      .from("blind_extras")
-      .select("id")
-      .eq("slug", slug)
-      .single();
+    // Try slug first, then fall back to case-insensitive name match
+    let extra = allExtras?.find((e) => e.slug === slug) ?? null;
+    if (!extra) {
+      const nameLower = item.name.toLowerCase();
+      extra = allExtras?.find((e) => e.name.toLowerCase() === nameLower) ?? null;
+    }
 
     if (!extra) continue;
 

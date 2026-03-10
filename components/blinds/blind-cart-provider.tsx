@@ -1,5 +1,6 @@
 "use client";
 
+import type { SelectedExtra } from "@/types/blinds";
 import {
   createContext,
   useContext,
@@ -27,10 +28,16 @@ export interface BlindCartItem {
   control_side: "left" | "right";
   matched_width_cm: number;
   matched_drop_cm: number;
-  /** Ex-VAT customer price */
+  /** Ex-VAT blind price only */
   customer_price_cents: number;
+  /** VAT on blind only */
   vat_cents: number;
+  /** Blind + accessories incl. VAT */
   total_with_vat_cents: number;
+  /** Selected accessories (prices ex-VAT) */
+  selected_extras: SelectedExtra[];
+  /** Sum of extras ex-VAT */
+  extras_cents: number;
   /** Optional room label, e.g. "Kitchen" */
   location_label?: string;
 }

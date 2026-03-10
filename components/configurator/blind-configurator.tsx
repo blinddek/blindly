@@ -10,8 +10,10 @@ import { StepCategory } from "./step-category";
 import { StepTypeRange } from "./step-type-range";
 import { StepColour } from "./step-colour";
 import { StepMeasurements } from "./step-measurements";
+import { StepAccessories } from "./step-accessories";
 import { StepBlindQuote } from "./step-blind-quote";
 import { useBlindCart } from "@/components/blinds/blind-cart-provider";
+import type { SelectedExtra } from "@/types/blinds";
 
 /* ─── Types ────────────────────────────────────────────────── */
 
@@ -81,7 +83,7 @@ const INITIAL_STATE: BlindState = {
   control_side: "left",
 };
 
-const STEP_LABELS = ["Type", "Range", "Colour", "Measurements", "Quote"];
+const STEP_LABELS = ["Type", "Range", "Colour", "Measurements", "Accessories", "Quote"];
 
 /* ─── Main Component ───────────────────────────────────────── */
 
@@ -100,6 +102,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
   const [types, setTypes] = useState<TypeOption[]>([]);
   const [ranges, setRanges] = useState<RangeOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedExtras, setSelectedExtras] = useState<SelectedExtra[]>([]);
   const [quote, setQuote] = useState<BlindPriceResult | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -182,9 +185,14 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
     }
   }, [state.range_id, state.width_mm, state.drop_mm, state.mount_type]);
 
+  // Reset extras when measurements change (range/width may affect available extras)
+  useEffect(() => {
+    setSelectedExtras([]);
+  }, [state.range_id, state.width_mm]);
+
   // Trigger price when reaching quote step
   useEffect(() => {
-    if (step === 4) calculatePrice();
+    if (step === 5) calculatePrice();
   }, [step, calculatePrice]);
 
   // Add to cart and navigate
@@ -193,6 +201,9 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
     const category = categories.find((c) => c.id === state.category_id);
     const type = types.find((t) => t.id === state.type_id);
     const range = ranges.find((r) => r.id === state.range_id);
+
+    const extrasCents = selectedExtras.reduce((s, e) => s + e.price_cents, 0);
+    const extrasVatCents = Math.round(extrasCents * 0.15);
 
     addItem({
       id: crypto.randomUUID(),
@@ -212,26 +223,24 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
       matched_drop_cm: quote.matched_drop_cm,
       customer_price_cents: quote.customer_price_cents,
       vat_cents: quote.vat_cents,
-      total_with_vat_cents: quote.total_with_vat_cents,
+      total_with_vat_cents: quote.total_with_vat_cents + extrasCents + extrasVatCents,
+      selected_extras: selectedExtras,
+      extras_cents: extrasCents,
     });
 
     router.push("/cart");
-  }, [quote, state, categories, types, ranges, addItem, router]);
+  }, [quote, state, selectedExtras, categories, types, ranges, addItem, router]);
 
   const selectedRange = ranges.find((r) => r.id === state.range_id);
 
   const canAdvance = (): boolean => {
     switch (step) {
-      case 0:
-        return !!state.category_id;
-      case 1:
-        return !!state.type_id && !!state.range_id;
-      case 2:
-        return !!state.colour;
-      case 3:
-        return state.width_mm >= 300 && state.drop_mm >= 300;
-      default:
-        return false;
+      case 0: return !!state.category_id;
+      case 1: return !!state.type_id && !!state.range_id;
+      case 2: return !!state.colour;
+      case 3: return state.width_mm >= 300 && state.drop_mm >= 300;
+      case 4: return true; // accessories are optional
+      default: return false;
     }
   };
 
@@ -325,6 +334,14 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
             />
           )}
           {step === 4 && (
+            <StepAccessories
+              blindRangeId={state.range_id}
+              widthCm={Math.ceil(state.width_mm / 10)}
+              selected={selectedExtras}
+              onChange={setSelectedExtras}
+            />
+          )}
+          {step === 5 && (
             <StepBlindQuote
               quote={quote}
               loading={quoteLoading}
@@ -333,6 +350,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
               categories={categories}
               types={types}
               ranges={ranges}
+              selectedExtras={selectedExtras}
               onRecalculate={calculatePrice}
               onAddToCart={handleAddToCart}
             />
@@ -350,7 +368,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
           <ChevronLeft className="size-4" />
           Back
         </Button>
-        {step < 4 && (
+        {step < 5 && (
           <Button
             onClick={() => setStep((s) => s + 1)}
             disabled={!canAdvance()}

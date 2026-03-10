@@ -10,7 +10,7 @@ import {
   calcTransportCents,
 } from "@/types/pricing-rules";
 import { siteConfig } from "@/config/site";
-import type { MountType } from "@/types/blinds";
+import type { MountType, SelectedExtra } from "@/types/blinds";
 
 interface CheckoutItem {
   blind_range_id: string;
@@ -22,6 +22,7 @@ interface CheckoutItem {
   matched_width_cm: number;
   matched_drop_cm: number;
   location_label?: string;
+  selected_extras?: SelectedExtra[];
 }
 
 interface CheckoutBody {
@@ -81,6 +82,12 @@ export async function POST(request: Request) {
   const vatCents = pricedItems.reduce((s, { price }) => s + price.vat_cents, 0);
   const blindsGrandTotal = pricedItems.reduce((s, { price }) => s + price.total_with_vat_cents, 0);
 
+  // Extras totals — prices are ex-VAT, apply 15%
+  const extrasTotalExVat = pricedItems.reduce((s, { item }) =>
+    s + (item.selected_extras ?? []).reduce((es, e) => es + e.price_cents, 0), 0);
+  const extrasVat = Math.round(extrasTotalExVat * 0.15);
+  const extrasTotalIncVat = extrasTotalExVat + extrasVat;
+
   // Load pricing rules server-side
   const [installRules, discountRules] = await Promise.all([
     getInstallationPricing(),
@@ -101,7 +108,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const totalCents = blindsGrandTotal - discountCents + installationFeeCents + deliveryFeeCents;
+  const totalCents = blindsGrandTotal + extrasTotalIncVat - discountCents + installationFeeCents + deliveryFeeCents;
 
   const supabase = createAdminClient();
   const reference = generateReference(crypto.randomUUID());
@@ -153,8 +160,10 @@ export async function POST(request: Request) {
     supplier_price_cents: price.supplier_price_cents,
     markup_percent: price.markup_percent,
     markup_cents: price.markup_cents,
-    extras_cents: 0,
-    line_total_cents: price.total_with_vat_cents,
+    extras_cents: (item.selected_extras ?? []).reduce((s, e) => s + e.price_cents, 0),
+    selected_extras: item.selected_extras ?? [],
+    line_total_cents: price.total_with_vat_cents +
+      (item.selected_extras ?? []).reduce((s, e) => s + e.price_cents + Math.round(e.price_cents * 0.15), 0),
     display_order: idx,
   }));
 
