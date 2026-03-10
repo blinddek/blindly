@@ -109,13 +109,13 @@ export function StepBlindQuote({
           <dd className="font-medium">{state.colour}</dd>
           <dt className="text-muted-foreground">Mount</dt>
           <dd className="font-medium capitalize">{state.mount_type}</dd>
-          <dt className="text-muted-foreground">Dimensions</dt>
+          <dt className="text-muted-foreground">Your measurements</dt>
           <dd className="font-medium">
             {state.width_mm}mm × {state.drop_mm}mm
           </dd>
-          <dt className="text-muted-foreground">Matched Grid</dt>
+          <dt className="text-muted-foreground">Nearest available size</dt>
           <dd className="font-medium">
-            {quote.matched_width_cm}cm × {quote.matched_drop_cm}cm
+            {quote.matched_width_cm * 10}mm × {quote.matched_drop_cm * 10}mm
           </dd>
           <dt className="text-muted-foreground">Control Side</dt>
           <dd className="font-medium capitalize">{state.control_side}</dd>
