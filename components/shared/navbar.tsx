@@ -32,11 +32,11 @@ export function Navbar({ links, settings }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 md:px-8">
+      <div className="mx-auto flex h-20 max-w-[1280px] items-center justify-between px-4 md:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo-icon.png" alt="" width={40} height={40} className="h-10 w-auto dark:brightness-0 dark:invert" priority />
-          <Image src="/logo-name.png" alt={settings.logo_text} width={120} height={36} className="h-8 w-auto dark:brightness-0 dark:invert" priority />
+          <Image src="/logo-icon.png" alt="" width={48} height={48} className="h-12 w-auto dark:brightness-0 dark:invert" priority />
+          <Image src="/logo-name.png" alt={settings.logo_text} width={200} height={60} className="h-14 w-auto dark:brightness-0 dark:invert" priority />
         </Link>
 
         {/* Desktop nav — exclude any link that duplicates the CTA button */}
@@ -45,7 +45,7 @@ export function Navbar({ links, settings }: NavbarProps) {
             <Link
               key={link.id}
               href={link.href}
-              className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="rounded-md px-3 py-2 text-base font-semibold text-muted-foreground transition-colors hover:text-foreground"
             >
               {t(link.label)}
             </Link>

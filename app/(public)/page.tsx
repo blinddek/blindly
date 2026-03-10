@@ -131,18 +131,18 @@ export default async function HomePage() {
           )}
           <div className="absolute inset-0 bg-primary/40" />
 
-          <div className="relative z-10 mx-auto max-w-3xl px-4 py-20 text-center">
+          <div className="relative z-10 mx-auto max-w-3xl px-4 py-12 text-center">
             <h1 className="sr-only">{hero.heading?.en ?? "Blindly — Your windows, your way."}</h1>
             <Image
               src="/logo-full.png"
               alt={hero.heading?.en ?? "Blindly — Your windows, your way."}
               width={600}
               height={200}
-              className="mx-auto w-full max-w-lg brightness-0 invert drop-shadow-[0_2px_24px_rgba(0,0,0,0.5)]"
+              className="mx-auto w-full max-w-2xl brightness-0 invert drop-shadow-[0_2px_24px_rgba(0,0,0,0.5)]"
               priority
             />
             {hero.subheading?.en && (
-              <p className="mx-auto mt-8 max-w-2xl text-lg font-medium text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.8)]">
+              <p className="mx-auto -mt-8 max-w-2xl text-lg font-medium text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.8)]">
                 {hero.subheading.en}
               </p>
             )}

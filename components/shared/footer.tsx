@@ -52,8 +52,8 @@ export function Footer({ sections, settings }: FooterProps) {
 
         <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
           <div className="flex items-center gap-3">
-            <Image src="/logo-icon.png" alt="" width={36} height={36} className="h-9 w-auto dark:brightness-0 dark:invert" />
-            <Image src="/logo-name.png" alt={settings.logo_text} width={100} height={28} className="h-7 w-auto dark:brightness-0 dark:invert" />
+            <Image src="/logo-icon.png" alt="" width={48} height={48} className="h-12 w-auto dark:brightness-0 dark:invert" />
+            <Image src="/logo-name.png" alt={settings.logo_text} width={200} height={60} className="h-14 w-auto dark:brightness-0 dark:invert" />
             <p className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} {settings.company_name}.{" "}
               {t({ en: "All rights reserved.", af: "Alle regte voorbehou." })}
