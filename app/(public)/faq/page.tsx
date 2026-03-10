@@ -19,7 +19,7 @@ export default async function FaqPage() {
     <section className="mx-auto max-w-3xl px-4 py-16 md:px-8">
       <h1 className="text-3xl font-bold">Frequently Asked Questions</h1>
       <p className="mt-2 text-muted-foreground">
-        Find answers to common questions below.
+        Everything you need to know about ordering, measuring, and installing your blinds.
       </p>
 
       {faqs.length > 0 ? (
@@ -37,7 +37,7 @@ export default async function FaqPage() {
         </Accordion>
       ) : (
         <p className="mt-8 text-muted-foreground">
-          No FAQs have been added yet. Check back soon!
+          Have a question? <a href="/contact" className="text-primary underline underline-offset-4 hover:text-primary/80">Get in touch</a> and we&apos;ll be happy to help.
         </p>
       )}
 

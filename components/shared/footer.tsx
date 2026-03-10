@@ -60,7 +60,7 @@ export function Footer({ sections, settings }: FooterProps) {
             </p>
           </div>
           <p className="text-xs text-muted-foreground/60">
-            Your windows, your way. Powered by{" "}
+            Built by{" "}
             <a
               href="https://yoros.co.za"
               target="_blank"

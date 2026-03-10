@@ -1,6 +1,5 @@
 import { generatePageMetadata } from "@/lib/seo/metadata";
 import { getSiteContent } from "@/lib/cms/queries";
-import { siteConfig } from "@/config/site";
 import type { LocalizedString } from "@/types/cms";
 import Link from "next/link";
 
@@ -54,11 +53,7 @@ export default async function AboutPage() {
             ))}
           </div>
         </section>
-      ) : (
-        <section className="mx-auto mt-16 max-w-3xl">
-          <p className="text-muted-foreground">{siteConfig.description}</p>
-        </section>
-      )}
+      ) : null}
 
       {/* How It Works */}
       {content?.process && content.process.length > 0 && (
@@ -104,13 +99,12 @@ export default async function AboutPage() {
 
       {/* CTA */}
       <section className="mt-20 rounded-xl bg-primary px-6 py-12 text-center text-primary-foreground">
-        <h2 className="text-2xl font-bold">Ready to get started?</h2>
+        <h2 className="text-2xl font-bold">Ready to configure your blinds?</h2>
         <p className="mx-auto mt-3 max-w-md opacity-90">
-          Configure your perfect blinds online — instant pricing, no showroom
-          visit required.
+          Choose your style, enter your measurements, and get an instant price — all online, no showroom visit needed.
         </p>
         <Link
-          href="/shop"
+          href="/configure"
           className="mt-6 inline-block rounded-lg bg-white px-8 py-3 font-semibold text-primary transition-opacity hover:opacity-90"
         >
           Configure Your Blinds
