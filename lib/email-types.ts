@@ -22,7 +22,10 @@ export type EmailTemplate =
   // LMS / Courses
   | "enrollment_confirmation"
   // Admin notifications
-  | "admin_new_message";
+  | "admin_new_message"
+  // Blindly orders
+  | "blindly_order_confirmation"
+  | "blindly_supplier_order";
 
 // ─── Template Props ───────────────────────────────────────
 

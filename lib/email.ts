@@ -26,6 +26,8 @@ const templates: Record<EmailTemplate, () => Promise<{ default: React.ComponentT
   admin_new_order: () => import("@/components/email/admin-new-order"),
   enrollment_confirmation: () => import("@/components/email/enrollment-confirmation"),
   admin_new_message: () => import("@/components/email/admin-new-message"),
+  blindly_order_confirmation: () => import("@/components/email/blindly-order-confirmation"),
+  blindly_supplier_order: () => import("@/components/email/blindly-supplier-order"),
 };
 
 // Subject line generators
@@ -43,6 +45,8 @@ const subjects: Record<EmailTemplate, (props: Record<string, any>) => string> = 
   admin_new_order: (p) => `New Order — ${p.orderReference} (${p.total})`,
   enrollment_confirmation: (p) => `You're enrolled — ${p.courseName}`,
   admin_new_message: (p) => `New message from ${p.clientName}`,
+  blindly_order_confirmation: (p) => `Order Confirmed — ${p.orderNumber}`,
+  blindly_supplier_order: (p) => `New Blind Order — ${p.orderNumber} (${p.items?.length ?? 0} blinds)`,
 };
 
 // ─── Resend Instance ──────────────────────────────────────
@@ -194,6 +198,60 @@ export async function sendRawEmail({ to, subject, html, replyTo }: SendRawEmailO
     throw new Error("No email provider configured");
   } catch (err) {
     console.error("[Email] Exception sending raw email:", err);
+    return { success: false, error: err };
+  }
+}
+
+// ─── Send Email with File Attachment ──────────────────────
+
+interface SendWithAttachmentOptions {
+  to: string | string[];
+  template: EmailTemplate;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  props: Record<string, any>;
+  attachment: { filename: string; content: Buffer };
+}
+
+export async function sendEmailWithAttachment({
+  to,
+  template,
+  props,
+  attachment,
+}: SendWithAttachmentOptions) {
+  try {
+    const mod = await templates[template]();
+    const EmailComponent = mod.default;
+    const html = await render(createElement(EmailComponent, props));
+    const subject = subjects[template](props);
+    const recipients = Array.isArray(to) ? to : [to];
+
+    if (process.env.RESEND_API_KEY) {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const { data, error } = await resend.emails.send({
+        from: FROM_ADDRESS,
+        to: recipients,
+        subject,
+        html,
+        attachments: [
+          {
+            filename: attachment.filename,
+            content: attachment.content,
+          },
+        ],
+      });
+
+      if (error) {
+        console.error(`[Email] Resend failed for ${template}:`, error);
+        return { success: false, error };
+      }
+
+      console.log(`[Email] Sent ${template} with attachment to ${to} — id: ${data?.id}`);
+      return { success: true, id: data?.id };
+    }
+
+    throw new Error("No email provider configured for attachments — set RESEND_API_KEY");
+  } catch (err) {
+    console.error(`[Email] Exception sending ${template} with attachment:`, err);
     return { success: false, error: err };
   }
 }
