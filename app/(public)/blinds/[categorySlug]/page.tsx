@@ -26,7 +26,7 @@ interface TypeWithRanges extends BlindType {
   ranges: BlindRange[];
 }
 
-export default async function CategoryPage({ params }: Props) {
+export default async function CategoryPage({ params }: Readonly<Props>) {
   const { categorySlug } = await params;
   const category = await getCategoryBySlug(categorySlug);
   if (!category) notFound();
@@ -55,6 +55,30 @@ export default async function CategoryPage({ params }: Props) {
   }
 
   return (
+    <>
+      {/* Header photo */}
+      {category.image_url && (
+        <div className="relative h-56 w-full overflow-hidden sm:h-72 lg:h-80">
+          <Image
+            src={category.image_url}
+            alt={category.name}
+            fill
+            priority
+            className="object-cover"
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 flex items-end">
+            <div className="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 lg:px-8">
+              <h1 className="text-4xl font-bold tracking-tight text-white">{category.name}</h1>
+              {category.description && (
+                <p className="mt-1 text-lg text-white/80">{category.description}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
       {/* Back nav */}
       <Link
@@ -65,16 +89,25 @@ export default async function CategoryPage({ params }: Props) {
         All blinds
       </Link>
 
-      {/* Category header */}
-      <div className="mb-10">
-        <h1 className="text-4xl font-bold tracking-tight">{category.name}</h1>
-        {category.description && (
-          <p className="mt-2 text-lg text-muted-foreground">{category.description}</p>
-        )}
-        <p className="mt-2 text-sm text-muted-foreground">
+      {/* Category header (no image fallback) */}
+      {!category.image_url && (
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold tracking-tight">{category.name}</h1>
+          {category.description && (
+            <p className="mt-2 text-lg text-muted-foreground">{category.description}</p>
+          )}
+        </div>
+      )}
+      {category.image_url && (
+        <p className="mb-8 text-sm text-muted-foreground">
           Click a colour below to jump straight to measurements — or browse all ranges first.
         </p>
-      </div>
+      )}
+      {!category.image_url && (
+        <p className="-mt-6 mb-10 text-sm text-muted-foreground">
+          Click a colour below to jump straight to measurements — or browse all ranges first.
+        </p>
+      )}
 
       {allRanges.length === 0 ? (
         <div className="py-16 text-center text-muted-foreground">
@@ -110,6 +143,7 @@ export default async function CategoryPage({ params }: Props) {
         </div>
       )}
     </section>
+    </>
   );
 }
 
@@ -121,8 +155,8 @@ function RangeCard({
   range,
   configureUrl,
 }: {
-  range: BlindRange;
-  configureUrl: (colour?: string) => string;
+  readonly range: BlindRange;
+  readonly configureUrl: (colour?: string) => string;
 }) {
   const colours = range.colour_options ?? [];
   const visible = colours.slice(0, MAX_SWATCHES);
