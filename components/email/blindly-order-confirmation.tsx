@@ -2,14 +2,17 @@ import {
   Body,
   Container,
   Head,
-  Heading,
   Hr,
   Html,
+  Img,
   Preview,
+
   Section,
   Text,
 } from "@react-email/components";
 import { siteConfig } from "@/config/site";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || `https://${siteConfig.domain}`;
 
 interface BlindItem {
   range_name: string;
@@ -60,7 +63,12 @@ export default function BlindlyOrderConfirmation({
       <Preview>Order confirmed — {orderNumber}</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Heading style={heading}>{siteConfig.name}</Heading>
+          <Img
+            src={`${SITE_URL}/logo.png`}
+            alt={siteConfig.name}
+            width={140}
+            style={{ display: "block", margin: "0 auto 8px" }}
+          />
           <Text style={text}>Hi {customerName},</Text>
           <Text style={text}>
             Thank you for your order! Your payment has been received and your
@@ -182,7 +190,6 @@ export default function BlindlyOrderConfirmation({
 
 const main = { backgroundColor: "#f6f9fc", fontFamily: "Arial, sans-serif" };
 const container = { backgroundColor: "#fff", margin: "0 auto", padding: "40px 20px", maxWidth: "600px" };
-const heading = { fontSize: "24px", fontWeight: "bold" as const, textAlign: "center" as const };
 const text = { fontSize: "14px", lineHeight: "24px", color: "#333" };
 const orderBox = { backgroundColor: "#f4f4f5", padding: "16px", borderRadius: "8px", marginTop: "16px" };
 const label = { fontSize: "12px", color: "#666", margin: "0" };

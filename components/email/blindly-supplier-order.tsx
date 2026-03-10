@@ -2,42 +2,44 @@ import {
   Body,
   Container,
   Head,
-  Heading,
   Hr,
   Html,
+  Img,
   Preview,
   Section,
   Text,
 } from "@react-email/components";
 import { siteConfig } from "@/config/site";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || `https://${siteConfig.domain}`;
+
 interface BlindItem {
-  range_name: string;
-  colour: string;
-  mount_type: string;
-  width_mm: number;
-  drop_mm: number;
-  matched_width_cm: number;
-  matched_drop_cm: number;
-  control_side: string;
-  location_label?: string | null;
-  selected_extras?: { name: string; price_cents: number }[];
+  readonly range_name: string;
+  readonly colour: string;
+  readonly mount_type: string;
+  readonly width_mm: number;
+  readonly drop_mm: number;
+  readonly matched_width_cm: number;
+  readonly matched_drop_cm: number;
+  readonly control_side: string;
+  readonly location_label?: string | null;
+  readonly selected_extras?: { name: string; price_cents: number }[];
 }
 
 interface Props {
-  orderNumber: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  deliveryAddress: {
+  readonly orderNumber: string;
+  readonly customerName: string;
+  readonly customerEmail: string;
+  readonly customerPhone: string;
+  readonly deliveryAddress: {
     street: string;
     city: string;
     province: string;
     postal_code: string;
   };
-  deliveryType: string;
-  items: BlindItem[];
-  adminUrl: string;
+  readonly deliveryType: string;
+  readonly items: BlindItem[];
+  readonly adminUrl: string;
 }
 
 export default function BlindlySupplierOrder({
@@ -50,20 +52,28 @@ export default function BlindlySupplierOrder({
   items = [],
   adminUrl = "",
 }: Props) {
+  const blindCount = items.length;
+  const blindLabel = blindCount === 1 ? "blind" : "blinds";
+
   return (
     <Html>
       <Head />
-      <Preview>New blind order — {orderNumber} ({items.length} blind{items.length !== 1 ? "s" : ""})</Preview>
+      <Preview>New blind order — {orderNumber} ({blindCount} {blindLabel})</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Heading style={heading}>{siteConfig.name} — Supplier Order</Heading>
+          <Img
+            src={`${SITE_URL}/logo.png`}
+            alt={siteConfig.name}
+            width={140}
+            style={{ display: "block", margin: "0 auto 16px" }}
+          />
 
           <Section style={alertBox}>
             <Text style={{ fontSize: "18px", fontWeight: "bold", margin: "0", color: "#fff" }}>
               NEW ORDER: {orderNumber}
             </Text>
             <Text style={{ fontSize: "14px", margin: "4px 0 0", color: "#fef3c7" }}>
-              {items.length} blind{items.length !== 1 ? "s" : ""} to manufacture
+              {blindCount} {blindLabel} to manufacture
             </Text>
           </Section>
 
@@ -72,6 +82,9 @@ export default function BlindlySupplierOrder({
           {/* Customer & delivery */}
           <Text style={sectionTitle}>Customer Details</Text>
           <table style={{ width: "100%", fontSize: "13px" }}>
+            <thead>
+              <tr><th style={{ display: "none" }}>Field</th><th style={{ display: "none" }}>Value</th></tr>
+            </thead>
             <tbody>
               <tr>
                 <td style={specLabel}>Name</td>
@@ -105,60 +118,62 @@ export default function BlindlySupplierOrder({
 
           {/* Blind specs */}
           <Text style={sectionTitle}>
-            Blind Specifications ({items.length} item{items.length !== 1 ? "s" : ""})
+            Blind Specifications ({blindCount} {blindLabel === "blind" ? "item" : "items"})
           </Text>
 
-          {items.map((item, i) => (
-            <Section key={i} style={itemBox}>
-              <Text style={itemTitle}>
-                BLIND {i + 1}{item.location_label ? ` — ${item.location_label.toUpperCase()}` : ""}
-              </Text>
-              <table style={{ width: "100%", fontSize: "13px" }}>
-                <tbody>
-                  <tr>
-                    <td style={specLabel}>Range</td>
-                    <td style={{ ...specValue, fontWeight: "bold" }}>{item.range_name}</td>
-                  </tr>
-                  <tr>
-                    <td style={specLabel}>Colour</td>
-                    <td style={{ ...specValue, fontWeight: "bold" }}>{item.colour}</td>
-                  </tr>
-                  <tr>
-                    <td style={specLabel}>Mount type</td>
-                    <td style={specValue}>{item.mount_type === "inside" ? "Inside mount" : "Outside mount"}</td>
-                  </tr>
-                  <tr>
-                    <td style={specLabel}>Client size</td>
-                    <td style={specValue}>{item.width_mm}mm × {item.drop_mm}mm</td>
-                  </tr>
-                  <tr>
-                    <td style={specLabel}>
-                      <strong>MANUFACTURE TO</strong>
-                    </td>
-                    <td style={{ ...specValue, fontWeight: "bold", fontSize: "14px", color: "#111" }}>
-                      {item.matched_width_cm * 10}mm wide × {item.matched_drop_cm * 10}mm drop
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={specLabel}>Control side</td>
-                    <td style={specValue}>{item.control_side === "left" ? "Left" : "Right"}</td>
-                  </tr>
-                </tbody>
-              </table>
-              {item.selected_extras && item.selected_extras.length > 0 && (
-                <>
-                  <Text style={{ fontSize: "12px", fontWeight: "bold", margin: "10px 0 4px", color: "#555" }}>
-                    Accessories to include:
-                  </Text>
-                  {item.selected_extras.map((e, j) => (
-                    <Text key={j} style={{ fontSize: "12px", margin: "2px 0", color: "#333" }}>
-                      ✓ {e.name}
+          {items.map((item, i) => {
+            const label = item.location_label ? ` — ${item.location_label.toUpperCase()}` : "";
+            return (
+              <Section key={item.range_name + item.colour + String(i)} style={itemBox}>
+                <Text style={itemTitle}>BLIND {i + 1}{label}</Text>
+                <table style={{ width: "100%", fontSize: "13px" }}>
+                  <thead>
+                    <tr><th style={{ display: "none" }}>Field</th><th style={{ display: "none" }}>Value</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={specLabel}>Range</td>
+                      <td style={{ ...specValue, fontWeight: "bold" }}>{item.range_name}</td>
+                    </tr>
+                    <tr>
+                      <td style={specLabel}>Colour</td>
+                      <td style={{ ...specValue, fontWeight: "bold" }}>{item.colour}</td>
+                    </tr>
+                    <tr>
+                      <td style={specLabel}>Mount type</td>
+                      <td style={specValue}>{item.mount_type === "inside" ? "Inside mount" : "Outside mount"}</td>
+                    </tr>
+                    <tr>
+                      <td style={specLabel}>Client size</td>
+                      <td style={specValue}>{item.width_mm}mm × {item.drop_mm}mm</td>
+                    </tr>
+                    <tr>
+                      <td style={specLabel}><strong>MANUFACTURE TO</strong></td>
+                      <td style={{ ...specValue, fontWeight: "bold", fontSize: "14px", color: "#111" }}>
+                        {item.matched_width_cm * 10}mm wide × {item.matched_drop_cm * 10}mm drop
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={specLabel}>Control side</td>
+                      <td style={specValue}>{item.control_side === "left" ? "Left" : "Right"}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                {item.selected_extras && item.selected_extras.length > 0 && (
+                  <>
+                    <Text style={{ fontSize: "12px", fontWeight: "bold", margin: "10px 0 4px", color: "#555" }}>
+                      Accessories to include:
                     </Text>
-                  ))}
-                </>
-              )}
-            </Section>
-          ))}
+                    {item.selected_extras.map((e) => (
+                      <Text key={e.name} style={{ fontSize: "12px", margin: "2px 0", color: "#333" }}>
+                        ✓ {e.name}
+                      </Text>
+                    ))}
+                  </>
+                )}
+              </Section>
+            );
+          })}
 
           <Hr style={hr} />
 
@@ -179,7 +194,6 @@ export default function BlindlySupplierOrder({
 
 const main = { backgroundColor: "#f6f9fc", fontFamily: "Arial, sans-serif" };
 const container = { backgroundColor: "#fff", margin: "0 auto", padding: "40px 20px", maxWidth: "600px" };
-const heading = { fontSize: "22px", fontWeight: "bold" as const, textAlign: "center" as const };
 const alertBox = { backgroundColor: "#C4663A", padding: "20px", borderRadius: "8px", textAlign: "center" as const };
 const hr = { borderColor: "#e5e7eb", margin: "24px 0" };
 const sectionTitle = { fontSize: "15px", fontWeight: "bold" as const, color: "#111", marginBottom: "8px" };
