@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs";
-import XLSX from "xlsx";
+import * as XLSX from "xlsx";
 
 export interface SupplierOrderItem {
   location_label?: string | null;
