@@ -35,7 +35,8 @@ export function Navbar({ links, settings }: NavbarProps) {
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 md:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.png" alt={settings.logo_text} width={140} height={36} className="h-9 w-auto" priority />
+          <Image src="/logo-icon.png" alt="" width={40} height={40} className="h-10 w-auto dark:brightness-0 dark:invert" priority />
+          <Image src="/logo-name.png" alt={settings.logo_text} width={120} height={36} className="h-8 w-auto dark:brightness-0 dark:invert" priority />
         </Link>
 
         {/* Desktop nav — exclude any link that duplicates the CTA button */}
