@@ -314,6 +314,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
               typeId={state.type_id}
               rangeId={state.range_id}
               categorySlug={state.category_slug}
+              categoryImageUrl={categories.find((c) => c.id === state.category_id)?.image_url ?? null}
               onChangeType={(id) =>
                 update({ type_id: id, range_id: "", colour: "" })
               }

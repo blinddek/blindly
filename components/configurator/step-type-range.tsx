@@ -12,6 +12,7 @@ interface Props {
   readonly typeId: string;
   readonly rangeId: string;
   readonly categorySlug: string;
+  readonly categoryImageUrl: string | null;
   readonly onChangeType: (id: string) => void;
   readonly onChangeRange: (id: string) => void;
 }
@@ -22,6 +23,7 @@ export function StepTypeRange({
   typeId,
   rangeId,
   categorySlug,
+  categoryImageUrl,
   onChangeType,
   onChangeRange,
 }: Props) {
@@ -56,10 +58,10 @@ export function StepTypeRange({
                   : "border-border"
               )}
             >
-              {t.image_url ? (
+              {(t.image_url ?? categoryImageUrl) ? (
                 <div className="relative h-28 w-full overflow-hidden bg-muted">
                   <Image
-                    src={t.image_url}
+                    src={(t.image_url ?? categoryImageUrl)!}
                     alt={t.name}
                     fill
                     className="object-cover"
