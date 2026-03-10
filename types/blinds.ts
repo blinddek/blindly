@@ -387,6 +387,7 @@ export interface ExtraWithPrice {
   pricing_type: PricingType;
   price_cents: number;
   is_upgrade: boolean;
+  replaces_extra_id: string | null;
 }
 
 export interface MotorOptionWithPrice {

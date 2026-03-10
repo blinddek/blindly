@@ -73,6 +73,7 @@ export async function getApplicableExtras(
       pricing_type: extra.pricing_type,
       price_cents: priceCents,
       is_upgrade: extra.is_upgrade,
+      replaces_extra_id: extra.replaces_extra_id ?? null,
     });
   }
 

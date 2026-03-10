@@ -52,7 +52,16 @@ export function StepAccessories({ blindRangeId, widthCm, dropCm, selected, onCha
     if (isSelected) {
       onChange(selected.filter((s) => s.extra_id !== extra.id));
     } else {
-      onChange([...selected, { extra_id: extra.id, name: extra.name, price_cents: extra.price_cents }]);
+      // Remove any mutually exclusive extras (bidirectional: what this replaces, or what replaces this)
+      const exclusiveIds = new Set<string>();
+      if (extra.replaces_extra_id) exclusiveIds.add(extra.replaces_extra_id);
+      extras.forEach((e) => {
+        if (e.replaces_extra_id === extra.id) exclusiveIds.add(e.id);
+      });
+      const filtered = exclusiveIds.size > 0
+        ? selected.filter((s) => !exclusiveIds.has(s.extra_id))
+        : selected;
+      onChange([...filtered, { extra_id: extra.id, name: extra.name, price_cents: extra.price_cents }]);
     }
   }
 
