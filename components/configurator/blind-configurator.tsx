@@ -36,6 +36,7 @@ export interface TypeOption {
   min_drop_cm: number;
   max_drop_cm: number;
   min_frame_depth_mm: number | null;
+  image_url: string | null;
 }
 
 export interface RangeOption {
@@ -45,6 +46,7 @@ export interface RangeOption {
   description: string | null;
   colour_options: ColourOption[];
   starting_price_cents: number | null;
+  lifestyle_image_url: string | null;
 }
 
 export interface ColourOption {

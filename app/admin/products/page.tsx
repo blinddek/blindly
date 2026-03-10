@@ -351,6 +351,7 @@ function TypesTab() {
       material: item.material,
       slat_size_mm: item.slat_size_mm,
       description: item.description,
+      image_url: (item as BlindType).image_url ?? null,
       min_width_cm: item.min_width_cm,
       max_width_cm: item.max_width_cm,
       min_drop_cm: item.min_drop_cm,
@@ -442,6 +443,11 @@ function TypesTab() {
             <div className="space-y-1.5">
               <Label>Description</Label>
               <Input value={item.description} onChange={(e) => update(i, "description", e.target.value)} placeholder="Optional short description" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Image</Label>
+              <ImageUpload value={(item as BlindType).image_url ?? ""} onChange={(url) => update(i, "image_url", url)} folder="categories" />
             </div>
 
             <div className="flex items-center justify-between border-t pt-3">
