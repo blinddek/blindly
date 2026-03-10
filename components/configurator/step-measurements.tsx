@@ -343,12 +343,40 @@ export function StepMeasurements({
               Width: {widthMm} mm
             </span>
             <div
-              className="rounded border-2 border-dashed border-primary/30 bg-primary/5 transition-all"
+              className="relative rounded border-2 border-dashed border-primary/30 bg-primary/5 transition-all overflow-hidden"
               style={{
                 width: `${Math.min(Math.max(widthMm / 10, 60), 240)}px`,
                 height: `${Math.min(Math.max(dropMm / 10, 60), 180)}px`,
               }}
-            />
+            >
+              {/* Chain/cord indicator */}
+              <div
+                className={cn(
+                  "absolute top-2 bottom-2 w-px bg-primary/40",
+                  controlSide === "left" ? "left-3" : "right-3"
+                )}
+              />
+              {/* Chain links */}
+              {[16, 30, 44, 58, 72].map((topPct) => (
+                <div
+                  key={topPct}
+                  className={cn(
+                    "absolute size-1.5 rounded-full bg-primary/50",
+                    controlSide === "left" ? "left-[9px]" : "right-[9px]"
+                  )}
+                  style={{ top: `${topPct}%` }}
+                />
+              ))}
+              {/* Side label */}
+              <span
+                className={cn(
+                  "absolute bottom-1.5 text-[10px] font-medium text-primary/60 capitalize",
+                  controlSide === "left" ? "left-1" : "right-1"
+                )}
+              >
+                {controlSide}
+              </span>
+            </div>
           </div>
         </div>
       </div>
