@@ -115,9 +115,21 @@ export function parseMotorisation(sheet: WorkSheet): MotorisationResult {
     if (!label) continue;
 
     const { rowWidths, rowPrices } = extractRowPrices(row, widths, widthStartCol);
-    if (rowPrices.length === 0) continue;
+    // Require at least 2 prices — note/description rows typically hit only 1 cell by coincidence
+    if (rowPrices.length < 2) continue;
 
     const labelLower = label.toLowerCase();
+    // Skip obvious note rows (long sentences, no motor keyword)
+    const isNote =
+      label.length > 60 ||
+      labelLower.includes("refer") ||
+      labelLower.includes("example") ||
+      labelLower.includes("specify") ||
+      labelLower.includes("ordered separately") ||
+      labelLower.includes("electrical lead") ||
+      labelLower.includes("reveal width");
+    if (isNote) continue;
+
     if (labelLower.includes("tube") && !labelLower.includes("motor")) {
       tubeCost = { widths: rowWidths, prices: rowPrices };
       continue;
