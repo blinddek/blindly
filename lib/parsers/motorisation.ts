@@ -16,13 +16,16 @@ function findWidthHeaders(raw: unknown[][]): WidthHeader | null {
 
     const numericCols: { col: number; val: number }[] = [];
     for (let c = 0; c < row.length; c++) {
-      const val = Number.parseFloat(String(row[c] ?? ""));
-      if (!Number.isNaN(val) && val >= 20 && val <= 500) {
+      // Only accept cells that are already numeric — skip strings like "32mm"
+      if (typeof row[c] !== "number") continue;
+      const val = row[c] as number;
+      if (val >= 20 && val <= 600) {
         numericCols.push({ col: c, val });
       }
     }
 
-    if (numericCols.length >= 3) {
+    const uniqueVals = new Set(numericCols.map((n) => n.val));
+    if (numericCols.length >= 3 && uniqueVals.size >= 3) {
       return {
         headerRowIdx: r,
         widthStartCol: numericCols[0].col,
@@ -37,8 +40,10 @@ function findWidthHeaders(raw: unknown[][]): WidthHeader | null {
 function extractLabel(row: unknown[], widthStartCol: number): string {
   const parts: string[] = [];
   for (let c = 0; c < widthStartCol; c++) {
-    const cell = String(row[c] ?? "").trim();
-    if (cell) parts.push(cell);
+    const cell = row[c];
+    if (cell == null) continue;
+    const str = (typeof cell === "string" || typeof cell === "number") ? String(cell).trim() : "";
+    if (str) parts.push(str);
   }
   return parts.join(" ").trim();
 }
@@ -53,7 +58,16 @@ function extractRowPrices(
   const rowPrices: number[] = [];
   for (let i = 0; i < widths.length; i++) {
     const c = widthStartCol + i;
-    const val = Number.parseFloat(String(row[c] ?? ""));
+    const cell = row[c];
+    // Only accept numeric cells — skip strings like "32mm"
+    let val: number;
+    if (typeof cell === "number") {
+      val = cell;
+    } else if (typeof cell === "string") {
+      val = Number.parseFloat(cell);
+    } else {
+      continue;
+    }
     if (!Number.isNaN(val) && val > 0) {
       rowWidths.push(widths[i]);
       rowPrices.push(val);
@@ -119,9 +133,9 @@ export function parseMotorisation(sheet: WorkSheet): MotorisationResult {
     if (rowPrices.length < 2) continue;
 
     const labelLower = label.toLowerCase();
-    // Skip obvious note rows (long sentences, no motor keyword)
+    // Skip note/description rows and repeated header rows
     const isNote =
-      label.length > 60 ||
+      labelLower === "width (cm):" ||
       labelLower.includes("refer") ||
       labelLower.includes("example") ||
       labelLower.includes("specify") ||
@@ -130,7 +144,8 @@ export function parseMotorisation(sheet: WorkSheet): MotorisationResult {
       labelLower.includes("reveal width");
     if (isNote) continue;
 
-    if (labelLower.includes("tube") && !labelLower.includes("motor")) {
+    // "tube cost" rows — not motors
+    if (labelLower.includes("tube cost")) {
       tubeCost = { widths: rowWidths, prices: rowPrices };
       continue;
     }

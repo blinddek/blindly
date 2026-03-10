@@ -402,7 +402,7 @@ async function upsertMotorisation(data: MotorisationResult): Promise<number> {
       .select("id")
       .single();
 
-    if (!motorRow) continue;
+    if (!motorRow) { console.error("[motors] upsert returned no row for", motor.brand, motor.model); continue; }
 
     const priceRows = motor.widths.map((w, i) => ({
       motor_id: motorRow.id,
@@ -410,9 +410,12 @@ async function upsertMotorisation(data: MotorisationResult): Promise<number> {
       price_cents: Math.round(motor.prices[i] * 100),
     }));
 
-    await supabase
+
+    const { error: priceErr } = await supabase
       .from("motorisation_prices")
       .upsert(priceRows, { onConflict: "motor_id,width_cm" });
+
+    if (priceErr) console.error("[motors] price upsert error:", priceErr.message, priceErr.details);
 
     count += priceRows.length;
   }
