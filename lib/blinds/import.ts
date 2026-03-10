@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { parseWorkbook } from "@/lib/parsers/workbook";
 import type {
   ParseResult,
@@ -62,7 +62,7 @@ export async function importPriceSheet(
   }
 
   // Record import in audit table
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   await supabase.from("price_imports").insert({
     filename,
     supplier,
@@ -95,7 +95,7 @@ async function importParsedData(
   supplier: string,
   overrides?: SheetMappingOverride[]
 ): Promise<Omit<ImportSummary, "products_synced">> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const errors: string[] = [...parseResult.summary.errors];
   let totalCreated = 0;
   let totalUpdated = 0;
@@ -244,7 +244,7 @@ async function saveOverridesAsTemplates(
   supplier: string,
   overrides: SheetMappingOverride[]
 ): Promise<void> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   for (const o of overrides) {
     if (o.skip) continue;
     await supabase.from("import_mappings").upsert(
@@ -267,7 +267,7 @@ async function upsertPriceMatrix(
   rangeId: string,
   data: StandardMatrixResult
 ): Promise<UpsertStats> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   let created = 0;
 
   const rows: {
@@ -318,7 +318,7 @@ async function upsertPriceMatrix(
 
 /** Upsert extras pricing from the extras sheet. */
 async function upsertExtras(data: ExtrasResult): Promise<number> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   let count = 0;
 
   // Load all extras once for name-based fallback matching
@@ -365,7 +365,7 @@ async function upsertExtras(data: ExtrasResult): Promise<number> {
 
 /** Upsert mechanism/tube lookup data. */
 async function upsertMechanisms(data: MechanismsResult): Promise<number> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const rows = data.entries.map((e) => ({
     width_cm: e.width_cm,
     drop_cm: e.drop_cm,
@@ -385,7 +385,7 @@ async function upsertMechanisms(data: MechanismsResult): Promise<number> {
 
 /** Upsert motorisation options and prices. */
 async function upsertMotorisation(data: MotorisationResult): Promise<number> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   let count = 0;
 
   for (const motor of data.motors) {
@@ -424,7 +424,7 @@ async function upsertVertical(
   rangeId: string,
   sheet: SheetResult & { data: VerticalResult }
 ): Promise<UpsertStats> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const data = sheet.data;
 
   const { data: range } = await supabase
@@ -473,7 +473,7 @@ function colourSlug(name: string): string {
  * Returns count of products synced.
  */
 export async function syncShopProducts(): Promise<number> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   let count = 0;
 
   const { data: ranges } = await supabase
@@ -535,7 +535,7 @@ export async function syncShopProducts(): Promise<number> {
 
 /** Get minimum supplier price for a range. */
 async function getMinPrice(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createAdminClient>,
   rangeId: string
 ): Promise<number | null> {
   const { data } = await supabase
@@ -550,7 +550,7 @@ async function getMinPrice(
 
 /** Upsert products for all colours in a range. */
 async function upsertProductsForRange(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createAdminClient>,
   range: { id: string; name: string; slug: string; description: string | null; colour_options: unknown },
   productCatId: string,
   minPrice: number | null
