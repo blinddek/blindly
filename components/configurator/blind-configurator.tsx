@@ -185,10 +185,10 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
     }
   }, [state.range_id, state.width_mm, state.drop_mm, state.mount_type]);
 
-  // Reset extras when measurements change (range/width may affect available extras)
+  // Reset extras when measurements change (range/width/drop may affect available accessories)
   useEffect(() => {
     setSelectedExtras([]);
-  }, [state.range_id, state.width_mm]);
+  }, [state.range_id, state.width_mm, state.drop_mm]);
 
   // Trigger price when reaching quote step
   useEffect(() => {
@@ -337,6 +337,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
             <StepAccessories
               blindRangeId={state.range_id}
               widthCm={Math.ceil(state.width_mm / 10)}
+              dropCm={Math.ceil(state.drop_mm / 10)}
               selected={selectedExtras}
               onChange={setSelectedExtras}
             />
