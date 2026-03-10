@@ -110,9 +110,15 @@ export default function CartPage() {
                     <dd className="font-medium">{item.colour}</dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Size</dt>
+                    <dt className="text-muted-foreground">Your measurements</dt>
                     <dd className="font-medium">
                       {item.width_mm}mm × {item.drop_mm}mm
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Nearest available size</dt>
+                    <dd className="font-medium">
+                      {item.matched_width_cm * 10}mm × {item.matched_drop_cm * 10}mm
                     </dd>
                   </div>
                   <div>
@@ -123,13 +129,19 @@ export default function CartPage() {
                     <dt className="text-muted-foreground">Control</dt>
                     <dd className="font-medium capitalize">{item.control_side}</dd>
                   </div>
-                  <div>
-                    <dt className="text-muted-foreground">Grid point</dt>
-                    <dd className="font-medium">
-                      {item.matched_width_cm}cm × {item.matched_drop_cm}cm
-                    </dd>
-                  </div>
                 </dl>
+
+                {item.selected_extras && item.selected_extras.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Accessories</p>
+                    {item.selected_extras.map((e) => (
+                      <div key={e.extra_id} className="flex justify-between text-sm">
+                        <span>{e.name}</span>
+                        <span className="text-muted-foreground">+ {formatRand(e.price_cents)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="mt-4 flex items-center justify-between gap-4 border-t pt-3">
                   <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
