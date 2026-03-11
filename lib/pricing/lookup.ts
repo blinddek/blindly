@@ -49,29 +49,15 @@ export async function lookupPrice(
   let matchedWidth: number;
   let matchedDrop: number;
 
-  if (input.mount_type === "outside") {
-    // Round UP: find first grid point >= customer dimension
-    matchedWidth =
-      availableWidths.find((w) => w >= widthCm) ??
-      availableWidths[availableWidths.length - 1];
-    matchedDrop =
-      availableDrops.find((d) => d >= dropCm) ??
-      availableDrops[availableDrops.length - 1];
-  } else {
-    // Round DOWN: find last grid point <= customer dimension
-    matchedWidth =
-      [...availableWidths].reverse().find((w) => w <= widthCm) ??
-      availableWidths[0];
-    matchedDrop =
-      [...availableDrops].reverse().find((d) => d <= dropCm) ??
-      availableDrops[0];
-  }
+  // Always round UP: supplier orders the next size up and cuts to fit
+  matchedWidth = availableWidths.find((w) => w >= widthCm) ?? availableWidths.at(-1)!;
+  matchedDrop = availableDrops.find((d) => d >= dropCm) ?? availableDrops.at(-1)!;
 
   // Validate dimensions are within range
   const minW = availableWidths[0];
-  const maxW = availableWidths[availableWidths.length - 1];
+  const maxW = availableWidths.at(-1)!;
   const minD = availableDrops[0];
-  const maxD = availableDrops[availableDrops.length - 1];
+  const maxD = availableDrops.at(-1)!;
 
   if (widthCm < minW || widthCm > maxW) {
     throw new Error(
