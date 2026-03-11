@@ -113,8 +113,12 @@ async function getGlobalMarkup(): Promise<MarkupResult> {
     .is("scope_id", null)
     .single();
 
+  if (!data) {
+    throw new Error("No global markup configured. Please set a global markup in the admin.");
+  }
+
   return {
-    markup_percent: data ? Number(data.markup_percent) : 40,
+    markup_percent: Number(data.markup_percent),
     source: "global",
   };
 }
