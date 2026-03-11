@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 interface MarkupResult {
   markup_percent: number;
@@ -16,7 +16,7 @@ interface MarkupResult {
 export async function resolveMarkup(
   blindRangeId: string
 ): Promise<MarkupResult> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Get the range → type → category chain + supplier slug
   const { data: range } = await supabase
@@ -105,7 +105,7 @@ export async function resolveMarkup(
 }
 
 async function getGlobalMarkup(): Promise<MarkupResult> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("markup_config")
     .select("markup_percent")

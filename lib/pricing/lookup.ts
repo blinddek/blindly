@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveMarkup } from "./markup";
 import type { PriceLookupInput, PriceLookupResult } from "@/types/blinds";
 
@@ -14,7 +14,7 @@ import type { PriceLookupInput, PriceLookupResult } from "@/types/blinds";
 export async function lookupPrice(
   input: PriceLookupInput
 ): Promise<PriceLookupResult> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const widthCm = input.width_mm / 10;
   const dropCm = input.drop_mm / 10;
