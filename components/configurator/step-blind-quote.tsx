@@ -113,10 +113,6 @@ export function StepBlindQuote({
           <dd className="font-medium">
             {state.width_mm}mm × {state.drop_mm}mm
           </dd>
-          <dt className="text-muted-foreground">Nearest available size</dt>
-          <dd className="font-medium">
-            {quote.matched_width_cm * 10}mm × {quote.matched_drop_cm * 10}mm
-          </dd>
           <dt className="text-muted-foreground">Control Side</dt>
           <dd className="font-medium capitalize">{state.control_side}</dd>
         </dl>

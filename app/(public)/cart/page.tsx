@@ -116,12 +116,6 @@ export default function CartPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Nearest available size</dt>
-                    <dd className="font-medium">
-                      {item.matched_width_cm * 10}mm × {item.matched_drop_cm * 10}mm
-                    </dd>
-                  </div>
-                  <div>
                     <dt className="text-muted-foreground">Mount</dt>
                     <dd className="font-medium capitalize">{item.mount_type}</dd>
                   </div>
