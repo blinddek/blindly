@@ -114,7 +114,7 @@ async function getGlobalMarkup(): Promise<MarkupResult> {
     .single();
 
   if (!data) {
-    throw new Error("No global markup configured. Please set a global markup in the admin.");
+    throw new Error("Online pricing is temporarily unavailable. Please contact us for a quote.");
   }
 
   return {
