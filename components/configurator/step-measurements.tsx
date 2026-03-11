@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,13 @@ export function StepMeasurements({
   onChangeControlSide,
   selectedType,
 }: Props) {
+  const [widthStr, setWidthStr] = useState(String(widthMm));
+  const [dropStr, setDropStr] = useState(String(dropMm));
+
+  // Sync local strings if parent value changes externally (prefill / reset)
+  useEffect(() => { setWidthStr(String(widthMm)); }, [widthMm]);
+  useEffect(() => { setDropStr(String(dropMm)); }, [dropMm]);
+
   const widthCm = widthMm / 10;
   const dropCm = dropMm / 10;
   const minW = selectedType?.min_width_cm ?? 30;
@@ -89,8 +97,12 @@ export function StepMeasurements({
               min={minW * 10}
               max={maxW * 10}
               step={10}
-              value={widthMm}
-              onChange={(e) => onChangeWidth(Number(e.target.value))}
+              value={widthStr}
+              onChange={(e) => {
+                setWidthStr(e.target.value);
+                const v = Number.parseInt(e.target.value, 10);
+                if (!Number.isNaN(v) && v > 0) onChangeWidth(v);
+              }}
             />
             {!widthValid && widthMm > 0 && (
               <p className="text-xs text-destructive">
@@ -106,8 +118,12 @@ export function StepMeasurements({
               min={minD * 10}
               max={maxD * 10}
               step={10}
-              value={dropMm}
-              onChange={(e) => onChangeDrop(Number(e.target.value))}
+              value={dropStr}
+              onChange={(e) => {
+                setDropStr(e.target.value);
+                const v = Number.parseInt(e.target.value, 10);
+                if (!Number.isNaN(v) && v > 0) onChangeDrop(v);
+              }}
             />
             {!dropValid && dropMm > 0 && (
               <p className="text-xs text-destructive">
