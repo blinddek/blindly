@@ -13,7 +13,7 @@ import { Loader2 } from "lucide-react";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotalCents, totalItems, clearCart } = useCart();
+  const { items, subtotalCents, totalItems } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,10 +80,9 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Save order ref for success page, then clear cart
+      // Save order ref for success page — cart cleared on success page
       sessionStorage.setItem("yt-order-ref", data.reference);
       sessionStorage.setItem("yt-order-email", shipping.email);
-      clearCart();
 
       // Redirect to Paystack
       window.location.href = data.authorization_url;

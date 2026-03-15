@@ -4,17 +4,20 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useBlindCart } from "@/components/blinds/blind-cart-provider";
 
 export default function OrderSuccessPage() {
+  const { clearCart } = useBlindCart();
   const [reference, setReference] = useState<string | null>(null);
 
   useEffect(() => {
+    clearCart();
     const ref = sessionStorage.getItem("blindly_order_ref");
     if (ref) {
       setReference(ref);
       sessionStorage.removeItem("blindly_order_ref");
     }
-  }, []);
+  }, [clearCart]);
 
   return (
     <section className="mx-auto max-w-lg px-4 py-24 text-center sm:px-6">

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
 import { trackPurchase } from "@/lib/integrations/facebook-pixel";
+import { useCart } from "@/components/shop/cart-provider";
 import { siteConfig } from "@/config/site";
 
 function getSessionValue(key: string): string | null {
@@ -15,16 +16,18 @@ function getSessionValue(key: string): string | null {
 }
 
 export default function CheckoutSuccessPage() {
+  const { clearCart } = useCart();
   const [reference] = useState(() => getSessionValue("yt-order-ref"));
   const [email] = useState(() => getSessionValue("yt-order-email"));
 
   useEffect(() => {
+    clearCart();
     trackPurchase({
       value: 0,
       currency: siteConfig.currency,
       content_type: "product",
     });
-  }, []);
+  }, [clearCart]);
 
   return (
     <div className="mx-auto max-w-xl px-4 py-16 text-center md:px-8">
