@@ -3,8 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LogOut, UserCircle } from "lucide-react";
+import { LogOut, UserCircle, UserCog, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { createClient } from "@/lib/supabase/client";
 import { isEnabled } from "@/config/features";
 import { useLocale } from "@/lib/locale";
@@ -14,7 +22,7 @@ import type { User } from "@supabase/supabase-js";
  * Navbar auth button. Behaviour:
  * - customerAuth OFF → show nothing (admin accesses /admin directly)
  * - customerAuth ON, logged out → Login button
- * - customerAuth ON, logged in → Dashboard + Sign out
+ * - customerAuth ON, logged in → Profile avatar dropdown
  */
 export function NavbarAuthButton() {
   const [user, setUser] = useState<User | null>(null);
@@ -31,11 +39,9 @@ export function NavbarAuthButton() {
     });
   }, [supabase.auth]);
 
-  // customerAuth disabled — admins use /admin URL directly
   if (!customerAuth) return null;
 
-  // Not ready yet — show login button as placeholder
-  if (!ready) {
+  if (!ready || !user) {
     return (
       <Link href="/login">
         <Button variant="ghost" size="sm">
@@ -45,17 +51,6 @@ export function NavbarAuthButton() {
     );
   }
 
-  if (!user) {
-    return (
-      <Link href="/login">
-        <Button variant="ghost" size="sm">
-          {t({ en: "Login", af: "Teken In" })}
-        </Button>
-      </Link>
-    );
-  }
-
-  // Logged in: show avatar + dashboard link + sign out
   const fullName =
     (user.user_metadata?.full_name as string) ||
     (user.user_metadata?.name as string) ||
@@ -74,30 +69,42 @@ export function NavbarAuthButton() {
   };
 
   return (
-    <div className="flex items-center gap-1">
-      <Link href="/portal">
-        <Button variant="ghost" size="sm" className="gap-2">
-          {initials ? (
-            <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-              {initials}
-            </span>
-          ) : (
-            <UserCircle className="size-5" />
-          )}
-          <span className="hidden sm:inline">
-            {t({ en: "Dashboard", af: "Paneelbord" })}
-          </span>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+              {initials || <UserCircle className="h-4 w-4" />}
+            </AvatarFallback>
+          </Avatar>
         </Button>
-      </Link>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleSignOut}
-        aria-label={t({ en: "Sign out", af: "Teken uit" })}
-        className="size-8 p-0"
-      >
-        <LogOut className="size-4" />
-      </Button>
-    </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <div className="px-2 py-1.5">
+          <p className="text-sm font-medium">{fullName}</p>
+          {user.email && (
+            <p className="text-xs text-muted-foreground">{user.email}</p>
+          )}
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/portal">
+            <ShoppingBag className="mr-2 h-4 w-4" />
+            {t({ en: "My Orders", af: "My Bestellings" })}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/portal/account">
+            <UserCog className="mr-2 h-4 w-4" />
+            {t({ en: "My Account", af: "My Rekening" })}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSignOut}>
+          <LogOut className="mr-2 h-4 w-4" />
+          {t({ en: "Sign Out", af: "Teken Uit" })}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

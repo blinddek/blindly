@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { LanguageSelector } from "@/components/shared/language-selector";
 import { NavbarAuthButton } from "@/components/shared/navbar-auth-button";
@@ -39,7 +38,7 @@ export function Navbar({ links, settings }: NavbarProps) {
           <Image src="/logo-name.png" alt={settings.logo_text} width={200} height={60} className="h-14 w-auto dark:brightness-0 dark:invert" priority />
         </Link>
 
-        {/* Desktop nav — exclude any link that duplicates the CTA button */}
+        {/* Desktop nav */}
         <nav className="hidden items-center gap-1 md:flex">
           {links.filter((l) => !l.hide_in_nav).map((link) => (
             <Link
@@ -50,6 +49,14 @@ export function Navbar({ links, settings }: NavbarProps) {
               {t(link.label)}
             </Link>
           ))}
+          {settings.cta_url && settings.cta_label && (
+            <Link
+              href={settings.cta_url}
+              className="rounded-md px-3 py-2 text-base font-semibold text-primary transition-colors hover:text-primary/80"
+            >
+              {t(settings.cta_label)}
+            </Link>
+          )}
         </nav>
 
         {/* Desktop actions */}
@@ -59,9 +66,6 @@ export function Navbar({ links, settings }: NavbarProps) {
           <CartButton />
           <div className="mx-1 h-5 w-px bg-border" />
           <NavbarAuthButton />
-          <Link href={settings.cta_url}>
-            <Button size="sm">{t(settings.cta_label)}</Button>
-          </Link>
         </div>
 
         {/* Mobile menu button */}
@@ -92,18 +96,22 @@ export function Navbar({ links, settings }: NavbarProps) {
                 {t(link.label)}
               </Link>
             ))}
+            {settings.cta_url && settings.cta_label && (
+              <Link
+                href={settings.cta_url}
+                className="rounded-md px-3 py-3 text-base font-semibold text-primary transition-colors hover:text-primary/80"
+                onClick={() => setMobileOpen(false)}
+              >
+                {t(settings.cta_label)}
+              </Link>
+            )}
             <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
               <div className="flex items-center gap-1">
                 <LanguageSelector />
                 <ThemeToggle />
                 <CartButton />
               </div>
-              <div className="flex items-center gap-2">
-                <NavbarAuthButton />
-                <Link href={settings.cta_url} onClick={() => setMobileOpen(false)}>
-                  <Button size="sm">{t(settings.cta_label)}</Button>
-                </Link>
-              </div>
+              <NavbarAuthButton />
             </div>
           </nav>
         </div>
