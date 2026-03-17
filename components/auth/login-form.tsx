@@ -76,9 +76,9 @@ export function LoginForm() {
           <Image
             src="/logo-full.png"
             alt="Blindly"
-            width={180}
-            height={60}
-            className="h-14 w-auto dark:brightness-0 dark:invert"
+            width={270}
+            height={90}
+            className="h-20 w-auto dark:brightness-0 dark:invert"
             priority
           />
         </div>

@@ -162,9 +162,9 @@ export function AdminSidebarContent({
               <Image
                 src="/logo-name.png"
                 alt="Blindly Admin"
-                height={32}
-                width={120}
-                className="h-8 w-auto object-contain dark:brightness-0 dark:invert"
+                height={48}
+                width={180}
+                className="h-12 w-auto object-contain dark:brightness-0 dark:invert"
                 priority
               />
             </Link>
