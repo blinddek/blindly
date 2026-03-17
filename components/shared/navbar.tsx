@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogIn } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { LanguageSelector } from "@/components/shared/language-selector";
 import { NavbarAuthButton } from "@/components/shared/navbar-auth-button";
@@ -66,6 +67,11 @@ export function Navbar({ links, settings }: NavbarProps) {
           <CartButton />
           <div className="mx-1 h-5 w-px bg-border" />
           <NavbarAuthButton />
+          <Link href="/login" aria-label="Login">
+            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
+              <LogIn className="h-4 w-4" />
+            </Button>
+          </Link>
         </div>
 
         {/* Mobile menu button */}
