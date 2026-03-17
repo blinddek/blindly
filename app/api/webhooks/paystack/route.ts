@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, sendEmailWithAttachment, notifyAdmin } from "@/lib/email";
 import { formatPrice } from "@/lib/shop/format";
 import { generateSupplierOrderXls } from "@/lib/blinds/supplier-order";
+import { createInvoiceFromOrder } from "@/lib/create-order-invoice";
 
 export async function POST(request: Request) {
   // 1. Read raw body as text (required for HMAC verification)
@@ -164,6 +165,37 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string, _meta
     .eq("id", order.id);
 
   console.log("[webhook] Blindly order paid:", order.order_number);
+
+  // Auto-generate invoice
+  try {
+    // Fetch order items first for invoice line items
+    const { data: invoiceItems } = await supabase
+      .from("blindly_order_items")
+      .select(`
+        location_label, width_mm, drop_mm, colour, line_total_cents,
+        blind_ranges!inner(name, blind_types!inner(name))
+      `)
+      .eq("order_id", order.id)
+      .order("display_order");
+
+    const invoiceLineItems = (invoiceItems ?? []).map((item: Record<string, unknown>) => {
+      const range = item.blind_ranges as Record<string, unknown>;
+      const type = range?.blind_types as Record<string, unknown>;
+      return {
+        range_name: (range?.name as string) ?? "",
+        type_name: (type?.name as string) ?? "",
+        width_mm: item.width_mm as number,
+        drop_mm: item.drop_mm as number,
+        colour: item.colour as string,
+        line_total_cents: item.line_total_cents as number,
+        location_label: item.location_label as string | null,
+      };
+    });
+
+    await createInvoiceFromOrder(order, invoiceLineItems);
+  } catch (err) {
+    console.error("[webhook] Failed to create invoice:", err);
+  }
 
   // Fetch order items with range + type info
   const { data: items } = await supabase

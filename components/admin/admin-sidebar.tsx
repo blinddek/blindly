@@ -94,9 +94,7 @@ function buildSidebarNav(unreadContacts = 0): NavGroup[] {
 
   // Manage
   const manageItems: NavItem[] = [];
-  if (isEnabled("billing")) {
-    manageItems.push({ href: "/admin/billing", label: "Billing", icon: Receipt });
-  }
+  manageItems.push({ href: "/admin/invoices", label: "Invoices", icon: Receipt });
   if (isEnabled("coupons") || isEnabled("gifts") || isEnabled("hybridPackages")) {
     manageItems.push({ href: "/admin/commerce", label: "Commerce", icon: Tag });
   }

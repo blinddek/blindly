@@ -62,7 +62,7 @@ export async function upsertBillingEntity(entity: {
     updated_at: new Date().toISOString(),
   });
   if (error) return { error: error.message };
-  revalidatePath("/admin/billing");
+  revalidatePath("/admin/invoices");
   return {};
 }
 
@@ -129,7 +129,7 @@ export async function createInvoice(data: {
     .single();
 
   if (error) return { error: error.message };
-  revalidatePath("/admin/billing");
+  revalidatePath("/admin/invoices");
   return { id: invoice.id };
 }
 
@@ -144,7 +144,7 @@ export async function updateInvoiceStatus(
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/admin/billing");
+  revalidatePath("/admin/invoices");
   return {};
 }
 
@@ -162,6 +162,6 @@ export async function deleteInvoice(id: string): Promise<{ error?: string }> {
   }
   const { error } = await admin.from("invoices").delete().eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/admin/billing");
+  revalidatePath("/admin/invoices");
   return {};
 }
