@@ -21,9 +21,10 @@ import type { UserProfile } from "@/types";
 
 interface AdminHeaderProps {
   readonly user: UserProfile;
+  readonly unreadContacts?: number;
 }
 
-export function AdminHeader({ user }: AdminHeaderProps) {
+export function AdminHeader({ user, unreadContacts }: AdminHeaderProps) {
   const pathname = usePathname();
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -50,6 +51,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
         <SheetContent side="left" className="w-64 p-0">
           <AdminSidebarContent
             user={user}
+            unreadContacts={unreadContacts}
             onNavClick={() => setSheetOpen(false)}
           />
         </SheetContent>

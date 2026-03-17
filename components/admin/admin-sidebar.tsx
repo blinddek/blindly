@@ -35,6 +35,7 @@ interface NavItem {
   href: string;
   label: string;
   icon?: LucideIcon;
+  badge?: number;
 }
 
 interface NavGroup {
@@ -42,7 +43,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-function buildSidebarNav(): NavGroup[] {
+function buildSidebarNav(unreadContacts = 0): NavGroup[] {
   const groups: NavGroup[] = [];
 
   // Main
@@ -102,7 +103,7 @@ function buildSidebarNav(): NavGroup[] {
   if (isEnabled("clientImport")) {
     manageItems.push({ href: "/admin/clients/import", label: "Client Import", icon: Users });
   }
-  manageItems.push({ href: "/admin/contact", label: "Contact", icon: MessageSquare });
+  manageItems.push({ href: "/admin/contact", label: "Contact", icon: MessageSquare, badge: unreadContacts });
   if (manageItems.length > 0) {
     groups.push({ title: "Manage", items: manageItems });
   }
@@ -120,6 +121,7 @@ function buildSidebarNav(): NavGroup[] {
 
 interface SidebarContentProps {
   readonly user: UserProfile;
+  readonly unreadContacts?: number;
   readonly onNavClick?: () => void;
   readonly collapsed?: boolean;
   readonly onToggleCollapse?: () => void;
@@ -127,12 +129,13 @@ interface SidebarContentProps {
 
 export function AdminSidebarContent({
   user: _user,
+  unreadContacts = 0,
   onNavClick,
   collapsed = false,
   onToggleCollapse,
 }: SidebarContentProps) {
   const pathname = usePathname();
-  const sidebarNav = buildSidebarNav();
+  const sidebarNav = buildSidebarNav(unreadContacts);
 
   const isActive = (href: string) => {
     if (href === "/admin") return pathname === "/admin";
@@ -203,7 +206,7 @@ export function AdminSidebarContent({
                       onClick={onNavClick}
                       title={collapsed ? item.label : undefined}
                       className={cn(
-                        "flex items-center rounded-lg py-2 text-sm font-medium transition-colors",
+                        "relative flex items-center rounded-lg py-2 text-sm font-medium transition-colors",
                         collapsed ? "justify-center px-2" : "gap-3 px-3",
                         active
                           ? "bg-primary/10 text-primary"
@@ -212,6 +215,14 @@ export function AdminSidebarContent({
                     >
                       {Icon && <Icon className="h-4 w-4 shrink-0" />}
                       {!collapsed && item.label}
+                      {!collapsed && item.badge != null && item.badge > 0 && (
+                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-destructive-foreground">
+                          {item.badge > 9 ? "9+" : item.badge}
+                        </span>
+                      )}
+                      {collapsed && item.badge != null && item.badge > 0 && (
+                        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-destructive" />
+                      )}
                     </Link>
                   </li>
                 );
@@ -226,9 +237,10 @@ export function AdminSidebarContent({
 
 interface AdminSidebarProps {
   readonly user: UserProfile;
+  readonly unreadContacts?: number;
 }
 
-export function AdminSidebar({ user }: AdminSidebarProps) {
+export function AdminSidebar({ user, unreadContacts }: AdminSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -238,6 +250,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
     )}>
       <AdminSidebarContent
         user={user}
+        unreadContacts={unreadContacts}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
       />
