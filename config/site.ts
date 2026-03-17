@@ -129,7 +129,7 @@ export const siteConfig: SiteConfig = {
     googleCalendar: false,
     sessionCredits: false,
     billing: true,
-    legalDocs: false,
+    legalDocs: true,
     clientOnboarding: false,
     emailCampaigns: false,
     dripEmails: false,
