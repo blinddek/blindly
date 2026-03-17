@@ -38,7 +38,9 @@ import {
   Plus,
   Trash2,
   Pencil,
+  Receipt,
 } from "lucide-react";
+import { updateShopSetting } from "@/lib/shop/actions";
 
 const L = (en = "", af = ""): LocalizedString => ({ en, af });
 
@@ -58,6 +60,7 @@ const tabs = [
   { key: "maps", label: "Maps", icon: MapPin },
   { key: "social", label: "Social", icon: Share2 },
   { key: "header", label: "Header", icon: MousePointerClick },
+  { key: "finance", label: "Finance", icon: Receipt },
   { key: "users", label: "Users", icon: Users },
 ];
 
@@ -241,10 +244,72 @@ export default function SiteSettingsPage() {
             </div>
           )}
 
+          {activeTab === "finance" && <FinancePanel />}
+
           {activeTab === "users" && <UsersPanel />}
         </>
       )}
     </SettingsLayout>
+  );
+}
+
+/* ── Finance Panel ── */
+
+function FinancePanel() {
+  const [vatRate, setVatRate] = useState(15);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient();
+      const { data } = await supabase.from("shop_settings").select("key, value").eq("key", "tax_rate_percent");
+      if (data && data.length > 0) {
+        setVatRate(Number(data[0].value) || 15);
+      }
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await updateShopSetting("tax_rate_percent", vatRate);
+      toast.success("Finance settings saved.");
+    } catch {
+      toast.error("Failed to save.");
+    }
+    setSaving(false);
+  }
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>VAT Configuration</CardTitle>
+          <CardDescription>Value-added tax applied to all orders.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-foreground">VAT Rate (%)</label>
+            <Input
+              type="number"
+              value={vatRate}
+              onChange={(e) => setVatRate(Number(e.target.value))}
+              placeholder="15"
+              className="max-w-32"
+            />
+            <p className="text-xs text-muted-foreground">
+              Standard SA VAT is 15%. Set to 0 if not VAT registered.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+      <SaveButton onSave={handleSave} saving={saving} />
+    </div>
   );
 }
 

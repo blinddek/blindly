@@ -23,7 +23,6 @@ import {
   Percent,
   Package,
   ShoppingCart,
-  ClipboardList,
   MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -88,7 +87,6 @@ function buildSidebarNav(unreadContacts = 0): NavGroup[] {
   }
   shopItems.push(
     { href: "/admin/shop/orders", label: "Orders", icon: ShoppingCart },
-    { href: "/admin/shop/settings", label: "Shop Settings", icon: ClipboardList },
   );
   groups.push({ title: "Shop", items: shopItems });
 
