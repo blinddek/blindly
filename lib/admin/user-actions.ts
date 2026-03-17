@@ -41,6 +41,34 @@ export async function deleteUser(userId: string): Promise<{ error?: string }> {
   return {};
 }
 
+export async function updateUser(
+  userId: string,
+  data: { fullName?: string; password?: string }
+): Promise<{ error?: string }> {
+  await ensureAdmin();
+  const admin = createAdminClient();
+
+  // Update name in profile
+  if (data.fullName) {
+    const { error } = await admin
+      .from("user_profiles")
+      .update({ full_name: data.fullName, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+    if (error) return { error: error.message };
+  }
+
+  // Update password in Supabase Auth
+  if (data.password) {
+    const { error } = await admin.auth.admin.updateUserById(userId, {
+      password: data.password,
+    });
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/admin/settings");
+  return {};
+}
+
 export async function createUser(data: {
   email: string;
   password: string;

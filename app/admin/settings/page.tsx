@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { updateSiteSettings } from "@/lib/admin/actions";
-import { getUsers, createUser, updateUserRole, deleteUser } from "@/lib/admin/user-actions";
+import { getUsers, createUser, updateUser, deleteUser } from "@/lib/admin/user-actions";
 import type { SiteSettings, LocalizedString } from "@/types/cms";
 import { SettingsLayout } from "@/components/admin/settings-layout";
 import { Button } from "@/components/ui/button";
@@ -37,8 +37,7 @@ import {
   Users,
   Plus,
   Trash2,
-  Shield,
-  User,
+  Pencil,
 } from "lucide-react";
 
 const L = (en = "", af = ""): LocalizedString => ({ en, af });
@@ -263,9 +262,13 @@ interface UserRow {
 function UsersPanel() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [newUser, setNewUser] = useState({ email: "", password: "", fullName: "", role: "admin" as "admin" | "customer" });
   const [creating, setCreating] = useState(false);
+  const [editUser, setEditUser] = useState<UserRow | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -292,22 +295,38 @@ function UsersPanel() {
       toast.error(result.error);
     } else {
       toast.success("User created.");
-      setDialogOpen(false);
+      setCreateOpen(false);
       setNewUser({ email: "", password: "", fullName: "", role: "admin" });
       load();
     }
     setCreating(false);
   }
 
-  async function handleRoleToggle(user: UserRow) {
-    const newRole = user.role === "admin" ? "customer" : "admin";
-    const result = await updateUserRole(user.id, newRole);
+  function openEdit(user: UserRow) {
+    setEditUser(user);
+    setEditName(user.full_name || "");
+    setEditPassword("");
+  }
+
+  async function handleEdit() {
+    if (!editUser) return;
+    if (!editName.trim()) {
+      toast.error("Name is required.");
+      return;
+    }
+    setSaving(true);
+    const result = await updateUser(editUser.id, {
+      fullName: editName.trim(),
+      password: editPassword || undefined,
+    });
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success(`${user.full_name || user.email} is now ${newRole}.`);
+      toast.success("User updated.");
+      setEditUser(null);
       load();
     }
+    setSaving(false);
   }
 
   async function handleDelete(user: UserRow) {
@@ -326,9 +345,9 @@ function UsersPanel() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Users</h2>
-          <p className="text-sm text-muted-foreground">Manage admin and customer accounts.</p>
+          <p className="text-sm text-muted-foreground">Manage admin accounts.</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="mr-2 h-4 w-4" />
@@ -343,29 +362,6 @@ function UsersPanel() {
               <Field label="Full Name" value={newUser.fullName} onChange={(v) => setNewUser((p) => ({ ...p, fullName: v }))} placeholder="John Smith" />
               <Field label="Email" value={newUser.email} onChange={(v) => setNewUser((p) => ({ ...p, email: v }))} placeholder="john@example.com" />
               <Field label="Password" value={newUser.password} onChange={(v) => setNewUser((p) => ({ ...p, password: v }))} placeholder="Minimum 6 characters" />
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-foreground">Role</label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={newUser.role === "admin" ? "default" : "outline"}
-                    onClick={() => setNewUser((p) => ({ ...p, role: "admin" }))}
-                  >
-                    <Shield className="mr-1.5 h-3.5 w-3.5" />
-                    Admin
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={newUser.role === "customer" ? "default" : "outline"}
-                    onClick={() => setNewUser((p) => ({ ...p, role: "customer" }))}
-                  >
-                    <User className="mr-1.5 h-3.5 w-3.5" />
-                    Customer
-                  </Button>
-                </div>
-              </div>
               <Button onClick={handleCreate} disabled={creating} className="w-full">
                 {creating ? "Creating..." : "Create User"}
               </Button>
@@ -373,6 +369,28 @@ function UsersPanel() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit user dialog */}
+      <Dialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+          </DialogHeader>
+          {editUser && (
+            <div className="space-y-4 pt-2">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground">Email</label>
+                <Input value={editUser.email || ""} disabled className="bg-muted" />
+              </div>
+              <Field label="Full Name" value={editName} onChange={setEditName} placeholder="Full name" />
+              <Field label="New Password" value={editPassword} onChange={setEditPassword} placeholder="Leave blank to keep current" hint="Only fill in if you want to change the password" />
+              <Button onClick={handleEdit} disabled={saving} className="w-full">
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading users...</p>
@@ -407,14 +425,10 @@ function UsersPanel() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleRoleToggle(user)}
-                    title={`Switch to ${user.role === "admin" ? "customer" : "admin"}`}
+                    onClick={() => openEdit(user)}
+                    title="Edit user"
                   >
-                    {user.role === "admin" ? (
-                      <User className="h-4 w-4" />
-                    ) : (
-                      <Shield className="h-4 w-4" />
-                    )}
+                    <Pencil className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
