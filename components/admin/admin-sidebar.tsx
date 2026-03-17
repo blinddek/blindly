@@ -1,22 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   LayoutDashboard,
   Navigation,
   Settings,
   FileText,
-  Globe,
   CalendarDays,
   GraduationCap,
-  Search as SearchIcon,
   Menu,
-  X,
   Mail,
-  UserCog,
-  Image,
+  Image as ImageIcon,
   Layers,
   MapPin,
   Receipt,
@@ -25,11 +22,12 @@ import {
   Users,
   Percent,
   Package,
+  ShoppingCart,
+  ClipboardList,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AdminSignOutButton } from "@/components/auth/admin-sign-out-button";
 import { isEnabled } from "@/config/features";
-import { siteConfig } from "@/config/site";
 import type { UserProfile } from "@/types";
 import type { LucideIcon } from "lucide-react";
 
@@ -61,7 +59,7 @@ function buildSidebarNav(): NavGroup[] {
     contentItems.push({ href: "/admin/blog", label: "Blog", icon: FileText });
   }
   if (isEnabled("portfolio")) {
-    contentItems.push({ href: "/admin/portfolio", label: "Portfolio", icon: Image });
+    contentItems.push({ href: "/admin/portfolio", label: "Portfolio", icon: ImageIcon });
   }
   if (isEnabled("booking")) {
     contentItems.push({ href: "/admin/booking", label: "Booking", icon: CalendarDays });
@@ -75,7 +73,23 @@ function buildSidebarNav(): NavGroup[] {
   if (isEnabled("legalDocs")) {
     contentItems.push({ href: "/admin/legal", label: "Legal Docs", icon: Scale });
   }
-  groups.push({ title: "Content", items: contentItems });
+  if (contentItems.length > 1) {
+    groups.push({ title: "Content", items: contentItems });
+  }
+
+  // Shop
+  const shopItems: NavItem[] = [];
+  if (isEnabled("blindsImport")) {
+    shopItems.push(
+      { href: "/admin/products", label: "Products", icon: Package },
+      { href: "/admin/blinds/pricing", label: "Pricing", icon: Percent },
+    );
+  }
+  shopItems.push(
+    { href: "/admin/shop/orders", label: "Orders", icon: ShoppingCart },
+    { href: "/admin/shop/settings", label: "Shop Settings", icon: ClipboardList },
+  );
+  groups.push({ title: "Shop", items: shopItems });
 
   // Manage
   const manageItems: NavItem[] = [];
@@ -88,12 +102,7 @@ function buildSidebarNav(): NavGroup[] {
   if (isEnabled("clientImport")) {
     manageItems.push({ href: "/admin/clients/import", label: "Client Import", icon: Users });
   }
-  if (isEnabled("blindsImport")) {
-    manageItems.push(
-      { href: "/admin/products", label: "Products", icon: Package },
-      { href: "/admin/blinds/pricing", label: "Pricing", icon: Percent },
-    );
-  }
+  manageItems.push({ href: "/admin/contact", label: "Contact", icon: MessageSquare });
   if (manageItems.length > 0) {
     groups.push({ title: "Manage", items: manageItems });
   }
@@ -104,25 +113,24 @@ function buildSidebarNav(): NavGroup[] {
     { href: "/admin/settings", label: "Site Settings", icon: Settings },
     { href: "/admin/settings/email-templates", label: "Email Settings", icon: Mail },
   ];
-  if (isEnabled("seoAdvanced")) {
-    siteItems.push({ href: "/admin/seo", label: "SEO", icon: SearchIcon });
-  }
   groups.push({ title: "Site", items: siteItems });
 
   return groups;
 }
 
-interface AdminSidebarProps {
-  readonly user: UserProfile;
-}
-
-function SidebarContent({
-  user,
-  onNavClick,
-}: {
+interface SidebarContentProps {
   readonly user: UserProfile;
   readonly onNavClick?: () => void;
-}) {
+  readonly collapsed?: boolean;
+  readonly onToggleCollapse?: () => void;
+}
+
+export function AdminSidebarContent({
+  user: _user,
+  onNavClick,
+  collapsed = false,
+  onToggleCollapse,
+}: SidebarContentProps) {
   const pathname = usePathname();
   const sidebarNav = buildSidebarNav();
 
@@ -133,36 +141,57 @@ function SidebarContent({
   };
 
   return (
-    <>
-      {/* User info */}
-      <div className="border-b px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-            {(user.full_name || "A")
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase()
-              .slice(0, 2)}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium">
-              {user.full_name || "Admin"}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {user.email}
-            </p>
-          </div>
-        </div>
+    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+      {/* Logo / brand */}
+      <div className={cn(
+        "flex h-16 items-center border-b",
+        collapsed ? "justify-center px-3" : "justify-between px-4"
+      )}>
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted transition-colors"
+            aria-label="Expand sidebar"
+          >
+            <Menu className="h-5 w-5 text-muted-foreground" />
+          </button>
+        ) : (
+          <>
+            <Link href="/admin" onClick={onNavClick}>
+              <Image
+                src="/logo-name.png"
+                alt="Blindly Admin"
+                height={32}
+                width={120}
+                className="h-8 w-auto object-contain dark:brightness-0 dark:invert"
+                priority
+              />
+            </Link>
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                aria-label="Collapse sidebar"
+              >
+                <Menu className="h-4 w-4" />
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 overflow-y-auto px-2 py-4">
         {sidebarNav.map((group) => (
-          <div key={group.title} className="mb-6">
-            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {group.title}
-            </p>
+          <div key={group.title} className="mb-4">
+            {!collapsed && (
+              <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                {group.title}
+              </p>
+            )}
+            {collapsed && <div className="my-2 border-t border-border/50" />}
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const Icon = item.icon;
@@ -172,15 +201,17 @@ function SidebarContent({
                     <Link
                       href={item.href}
                       onClick={onNavClick}
+                      title={collapsed ? item.label : undefined}
                       className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                        "flex items-center rounded-lg py-2 text-sm font-medium transition-colors",
+                        collapsed ? "justify-center px-2" : "gap-3 px-3",
                         active
-                          ? "bg-sidebar-accent text-sidebar-foreground"
-                          : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
                     >
                       {Icon && <Icon className="h-4 w-4 shrink-0" />}
-                      {item.label}
+                      {!collapsed && item.label}
                     </Link>
                   </li>
                 );
@@ -189,109 +220,27 @@ function SidebarContent({
           </div>
         ))}
       </nav>
-
-      {/* Bottom actions */}
-      <div className="border-t p-3">
-        <Link
-          href="/admin/account"
-          onClick={onNavClick}
-          className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-        >
-          <UserCog className="h-4 w-4" />
-          My Account
-        </Link>
-        <AdminSignOutButton />
-        <Link
-          href="/"
-          className="mt-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-        >
-          <Globe className="h-4 w-4" />
-          View Site
-        </Link>
-      </div>
-    </>
+    </div>
   );
 }
 
+interface AdminSidebarProps {
+  readonly user: UserProfile;
+}
+
 export function AdminSidebar({ user }: AdminSidebarProps) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const pathname = usePathname();
-
-  const [prevPathname, setPrevPathname] = useState(pathname);
-  if (prevPathname !== pathname) {
-    setPrevPathname(pathname);
-    setMobileOpen(false);
-  }
-
-  useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [mobileOpen]);
-
-  const adminTitle = `${siteConfig.name} Admin`;
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <>
-      {/* Desktop sidebar */}
-      <aside className="hidden h-screen w-64 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
-        <div className="flex h-16 items-center border-b px-6">
-          <Link href="/admin" className="text-lg font-semibold">
-            {adminTitle}
-          </Link>
-        </div>
-        <SidebarContent user={user} />
-      </aside>
-
-      {/* Mobile top bar */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b bg-sidebar px-4 text-sidebar-foreground md:hidden">
-        <button
-          type="button"
-          aria-label="Open navigation"
-          onClick={() => setMobileOpen(true)}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-
-        <Link href="/admin" className="text-base font-semibold">
-          {adminTitle}
-        </Link>
-
-        <div className="w-8" />
-      </div>
-
-      {/* Mobile sidebar overlay */}
-      {mobileOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/60 md:hidden"
-            onClick={() => setMobileOpen(false)}
-            aria-hidden="true"
-          />
-          <aside className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-sidebar text-sidebar-foreground shadow-xl md:hidden">
-            <div className="flex h-14 items-center justify-between border-b px-4">
-              <Link href="/admin" className="text-base font-semibold">
-                {adminTitle}
-              </Link>
-              <button
-                type="button"
-                aria-label="Close navigation"
-                onClick={() => setMobileOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <SidebarContent user={user} onNavClick={() => setMobileOpen(false)} />
-          </aside>
-        </>
-      )}
-    </>
+    <aside className={cn(
+      "sticky top-0 hidden h-screen shrink-0 flex-col border-r lg:flex transition-all duration-200",
+      collapsed ? "w-14" : "w-64"
+    )}>
+      <AdminSidebarContent
+        user={user}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed((c) => !c)}
+      />
+    </aside>
   );
 }
