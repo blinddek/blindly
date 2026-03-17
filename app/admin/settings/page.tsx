@@ -269,8 +269,13 @@ function UsersPanel() {
 
   async function load() {
     setLoading(true);
-    const data = await getUsers();
-    setUsers(data as UserRow[]);
+    try {
+      const data = await getUsers();
+      setUsers(data as UserRow[]);
+    } catch (err) {
+      console.error("Failed to load users:", err);
+      toast.error("Failed to load users. Please refresh.");
+    }
     setLoading(false);
   }
 
