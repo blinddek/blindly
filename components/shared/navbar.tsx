@@ -52,7 +52,7 @@ export function Navbar({ links, settings }: NavbarProps) {
           {settings.cta_url && settings.cta_label && (
             <Link
               href={settings.cta_url}
-              className="rounded-md px-3 py-2 text-base font-semibold text-primary transition-colors hover:text-primary/80"
+              className="ml-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
             >
               {t(settings.cta_label)}
             </Link>
@@ -99,7 +99,7 @@ export function Navbar({ links, settings }: NavbarProps) {
             {settings.cta_url && settings.cta_label && (
               <Link
                 href={settings.cta_url}
-                className="rounded-md px-3 py-3 text-base font-semibold text-primary transition-colors hover:text-primary/80"
+                className="mt-2 mx-3 rounded-md bg-primary px-4 py-3 text-center text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                 onClick={() => setMobileOpen(false)}
               >
                 {t(settings.cta_label)}
