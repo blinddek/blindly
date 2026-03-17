@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { updateSiteSettings } from "@/lib/admin/actions";
-import { getUsers, createUser, updateUserRole, deleteUser } from "@/lib/admin/user-actions";
 import type { SiteSettings, LocalizedString } from "@/types/cms";
 import { SettingsLayout } from "@/components/admin/settings-layout";
 import { Button } from "@/components/ui/button";
@@ -16,14 +15,6 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { LocalizedInput } from "@/components/admin/localized-input";
 import { BusinessHoursEditor } from "@/components/admin/business-hours-editor";
 import { toast } from "sonner";
@@ -34,11 +25,6 @@ import {
   MapPin,
   Share2,
   MousePointerClick,
-  Users,
-  Plus,
-  Trash2,
-  Shield,
-  User,
 } from "lucide-react";
 
 const L = (en = "", af = ""): LocalizedString => ({ en, af });
@@ -59,7 +45,6 @@ const tabs = [
   { key: "maps", label: "Maps", icon: MapPin },
   { key: "social", label: "Social", icon: Share2 },
   { key: "header", label: "Header", icon: MousePointerClick },
-  { key: "users", label: "Users", icon: Users },
 ];
 
 export default function SiteSettingsPage() {
@@ -242,195 +227,9 @@ export default function SiteSettingsPage() {
             </div>
           )}
 
-          {activeTab === "users" && <UsersPanel />}
         </>
       )}
     </SettingsLayout>
-  );
-}
-
-/* ── Users Panel ── */
-
-interface UserRow {
-  id: string;
-  role: string;
-  full_name: string;
-  email: string | null;
-  phone: string | null;
-  created_at: string;
-}
-
-function UsersPanel() {
-  const [users, setUsers] = useState<UserRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ email: "", password: "", fullName: "", role: "admin" as "admin" | "customer" });
-  const [creating, setCreating] = useState(false);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const data = await getUsers();
-      setUsers(data as UserRow[]);
-    } catch (err) {
-      console.error("Failed to load users:", err);
-      toast.error("Failed to load users. Please refresh.");
-    }
-    setLoading(false);
-  }
-
-  useEffect(() => { load(); }, []);
-
-  async function handleCreate() {
-    if (!newUser.email || !newUser.password || !newUser.fullName) {
-      toast.error("All fields are required.");
-      return;
-    }
-    setCreating(true);
-    const result = await createUser(newUser);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("User created.");
-      setDialogOpen(false);
-      setNewUser({ email: "", password: "", fullName: "", role: "admin" });
-      load();
-    }
-    setCreating(false);
-  }
-
-  async function handleRoleToggle(user: UserRow) {
-    const newRole = user.role === "admin" ? "customer" : "admin";
-    const result = await updateUserRole(user.id, newRole);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success(`${user.full_name || user.email} is now ${newRole}.`);
-      load();
-    }
-  }
-
-  async function handleDelete(user: UserRow) {
-    if (!confirm(`Delete ${user.full_name || user.email}? This cannot be undone.`)) return;
-    const result = await deleteUser(user.id);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("User deleted.");
-      load();
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Users</h2>
-          <p className="text-sm text-muted-foreground">Manage admin and customer accounts.</p>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add User
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add User</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <Field label="Full Name" value={newUser.fullName} onChange={(v) => setNewUser((p) => ({ ...p, fullName: v }))} placeholder="John Smith" />
-              <Field label="Email" value={newUser.email} onChange={(v) => setNewUser((p) => ({ ...p, email: v }))} placeholder="john@example.com" />
-              <Field label="Password" value={newUser.password} onChange={(v) => setNewUser((p) => ({ ...p, password: v }))} placeholder="Minimum 6 characters" />
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-foreground">Role</label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={newUser.role === "admin" ? "default" : "outline"}
-                    onClick={() => setNewUser((p) => ({ ...p, role: "admin" }))}
-                  >
-                    <Shield className="mr-1.5 h-3.5 w-3.5" />
-                    Admin
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={newUser.role === "customer" ? "default" : "outline"}
-                    onClick={() => setNewUser((p) => ({ ...p, role: "customer" }))}
-                  >
-                    <User className="mr-1.5 h-3.5 w-3.5" />
-                    Customer
-                  </Button>
-                </div>
-              </div>
-              <Button onClick={handleCreate} disabled={creating} className="w-full">
-                {creating ? "Creating..." : "Create User"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Loading users...</p>
-      ) : users.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No users found.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {users.map((user) => (
-            <Card key={user.id}>
-              <CardContent className="flex items-center justify-between py-3">
-                <div className="min-w-0 space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{user.full_name || "—"}</span>
-                    <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                      {user.role}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {user.email} &middot; Joined{" "}
-                    {new Date(user.created_at).toLocaleDateString("en-ZA", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRoleToggle(user)}
-                    title={`Switch to ${user.role === "admin" ? "customer" : "admin"}`}
-                  >
-                    {user.role === "admin" ? (
-                      <User className="h-4 w-4" />
-                    ) : (
-                      <Shield className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(user)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
