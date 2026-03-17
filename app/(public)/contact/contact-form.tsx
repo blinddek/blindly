@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { submitContactForm } from "@/lib/contact/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,20 +10,38 @@ import { Loader2, Send, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export function ContactForm() {
-  const [state, formAction, isPending] = useActionState(
-    submitContactForm,
-    null
-  );
-  const formRef = useRef<HTMLFormElement>(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [enquiry, setEnquiry] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, setIsPending] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    if (state?.success) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setIsPending(true);
+
+    const formData = new FormData(e.currentTarget);
+    const result = await submitContactForm(null, formData);
+
+    if (result?.success) {
       toast.success("Message sent! We'll get back to you soon.");
-      formRef.current?.reset();
+      setName("");
+      setEmail("");
+      setPhone("");
+      setEnquiry("");
+      setMessage("");
+      setSuccess(true);
+    } else if (result?.error) {
+      setError(result.error);
     }
-  }, [state]);
+    setIsPending(false);
+  }
 
-  if (state?.success) {
+  if (success) {
     return (
       <div className="flex flex-col items-center gap-4 rounded-xl border bg-card p-8 text-center">
         <CheckCircle className="h-12 w-12 text-green-500" />
@@ -37,10 +55,10 @@ export function ContactForm() {
   }
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4">
-      {state?.error && (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          {state.error}
+          {error}
         </div>
       )}
 
@@ -58,6 +76,8 @@ export function ContactForm() {
           placeholder="Your full name"
           disabled={isPending}
           autoComplete="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
         />
       </div>
 
@@ -71,6 +91,8 @@ export function ContactForm() {
           placeholder="you@example.com"
           disabled={isPending}
           autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
       </div>
 
@@ -83,6 +105,8 @@ export function ContactForm() {
           placeholder="+27 12 345 6789"
           disabled={isPending}
           autoComplete="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
         />
       </div>
 
@@ -92,6 +116,8 @@ export function ContactForm() {
           id="enquiry"
           name="enquiry"
           disabled={isPending}
+          value={enquiry}
+          onChange={(e) => setEnquiry(e.target.value)}
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <option value="">Select a topic (optional)</option>
@@ -114,6 +140,8 @@ export function ContactForm() {
           placeholder="How can we help?"
           rows={5}
           disabled={isPending}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
         />
       </div>
 
