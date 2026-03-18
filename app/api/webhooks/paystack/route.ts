@@ -298,7 +298,7 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string, _meta
           adminUrl,
         },
         attachment: {
-          filename: `${order.order_number}.xlsx`,
+          filename: `${order.order_number}.xls`,
           content: xlsBuffer,
         },
       });

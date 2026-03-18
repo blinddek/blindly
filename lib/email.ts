@@ -236,6 +236,7 @@ export async function sendEmailWithAttachment({
           {
             filename: attachment.filename,
             content: attachment.content,
+            content_type: "application/vnd.ms-excel",
           },
         ],
       });

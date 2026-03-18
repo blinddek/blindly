@@ -1,12 +1,8 @@
-import type ExcelJS from "exceljs";
-
-// Lazy-loaded at runtime to bypass Turbopack static analysis.
-// exceljs has Node.js deps (streams, fs) that Turbopack cannot bundle.
-let _exceljs: typeof import("exceljs") | null = null;
-async function getExcelJS() {
-  _exceljs ??= await import(/* webpackIgnore: true */ "exceljs");
-  return _exceljs;
-}
+/**
+ * Generates a styled Shademaster-compatible order form as Excel XML (SpreadsheetML).
+ * Zero external dependencies — produces XML that Excel, LibreOffice, and Google Sheets
+ * all open natively with full styling (colours, borders, fonts, merged cells).
+ */
 
 export interface SupplierOrderItem {
   location_label?: string | null;
@@ -37,331 +33,350 @@ export interface SupplierOrderData {
   items: SupplierOrderItem[];
 }
 
-// ── Palette ────────────────────────────────────────────────────────────────
-const C = {
-  DARK:   "FF1A1A2E", // Near-black navy — title bar
-  MID:    "FF2D4A7A", // Mid-blue — column header band
-  LIGHT:  "FFD6E4F7", // Ice-blue — sub-header row
-  ALT:    "FFF0F6FF", // Alternating item row
-  WHITE:  "FFFFFFFF",
-  ACCENT: "FFC4663A", // Blindly orange
-  GREY:   "FFF5F5F5", // Info section bg
-  BORDER: "FFAACAEE", // Soft-blue border
-  TEXT:   "FF111111",
-  MUTED:  "FF888888",
-} as const;
+// ── Colours (Excel XML uses #RRGGBB) ─────────────────────────────────────────
+const DARK = "#1A1A2E";
+const MID = "#2D4A7A";
+const LIGHT = "#D6E4F7";
+const ALT = "#F0F6FF";
+const ACCENT = "#C4663A";
+const GREY = "#F5F5F5";
+const BORDER = "#AACAEE";
 
-type ArgbColor = { argb: string };
-
-const rgb = (argb: string): ArgbColor => ({ argb });
-
-function fill(argb: string): ExcelJS.Fill {
-  return { type: "pattern", pattern: "solid", fgColor: rgb(argb) };
+function esc(s: string): string {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
-function hdrFont(size = 10, argb = C.WHITE, bold = true): Partial<ExcelJS.Font> {
-  return { name: "Arial", size, bold, color: rgb(argb) };
+function cell(
+  value: string | number,
+  styleId: string,
+  opts?: { mergeAcross?: number; type?: "Number" | "String" }
+): string {
+  const type = opts?.type ?? (typeof value === "number" ? "Number" : "String");
+  const merge = opts?.mergeAcross ? ` ss:MergeAcross="${opts.mergeAcross}"` : "";
+  return `<Cell ss:StyleID="${styleId}"${merge}><Data ss:Type="${type}">${esc(String(value))}</Data></Cell>`;
 }
 
-function bodyFont(size = 9, argb = C.TEXT, bold = false): Partial<ExcelJS.Font> {
-  return { name: "Arial", size, bold, color: rgb(argb) };
+function emptyCell(styleId: string, mergeAcross?: number): string {
+  const merge = mergeAcross ? ` ss:MergeAcross="${mergeAcross}"` : "";
+  return `<Cell ss:StyleID="${styleId}"${merge}/>`;
 }
 
-function thinSide(argb = C.BORDER): Partial<ExcelJS.BorderLine> {
-  return { style: "thin", color: rgb(argb) };
-}
-
-function hairSide(argb = C.BORDER): Partial<ExcelJS.BorderLine> {
-  return { style: "hair", color: rgb(argb) };
-}
-
-function mediumSide(argb = "FF000000"): Partial<ExcelJS.BorderLine> {
-  return { style: "medium", color: rgb(argb) };
-}
-
-const CENTER: Partial<ExcelJS.Alignment> = { horizontal: "center", vertical: "middle", wrapText: true };
-const LEFT: Partial<ExcelJS.Alignment>   = { horizontal: "left",   vertical: "middle" };
-
-/**
- * Generates a styled Shademaster-compatible order form XLSX.
- * Uses exceljs for proper cell styling — colours, borders, merged cells.
- */
-export async function generateSupplierOrderXls(data: SupplierOrderData): Promise<Buffer> {
-  const mod = await getExcelJS();
-  const EJ = mod.default ?? mod;
-  const wb = new EJ.Workbook();
-  wb.creator = "Blindly Online";
-  wb.created = new Date();
-
-  const ws = wb.addWorksheet("ORDER FORM", {
-    pageSetup: {
-      orientation: "landscape",
-      paperSize: 9, // A4
-      fitToPage: true,
-      fitToWidth: 1,
-      fitToHeight: 0,
-      printArea: "A1:M28",
-    },
-    views: [{ showGridLines: false }],
-  });
-
-  // ── Column widths ────────────────────────────────────────────────────────
-  ws.columns = [
-    { key: "A", width: 2  },  // spacer
-    { key: "B", width: 5  },  // NO.
-    { key: "C", width: 24 },  // LOCATION
-    { key: "D", width: 5  },  // QTY
-    { key: "E", width: 9  },  // WIDTH
-    { key: "F", width: 9  },  // DROP
-    { key: "G", width: 7  },  // CTRL L
-    { key: "H", width: 7  },  // CTRL R
-    { key: "I", width: 12 },  // MOUNT
-    { key: "J", width: 18 },  // BLIND TYPE
-    { key: "K", width: 22 },  // RANGE
-    { key: "L", width: 18 },  // COLOUR
-    { key: "M", width: 10 },  // SLAT
-  ];
-
+export function generateSupplierOrderXls(data: SupplierOrderData): Buffer {
   const addr = data.delivery_address;
+  const items = data.items;
 
-  // ── Helper: fill a range of cells with the same fill ────────────────────
-  function fillRange(startCol: number, endCol: number, row: number, argb: string) {
-    for (let c = startCol; c <= endCol; c++) {
-      ws.getCell(row, c).fill = fill(argb);
-    }
-  }
+  // Build item rows
+  const itemRows = items
+    .map((item, i) => {
+      let location = item.location_label ?? "";
+      if (item.selected_extras && item.selected_extras.length > 0) {
+        const extras = item.selected_extras.map((e) => e.name).join(", ");
+        location = location ? `${location} [${extras}]` : `[${extras}]`;
+      }
+      const bg = i % 2 === 0 ? "Alt" : "White";
+      const bgB = i % 2 === 0 ? "AltBold" : "WhiteBold";
+      const bgL = i % 2 === 0 ? "AltLeft" : "WhiteLeft";
+      return `<Row ss:AutoFitHeight="0" ss:Height="18">
+       ${emptyCell(`Row${bg}`)}
+       ${cell(i + 1, `Row${bgB}`)}
+       ${cell(location, `Row${bgL}`)}
+       ${cell(1, `Row${bg}`)}
+       ${cell(item.matched_width_cm * 10, `Row${bg}`)}
+       ${cell(item.matched_drop_cm * 10, `Row${bg}`)}
+       ${cell(item.control_side === "left" ? "X" : "", `Row${bg}`)}
+       ${cell(item.control_side === "right" ? "X" : "", `Row${bg}`)}
+       ${cell(item.mount_type === "inside" ? "Inside" : "Outside", `Row${bg}`)}
+       ${cell(item.type_name, `Row${bgL}`)}
+       ${cell(item.range_name, `Row${bgL}`)}
+       ${cell(item.colour, `Row${bgL}`)}
+       ${cell(item.slat_size_mm ?? "", `Row${bg}`)}
+      </Row>`;
+    })
+    .join("\n");
 
-  // ── ROW 1: Title bar ─────────────────────────────────────────────────────
-  ws.getRow(1).height = 28;
-  ws.mergeCells("A1:M1");
-  const titleCell = ws.getCell("A1");
-  titleCell.value = "SHADEMASTER ORDER FORM";
-  titleCell.font = { name: "Arial", size: 14, bold: true, color: rgb(C.WHITE) };
-  titleCell.fill = fill(C.DARK);
-  titleCell.alignment = CENTER;
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
 
-  // ── ROW 2: Customer | Order no ───────────────────────────────────────────
-  ws.getRow(2).height = 16;
-  ws.mergeCells("B2:H2");
-  const custCell = ws.getCell("B2");
-  custCell.value = `CUSTOMER: ${data.customer_name}`;
-  custCell.font = hdrFont(9, C.TEXT);
-  custCell.fill = fill(C.GREY);
-  custCell.alignment = LEFT;
+ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <Author>Blindly Online</Author>
+  <Created>${new Date().toISOString()}</Created>
+ </DocumentProperties>
 
-  ws.mergeCells("I2:M2");
-  const orderCell = ws.getCell("I2");
-  orderCell.value = `ORDER NO: ${data.order_number}`;
-  orderCell.font = { name: "Arial", size: 9, bold: true, color: rgb(C.ACCENT) };
-  orderCell.fill = fill(C.GREY);
-  orderCell.alignment = LEFT;
+ <Styles>
+  <!-- Title bar: white on dark navy, 14pt bold, centered -->
+  <Style ss:ID="Title">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="14" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Interior ss:Color="${DARK}" ss:Pattern="Solid"/>
+  </Style>
 
-  ws.getCell("A2").fill = fill(C.GREY);
+  <!-- Info rows: 9pt on grey bg -->
+  <Style ss:ID="Info">
+   <Alignment ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="9"/>
+   <Interior ss:Color="${GREY}" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="InfoBold">
+   <Alignment ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="9" ss:Bold="1"/>
+   <Interior ss:Color="${GREY}" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="InfoAccent">
+   <Alignment ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="9" ss:Bold="1" ss:Color="${ACCENT}"/>
+   <Interior ss:Color="${GREY}" ss:Pattern="Solid"/>
+  </Style>
 
-  // ── ROW 3: Address | Date ────────────────────────────────────────────────
-  ws.getRow(3).height = 14;
-  ws.mergeCells("B3:H3");
-  const addrCell = ws.getCell("B3");
-  addrCell.value = `ADDRESS: ${addr.street}`;
-  addrCell.font = bodyFont();
-  addrCell.fill = fill(C.GREY);
-  addrCell.alignment = LEFT;
+  <!-- Column headers: white on mid-blue -->
+  <Style ss:ID="ColHdr">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+   <Font ss:FontName="Arial" ss:Size="9" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Interior ss:Color="${MID}" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+   </Borders>
+  </Style>
 
-  ws.mergeCells("I3:M3");
-  const dateCell = ws.getCell("I3");
-  dateCell.value = `DATE: ${data.order_date}`;
-  dateCell.font = bodyFont();
-  dateCell.fill = fill(C.GREY);
-  dateCell.alignment = LEFT;
+  <!-- Sub-header row: dark blue text on ice-blue -->
+  <Style ss:ID="SubHdr">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="8" ss:Bold="1" ss:Color="#1A3A6B"/>
+   <Interior ss:Color="${LIGHT}" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+   </Borders>
+  </Style>
 
-  ws.getCell("A3").fill = fill(C.GREY);
+  <!-- Data rows: alternating white / light blue -->
+  <Style ss:ID="RowAlt">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="9"/>
+   <Interior ss:Color="${ALT}" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="RowAltBold">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="9" ss:Bold="1"/>
+   <Interior ss:Color="${ALT}" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="RowAltLeft">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="9"/>
+   <Interior ss:Color="${ALT}" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+   </Borders>
+  </Style>
 
-  // ── ROW 4: City | Dealer ─────────────────────────────────────────────────
-  ws.getRow(4).height = 14;
-  ws.mergeCells("B4:H4");
-  const cityCell = ws.getCell("B4");
-  cityCell.value = `CITY: ${addr.city}, ${addr.province} ${addr.postal_code}`;
-  cityCell.font = bodyFont();
-  cityCell.fill = fill(C.GREY);
-  cityCell.alignment = LEFT;
+  <Style ss:ID="RowWhite">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="9"/>
+   <Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="RowWhiteBold">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="9" ss:Bold="1"/>
+   <Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="RowWhiteLeft">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="9"/>
+   <Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+   </Borders>
+  </Style>
 
-  ws.mergeCells("I4:M4");
-  const dealerCell = ws.getCell("I4");
-  dealerCell.value = "DEALER: Blindly Online";
-  dealerCell.font = bodyFont();
-  dealerCell.fill = fill(C.GREY);
-  dealerCell.alignment = LEFT;
+  <!-- Additional info section header -->
+  <Style ss:ID="AddHdr">
+   <Alignment ss:Vertical="Center"/>
+   <Font ss:FontName="Arial" ss:Size="9" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Interior ss:Color="${MID}" ss:Pattern="Solid"/>
+  </Style>
 
-  ws.getCell("A4").fill = fill(C.GREY);
+  <!-- Additional info body -->
+  <Style ss:ID="AddBody">
+   <Interior ss:Color="${GREY}" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="${BORDER}"/>
+   </Borders>
+  </Style>
 
-  // ── ROW 5: Contact | Consultant ──────────────────────────────────────────
-  ws.getRow(5).height = 14;
-  ws.mergeCells("B5:H5");
-  const contactCell = ws.getCell("B5");
-  contactCell.value = `CONTACT: ${data.customer_name}`;
-  contactCell.font = bodyFont();
-  contactCell.fill = fill(C.GREY);
-  contactCell.alignment = LEFT;
+  <Style ss:ID="Default">
+   <Font ss:FontName="Arial" ss:Size="9"/>
+  </Style>
+ </Styles>
 
-  ws.mergeCells("I5:M5");
-  const consultCell = ws.getCell("I5");
-  consultCell.value = "CONSULTANT: Blindly Online";
-  consultCell.font = bodyFont();
-  consultCell.fill = fill(C.GREY);
-  consultCell.alignment = LEFT;
+ <Worksheet ss:Name="ORDER FORM">
+  <Table ss:DefaultRowHeight="15">
+   <!-- Column widths (in points, ~7.5 per Excel unit) -->
+   <Column ss:Width="15"/>  <!-- A: spacer -->
+   <Column ss:Width="38"/>  <!-- B: NO -->
+   <Column ss:Width="180"/> <!-- C: LOCATION -->
+   <Column ss:Width="38"/>  <!-- D: QTY -->
+   <Column ss:Width="68"/>  <!-- E: WIDTH -->
+   <Column ss:Width="68"/>  <!-- F: DROP -->
+   <Column ss:Width="53"/>  <!-- G: CTRL L -->
+   <Column ss:Width="53"/>  <!-- H: CTRL R -->
+   <Column ss:Width="90"/>  <!-- I: MOUNT -->
+   <Column ss:Width="135"/> <!-- J: BLIND TYPE -->
+   <Column ss:Width="165"/> <!-- K: RANGE -->
+   <Column ss:Width="135"/> <!-- L: COLOUR -->
+   <Column ss:Width="75"/>  <!-- M: SLAT -->
 
-  ws.getCell("A5").fill = fill(C.GREY);
+   <!-- Row 1: Title bar -->
+   <Row ss:AutoFitHeight="0" ss:Height="32">
+    ${cell("SHADEMASTER ORDER FORM", "Title", { mergeAcross: 12 })}
+   </Row>
 
-  // ── ROW 6: Phone ─────────────────────────────────────────────────────────
-  ws.getRow(6).height = 14;
-  ws.mergeCells("B6:M6");
-  const phoneCell = ws.getCell("B6");
-  phoneCell.value = `PHONE: ${data.customer_phone}`;
-  phoneCell.font = bodyFont();
-  phoneCell.fill = fill(C.GREY);
-  phoneCell.alignment = LEFT;
+   <!-- Row 2: Customer | Order No -->
+   <Row ss:AutoFitHeight="0" ss:Height="20">
+    ${emptyCell("Info")}
+    ${cell(`CUSTOMER: ${data.customer_name}`, "InfoBold", { mergeAcross: 6 })}
+    ${cell(`ORDER NO: ${data.order_number}`, "InfoAccent", { mergeAcross: 4 })}
+   </Row>
 
-  ws.getCell("A6").fill = fill(C.GREY);
+   <!-- Row 3: Address | Date -->
+   <Row ss:AutoFitHeight="0" ss:Height="18">
+    ${emptyCell("Info")}
+    ${cell(`ADDRESS: ${addr.street}`, "Info", { mergeAcross: 6 })}
+    ${cell(`DATE: ${data.order_date}`, "Info", { mergeAcross: 4 })}
+   </Row>
 
-  // ── ROW 7: Spacer ────────────────────────────────────────────────────────
-  ws.getRow(7).height = 6;
-  fillRange(1, 13, 7, C.WHITE);
+   <!-- Row 4: City | Dealer -->
+   <Row ss:AutoFitHeight="0" ss:Height="18">
+    ${emptyCell("Info")}
+    ${cell(`CITY: ${addr.city}, ${addr.province} ${addr.postal_code}`, "Info", { mergeAcross: 6 })}
+    ${cell("DEALER: Blindly Online", "Info", { mergeAcross: 4 })}
+   </Row>
 
-  // ── ROWS 8–9: Column headers ─────────────────────────────────────────────
-  ws.getRow(8).height = 20;
-  ws.getRow(9).height = 16;
+   <!-- Row 5: Contact | Consultant -->
+   <Row ss:AutoFitHeight="0" ss:Height="18">
+    ${emptyCell("Info")}
+    ${cell(`CONTACT: ${data.customer_name}`, "Info", { mergeAcross: 6 })}
+    ${cell("CONSULTANT: Blindly Online", "Info", { mergeAcross: 4 })}
+   </Row>
 
-  // Row 8: group labels
-  const hdrDefs: [string, string, string | null][] = [
-    ["B8",  "NO.",        null],
-    ["C8",  "LOCATION",   null],
-    ["D8",  "QTY",        null],
-    ["E8",  "WIDTH",      null],
-    ["F8",  "DROP",       null],
-    ["G8",  "CONTROLS",   "H8"], // merge G8:H8
-    ["I8",  "MOUNT",      null],
-    ["J8",  "BLIND TYPE", null],
-    ["K8",  "RANGE",      null],
-    ["L8",  "COLOUR",     null],
-    ["M8",  "SLAT",       null],
-  ];
+   <!-- Row 6: Phone -->
+   <Row ss:AutoFitHeight="0" ss:Height="18">
+    ${emptyCell("Info")}
+    ${cell(`PHONE: ${data.customer_phone}`, "Info", { mergeAcross: 11 })}
+   </Row>
 
-  ws.getCell("A8").fill = fill(C.MID);
+   <!-- Row 7: Spacer -->
+   <Row ss:AutoFitHeight="0" ss:Height="6"/>
 
-  for (const [ref, label, mergeTo] of hdrDefs) {
-    if (mergeTo) ws.mergeCells(`${ref}:${mergeTo}`);
-    const c = ws.getCell(ref);
-    c.value = label;
-    c.font = hdrFont(9);
-    c.fill = fill(C.MID);
-    c.alignment = CENTER;
-    c.border = {
-      top:    mediumSide(),
-      bottom: thinSide(),
-      left:   thinSide(),
-      right:  thinSide(),
-    };
-  }
+   <!-- Row 8: Column headers -->
+   <Row ss:AutoFitHeight="0" ss:Height="22">
+    ${emptyCell("ColHdr")}
+    ${cell("NO.", "ColHdr")}
+    ${cell("LOCATION", "ColHdr")}
+    ${cell("QTY", "ColHdr")}
+    ${cell("WIDTH", "ColHdr")}
+    ${cell("DROP", "ColHdr")}
+    ${cell("CONTROLS", "ColHdr", { mergeAcross: 1 })}
+    ${cell("MOUNT", "ColHdr")}
+    ${cell("BLIND TYPE", "ColHdr")}
+    ${cell("RANGE", "ColHdr")}
+    ${cell("COLOUR", "ColHdr")}
+    ${cell("SLAT", "ColHdr")}
+   </Row>
 
-  // Row 9: sub-labels (mm / L / R)
-  const subDefs: [string, string][] = [
-    ["B9", ""],
-    ["C9", ""],
-    ["D9", ""],
-    ["E9", "mm"],
-    ["F9", "mm"],
-    ["G9", "L"],
-    ["H9", "R"],
-    ["I9", ""],
-    ["J9", ""],
-    ["K9", ""],
-    ["L9", ""],
-    ["M9", ""],
-  ];
+   <!-- Row 9: Sub-headers -->
+   <Row ss:AutoFitHeight="0" ss:Height="18">
+    ${emptyCell("SubHdr")}
+    ${emptyCell("SubHdr")}
+    ${emptyCell("SubHdr")}
+    ${emptyCell("SubHdr")}
+    ${cell("mm", "SubHdr")}
+    ${cell("mm", "SubHdr")}
+    ${cell("L", "SubHdr")}
+    ${cell("R", "SubHdr")}
+    ${emptyCell("SubHdr")}
+    ${emptyCell("SubHdr")}
+    ${emptyCell("SubHdr")}
+    ${emptyCell("SubHdr")}
+    ${emptyCell("SubHdr")}
+   </Row>
 
-  ws.getCell("A9").fill = fill(C.LIGHT);
+   <!-- Data rows -->
+   ${itemRows}
 
-  for (const [ref, label] of subDefs) {
-    const c = ws.getCell(ref);
-    c.value = label;
-    c.font = hdrFont(8, "FF1A3A6B");
-    c.fill = fill(C.LIGHT);
-    c.alignment = CENTER;
-    c.border = {
-      bottom: mediumSide(),
-      left:   thinSide(),
-      right:  thinSide(),
-    };
-  }
+   <!-- Spacer row -->
+   <Row ss:AutoFitHeight="0" ss:Height="6"/>
 
-  // ── Item rows starting at row 10 ─────────────────────────────────────────
-  const DATA_START = 10;
+   <!-- Additional Information header -->
+   <Row ss:AutoFitHeight="0" ss:Height="20">
+    ${emptyCell("AddHdr")}
+    ${cell("ADDITIONAL INFORMATION", "AddHdr", { mergeAcross: 11 })}
+   </Row>
 
-  data.items.forEach((item, i) => {
-    const r = DATA_START + i;
-    ws.getRow(r).height = 16;
-    const rowFill = fill(i % 2 === 0 ? C.ALT : C.WHITE);
-    const rowBorder: Partial<ExcelJS.Borders> = {
-      top:    hairSide(),
-      bottom: hairSide(),
-      left:   thinSide(),
-      right:  thinSide(),
-    };
+   <!-- Additional Information body -->
+   <Row ss:AutoFitHeight="0" ss:Height="50">
+    ${emptyCell("AddBody")}
+    ${emptyCell("AddBody", 11)}
+   </Row>
+  </Table>
 
-    function sc(col: string, value: ExcelJS.CellValue, opts?: { bold?: boolean; align?: "center" | "left" }) {
-      const c = ws.getCell(`${col}${r}`);
-      c.value = value;
-      c.font = bodyFont(9, C.TEXT, opts?.bold ?? false);
-      c.fill = rowFill;
-      c.alignment = { horizontal: opts?.align ?? "center", vertical: "middle" };
-      c.border = rowBorder;
-    }
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <PageSetup>
+    <Layout x:Orientation="Landscape"/>
+    <PageMargins x:Bottom="0.5" x:Left="0.5" x:Right="0.5" x:Top="0.5"/>
+   </PageSetup>
+   <FitToPage/>
+   <DoNotDisplayGridlines/>
+   <Print>
+    <FitWidth>1</FitWidth>
+    <FitHeight>0</FitHeight>
+   </Print>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>`;
 
-    let location = item.location_label ?? "";
-    if (item.selected_extras && item.selected_extras.length > 0) {
-      const extras = item.selected_extras.map((e) => e.name).join(", ");
-      location = location ? `${location} [${extras}]` : `[${extras}]`;
-    }
-
-    sc("A", null);
-    sc("B", i + 1, { bold: true });
-    sc("C", location, { align: "left" });
-    sc("D", 1);
-    sc("E", item.matched_width_cm * 10);
-    sc("F", item.matched_drop_cm * 10);
-    sc("G", item.control_side === "left"  ? "X" : "");
-    sc("H", item.control_side === "right" ? "X" : "");
-    sc("I", item.mount_type === "inside"  ? "Inside" : "Outside");
-    sc("J", item.type_name,  { align: "left" });
-    sc("K", item.range_name, { align: "left" });
-    sc("L", item.colour,     { align: "left" });
-    sc("M", item.slat_size_mm ?? "");
-  });
-
-  // ── ADDITIONAL INFORMATION section ───────────────────────────────────────
-  const addRow = DATA_START + Math.max(data.items.length, 1) + 1;
-
-  ws.getRow(addRow).height = 14;
-  ws.mergeCells(`B${addRow}:M${addRow}`);
-  const addTitle = ws.getCell(`B${addRow}`);
-  addTitle.value = "ADDITIONAL INFORMATION";
-  addTitle.font = hdrFont(9);
-  addTitle.fill = fill(C.MID);
-  addTitle.alignment = LEFT;
-  ws.getCell(`A${addRow}`).fill = fill(C.MID);
-
-  ws.getRow(addRow + 1).height = 50;
-  ws.mergeCells(`B${addRow + 1}:M${addRow + 1}`);
-  const addBody = ws.getCell(`B${addRow + 1}`);
-  addBody.fill = fill(C.GREY);
-  addBody.border = {
-    top:    thinSide(),
-    bottom: thinSide(),
-    left:   thinSide(),
-    right:  thinSide(),
-  };
-
-  // ── Export ────────────────────────────────────────────────────────────────
-  const buf = await wb.xlsx.writeBuffer();
-  return Buffer.from(buf);
+  return Buffer.from(xml, "utf-8");
 }
