@@ -6,7 +6,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  serverExternalPackages: ["exceljs"],
+  outputFileTracingIncludes: {
+    "/api/webhooks/paystack": ["./node_modules/exceljs/**/*"],
+  },
   images: {
     remotePatterns: [
       {
