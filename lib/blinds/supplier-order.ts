@@ -87,8 +87,9 @@ const LEFT: Partial<ExcelJS.Alignment>   = { horizontal: "left",   vertical: "mi
  * Uses exceljs for proper cell styling — colours, borders, merged cells.
  */
 export async function generateSupplierOrderXls(data: SupplierOrderData): Promise<Buffer> {
-  const exceljs = await getExcelJS();
-  const wb = new exceljs.Workbook();
+  const mod = await getExcelJS();
+  const EJ = mod.default ?? mod;
+  const wb = new EJ.Workbook();
   wb.creator = "Blindly Online";
   wb.created = new Date();
 
