@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Trash2, ShoppingCart, ArrowRight, Plus, Copy } from "lucide-react";
+import { Trash2, ShoppingCart, ArrowRight, Plus, Copy, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useBlindCart, type BlindCartItem } from "@/components/blinds/blind-cart-provider";
@@ -32,7 +32,7 @@ function sameBlindUrl(item: BlindCartItem): string {
 }
 
 export default function CartPage() {
-  const { items, hydrated, removeItem, subtotalCents, vatCents, grandTotalCents } = useBlindCart();
+  const { items, hydrated, removeItem, updateLabel, subtotalCents, vatCents, grandTotalCents } = useBlindCart();
   const [discountRate, setDiscountRate] = useState(0);
   const [rulesLoaded, setRulesLoaded] = useState(false);
 
@@ -136,6 +136,20 @@ export default function CartPage() {
                     ))}
                   </div>
                 )}
+
+                <div className="mt-3">
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
+                    <MapPin className="size-3" />
+                    Room / window location
+                  </label>
+                  <input
+                    type="text"
+                    value={item.location_label ?? ""}
+                    onChange={(e) => updateLabel(item.id, e.target.value)}
+                    placeholder="e.g. Kitchen, Bedroom 2, Lounge left"
+                    className="w-full rounded-md border bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
 
                 <div className="mt-4 flex items-center justify-between gap-4 border-t pt-3">
                   <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
