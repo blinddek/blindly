@@ -179,7 +179,7 @@ export default function BlindlyOrderConfirmation({
           </Text>
 
           <Text style={footer}>
-            Questions? Reply to this email and we&apos;ll be happy to help.
+            Questions? Email us at info@nortier.co.za and we&apos;ll be happy to help.
             — The {siteConfig.name} Team
           </Text>
         </Container>

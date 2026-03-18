@@ -238,6 +238,7 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string, _meta
     await sendEmail({
       to: order.customer_email,
       template: "blindly_order_confirmation",
+      replyTo: "info@nortier.co.za",
       props: {
         customerName: order.customer_name,
         orderNumber: order.order_number,
