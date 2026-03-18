@@ -12,8 +12,8 @@ import type { WelcomeProps } from "@/lib/email-types";
 
 export default function Welcome({ clientName, portalUrl }: WelcomeProps) {
   return (
-    <BaseLayout preview={`Welcome to Yoros, ${clientName}! Your portal is ready.`}>
-      <Text style={styles.h1}>Welcome to Yoros, {clientName}!</Text>
+    <BaseLayout preview={`Welcome to Blindly, ${clientName}! Your account is ready.`}>
+      <Text style={styles.h1}>Welcome to Blindly, {clientName}!</Text>
 
       <Text style={styles.paragraph}>
         We&apos;re thrilled to have you on board. Your client portal is set up and

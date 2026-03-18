@@ -23,7 +23,7 @@ interface OrderConfirmationProps {
 
 export default function OrderConfirmation({
   customerName = "Customer",
-  orderReference = "YOROS-XXXXXXXX-0000",
+  orderReference = "BLINDLY-XXXXXXXX-0000",
   items = [],
   subtotal = "R 0.00",
   shipping = "R 0.00",

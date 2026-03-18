@@ -31,7 +31,7 @@ const LocaleContext = createContext<LocaleContextType>({
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => {
     if (globalThis.localStorage !== undefined) {
-      const stored = globalThis.localStorage.getItem("yoros-lang");
+      const stored = globalThis.localStorage.getItem("blindly-lang");
       if (stored === "en" || stored === "af") return stored;
     }
     return "en";
@@ -43,7 +43,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);
-    localStorage.setItem("yoros-lang", next);
+    localStorage.setItem("blindly-lang", next);
     document.documentElement.lang = next;
   }, []);
 

@@ -62,12 +62,12 @@ export function Footer({ sections, settings }: FooterProps) {
           <p className="text-xs text-muted-foreground/60">
             Built by{" "}
             <a
-              href="https://yoros.co.za"
+              href="https://nortier.co.za"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-muted-foreground transition-colors"
             >
-              Yoros
+              Nortier
             </a>
           </p>
         </div>

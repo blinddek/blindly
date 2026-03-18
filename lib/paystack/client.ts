@@ -177,7 +177,7 @@ export async function createSubscription(
 
 export function generateReference(quoteId: string): string {
   const short = quoteId.replaceAll("-", "").slice(0, 8).toUpperCase();
-  return `YOROS-${short}-${Date.now()}`;
+  return `BLINDLY-${short}-${Date.now()}`;
 }
 
 // ---------------------------------------------------------------------------

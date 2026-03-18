@@ -19,7 +19,7 @@ interface AdminNewOrderProps {
 }
 
 export default function AdminNewOrder({
-  orderReference = "YOROS-XXXXXXXX-0000",
+  orderReference = "BLINDLY-XXXXXXXX-0000",
   customerEmail = "customer@example.com",
   total = "R 0.00",
   itemCount = 0,
