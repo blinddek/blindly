@@ -475,6 +475,7 @@ export default function BlindCheckoutPage() {
     if (step === 1) {
       if (!form.name.trim()) return "Please enter your full name.";
       if (!form.email.trim()) return "Please enter your email address.";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return "Please enter a valid email address.";
       if (!form.phone.trim()) return "Please enter your phone number.";
     }
     if (step === 2) {

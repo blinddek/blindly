@@ -51,10 +51,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { items, customer, delivery_address, delivery_type, distance_km, customer_notes } = body;
+  const { items, delivery_address, delivery_type, distance_km, customer_notes } = body;
+  const customer = {
+    name: body.customer?.name?.trim() ?? "",
+    email: body.customer?.email?.trim().toLowerCase() ?? "",
+    phone: body.customer?.phone?.trim() ?? "",
+  };
 
-  if (!items?.length || !customer?.email || !customer?.name || !customer?.phone) {
+  if (!items?.length || !customer.email || !customer.name || !customer.phone) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) {
+    return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
   }
 
   // Re-validate prices server-side for every item
