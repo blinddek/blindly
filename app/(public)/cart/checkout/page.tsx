@@ -325,7 +325,7 @@ function Step4Notes({ notes, onChange }: Readonly<{ notes: string; onChange: (v:
 
 export default function BlindCheckoutPage() {
   const router = useRouter();
-  const { items, hydrated, grandTotalCents, subtotalCents, vatCents } = useBlindCart();
+  const { items, hydrated, clearCart, grandTotalCents, subtotalCents, vatCents } = useBlindCart();
 
   const [step, setStep] = useState(1);
   const [manualEntry, setManualEntry] = useState(false);
@@ -547,7 +547,7 @@ export default function BlindCheckoutPage() {
       }
       sessionStorage.setItem("blindly_order_ref", data.reference);
       try { localStorage.removeItem("blindly_checkout"); } catch { /* ignore */ }
-      // Cart cleared on success page
+      clearCart();
       globalThis.location.href = data.authorization_url;
     } catch {
       setError("Something went wrong. Please try again.");
