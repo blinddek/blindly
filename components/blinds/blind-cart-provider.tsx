@@ -104,9 +104,9 @@ export function BlindCartProvider({ children }: Readonly<{ children: ReactNode }
   const clearCart = useCallback(() => setItems([]), []);
 
   const totalItems = items.length;
-  const subtotalCents = items.reduce((s, i) => s + i.customer_price_cents, 0);
-  const vatCents = items.reduce((s, i) => s + i.vat_cents, 0);
-  const grandTotalCents = items.reduce((s, i) => s + i.total_with_vat_cents, 0);
+  const subtotalCents = items.reduce((s, i) => s + i.customer_price_cents + i.extras_cents, 0);
+  const vatCents = Math.round(subtotalCents * 0.15);
+  const grandTotalCents = subtotalCents + vatCents;
 
   const value = useMemo<BlindCartContextValue>(
     () => ({
