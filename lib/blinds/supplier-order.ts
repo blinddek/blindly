@@ -140,5 +140,6 @@ export function generateSupplierOrderXls(data: SupplierOrderData): Buffer {
 
   XLSX.utils.book_append_sheet(wb, ws, "ORDER FORM");
 
-  return XLSX.write(wb, { type: "buffer", bookType: "xls" }) as Buffer;
+  const output = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  return Buffer.from(output);
 }
