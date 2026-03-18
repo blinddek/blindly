@@ -43,14 +43,19 @@ export function generateSupplierOrderXls(data: SupplierOrderData): Buffer {
     "public/templates/shademaster-order.xls"
   );
 
-  if (!fs.existsSync(templatePath)) {
-    throw new Error(
-      "Supplier order template not found at public/templates/shademaster-order.xls"
-    );
-  }
+  let wb: XLSX.WorkBook;
+  let ws: XLSX.WorkSheet;
 
-  const wb = XLSX.readFile(templatePath);
-  const ws = wb.Sheets["ORDER FORM"];
+  if (fs.existsSync(templatePath)) {
+    wb = XLSX.readFile(templatePath);
+    ws = wb.Sheets["ORDER FORM"];
+  } else {
+    // Fallback: create XLS from scratch when template is not available
+    console.warn("[supplier-order] Template not found, generating from scratch");
+    wb = XLSX.utils.book_new();
+    ws = XLSX.utils.aoa_to_sheet([]);
+    XLSX.utils.book_append_sheet(wb, ws, "ORDER FORM");
+  }
 
   function setCell(addr: string, value: string | number) {
     if (!ws[addr]) ws[addr] = { t: typeof value === "number" ? "n" : "s" };
