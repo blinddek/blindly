@@ -1,7 +1,12 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
-// Dynamic require bypasses Turbopack static analysis — exceljs has Node.js
-// dependencies (streams, fs) that Turbopack cannot bundle.
-const ExcelJS = require("exceljs") as typeof import("exceljs");
+import type ExcelJS from "exceljs";
+
+// Lazy-loaded at runtime to bypass Turbopack static analysis.
+// exceljs has Node.js deps (streams, fs) that Turbopack cannot bundle.
+let _exceljs: typeof import("exceljs") | null = null;
+async function getExcelJS() {
+  _exceljs ??= await import(/* webpackIgnore: true */ "exceljs");
+  return _exceljs;
+}
 
 export interface SupplierOrderItem {
   location_label?: string | null;
@@ -82,7 +87,8 @@ const LEFT: Partial<ExcelJS.Alignment>   = { horizontal: "left",   vertical: "mi
  * Uses exceljs for proper cell styling — colours, borders, merged cells.
  */
 export async function generateSupplierOrderXls(data: SupplierOrderData): Promise<Buffer> {
-  const wb = new ExcelJS.Workbook();
+  const exceljs = await getExcelJS();
+  const wb = new exceljs.Workbook();
   wb.creator = "Blindly Online";
   wb.created = new Date();
 
