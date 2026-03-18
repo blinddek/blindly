@@ -1,5 +1,3 @@
-import path from "path";
-import fs from "fs";
 import * as XLSX from "xlsx";
 
 export interface SupplierOrderItem {
@@ -32,78 +30,115 @@ export interface SupplierOrderData {
 }
 
 /**
- * Fills the Shademaster order form template with order data
- * and returns the filled workbook as a Buffer.
- *
- * Template must exist at: public/templates/shademaster-order.xls
+ * Generates a Shademaster-style order form XLS from scratch.
+ * No template file needed — works on any platform including Vercel serverless.
  */
 export function generateSupplierOrderXls(data: SupplierOrderData): Buffer {
-  const templatePath = path.join(
-    process.cwd(),
-    "public/templates/shademaster-order.xls"
-  );
+  const wb = XLSX.utils.book_new();
 
-  let wb: XLSX.WorkBook;
-  let ws: XLSX.WorkSheet;
+  // Build rows as array-of-arrays
+  const rows: (string | number)[][] = [];
+  const addr = data.delivery_address;
 
-  if (fs.existsSync(templatePath)) {
-    wb = XLSX.readFile(templatePath);
-    ws = wb.Sheets["ORDER FORM"];
-  } else {
-    // Fallback: create XLS from scratch when template is not available
-    console.warn("[supplier-order] Template not found, generating from scratch");
-    wb = XLSX.utils.book_new();
-    ws = XLSX.utils.aoa_to_sheet([]);
-    XLSX.utils.book_append_sheet(wb, ws, "ORDER FORM");
-  }
+  // ── Header section ──────────────────────────────────────────
+  // Row 1: Title
+  rows.push(["", "SHADEMASTER ORDER FORM"]);
+  // Row 2: Customer / Order number
+  rows.push(["", `Customer: ${data.customer_name}`, "", "", "", "", "", "", "", "", `Order: ${data.order_number}`]);
+  // Row 3: blank
+  rows.push([]);
+  // Row 4: Address / Date
+  rows.push(["", `Address: ${addr.street}`, "", "", "", "", "", "", "", "", `Date: ${data.order_date}`]);
+  // Row 5: blank
+  rows.push([]);
+  // Row 6: City
+  rows.push(["", `City: ${addr.city}, ${addr.province} ${addr.postal_code}`]);
+  // Row 7: blank
+  rows.push([]);
+  // Row 8: Contact / Dealer
+  rows.push(["", `Contact: ${data.customer_name}`, "", "", "", "", "", "", "", "", "Dealer: Blindly Online"]);
+  // Row 9: blank
+  rows.push([]);
+  // Row 10: Phone
+  rows.push(["", `Phone: ${data.customer_phone}`]);
+  // Row 11-12: blank
+  rows.push([]);
+  rows.push([]);
 
-  function setCell(addr: string, value: string | number) {
-    if (!ws[addr]) ws[addr] = { t: typeof value === "number" ? "n" : "s" };
-    ws[addr].v = value;
-    ws[addr].t = typeof value === "number" ? "n" : "s";
-  }
+  // Row 13: Column headers
+  rows.push([
+    "",        // A
+    "NO.",     // B
+    "LOCATION",// C
+    "QTY",     // D
+    "WIDTH",   // E
+    "DROP",    // F
+    "CTRL-L",  // G
+    "CTRL-R",  // H
+    "MOUNT",   // I
+    "",        // J
+    "",        // K
+    "",        // L
+    "BLIND TYPE", // M
+    "RANGE",   // N
+    "COLOUR",  // O
+    "SLAT (mm)", // P
+  ]);
 
-  // ── Header fields ──────────────────────────────────────────
-  setCell("B2", data.customer_name);
-  setCell("K2", data.order_number);
-  setCell("B4", data.delivery_address.street);
-  setCell("K4", data.order_date);
-  setCell("B6", `${data.delivery_address.city}, ${data.delivery_address.province} ${data.delivery_address.postal_code}`);
-  setCell("B8", data.customer_name);
-  setCell("K8", "Blindly Online");
-  setCell("B10", data.customer_phone);
+  // Row 14: blank separator
+  rows.push([]);
 
-  // ── Item rows (Excel rows 15–34, 0-indexed rows 14–33) ─────
-  // Columns: B=NO, C=LOCATION, D=QTY, E=WIDTH, F=DROP,
-  //          G=CTRL-L, H=CTRL-R, M=BLIND TYPE, N=RANGE,
-  //          O=COLOUR, P=SLAT WIDTH
+  // ── Item rows ───────────────────────────────────────────────
   data.items.forEach((item, i) => {
-    if (i >= 20) return; // template only has 20 rows
-    const row = 15 + i; // Excel row number
-    const r = row - 1;  // 0-indexed
-
-    const ec = (col: number) => XLSX.utils.encode_cell({ r, c: col });
-
-    setCell(ec(1), i + 1);                                   // B: NO.
-    setCell(ec(2), item.location_label ?? "");               // C: LOCATION
-    setCell(ec(3), 1);                                       // D: QTY
-    setCell(ec(4), item.matched_width_cm * 10);              // E: WIDTH mm
-    setCell(ec(5), item.matched_drop_cm * 10);               // F: DROP mm
-    setCell(ec(6), item.control_side === "left" ? "X" : ""); // G: CTRL L
-    setCell(ec(7), item.control_side === "right" ? "X" : "");// H: CTRL R
-    setCell(ec(12), item.type_name);                         // M: BLIND TYPE
-    setCell(ec(13), item.range_name);                        // N: RANGE
-    setCell(ec(14), item.colour);                            // O: COLOUR
-    if (item.slat_size_mm) {
-      setCell(ec(15), item.slat_size_mm);                    // P: SLAT WIDTH
-    }
-    // Note accessories in location field if any
+    let location = item.location_label ?? "";
     if (item.selected_extras && item.selected_extras.length > 0) {
       const extrasNote = item.selected_extras.map((e) => e.name).join(", ");
-      const loc = item.location_label ? `${item.location_label} [${extrasNote}]` : `[${extrasNote}]`;
-      setCell(ec(2), loc);
+      location = location ? `${location} [${extrasNote}]` : `[${extrasNote}]`;
     }
+
+    rows.push([
+      "",                                                // A
+      i + 1,                                             // B: NO.
+      location,                                          // C: LOCATION
+      1,                                                 // D: QTY
+      item.matched_width_cm * 10,                        // E: WIDTH mm
+      item.matched_drop_cm * 10,                         // F: DROP mm
+      item.control_side === "left" ? "X" : "",           // G: CTRL-L
+      item.control_side === "right" ? "X" : "",          // H: CTRL-R
+      item.mount_type === "inside" ? "Inside" : "Outside", // I: MOUNT
+      "",                                                // J
+      "",                                                // K
+      "",                                                // L
+      item.type_name,                                    // M: BLIND TYPE
+      item.range_name,                                   // N: RANGE
+      item.colour,                                       // O: COLOUR
+      item.slat_size_mm ?? "",                           // P: SLAT WIDTH
+    ]);
   });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Set column widths for readability
+  ws["!cols"] = [
+    { wch: 2 },   // A
+    { wch: 5 },   // B: NO.
+    { wch: 22 },  // C: LOCATION
+    { wch: 5 },   // D: QTY
+    { wch: 8 },   // E: WIDTH
+    { wch: 8 },   // F: DROP
+    { wch: 7 },   // G: CTRL-L
+    { wch: 7 },   // H: CTRL-R
+    { wch: 9 },   // I: MOUNT
+    { wch: 3 },   // J
+    { wch: 18 },  // K
+    { wch: 3 },   // L
+    { wch: 16 },  // M: BLIND TYPE
+    { wch: 18 },  // N: RANGE
+    { wch: 16 },  // O: COLOUR
+    { wch: 10 },  // P: SLAT
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, "ORDER FORM");
 
   return XLSX.write(wb, { type: "buffer", bookType: "xls" }) as Buffer;
 }

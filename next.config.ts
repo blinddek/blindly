@@ -6,10 +6,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Include template files in serverless function bundles (Vercel)
-  outputFileTracingIncludes: {
-    "/api/webhooks/paystack": ["./public/templates/**/*"],
-  },
   images: {
     remotePatterns: [
       {
