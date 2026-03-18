@@ -1,6 +1,6 @@
 /**
  * Unified email sender — Resend API primary, SMTP fallback.
- * Replaces Yoros's lib/resend/client.ts.
+ * Resend API primary, SMTP fallback.
  *
  * Usage:
  *   import { sendEmail, notifyAdmin } from "@/lib/email";

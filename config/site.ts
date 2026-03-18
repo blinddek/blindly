@@ -2,8 +2,8 @@
  * Master site configuration — controls tier, features, branding, and locale.
  *
  * Every visible string, image, and colour comes from DB or this config.
- * The setup script (`scripts/setup.sh`) or `scripts/setup-from-yoros.ts`
- * generates this file from the project manifest.
+ * The setup script (`scripts/setup.sh`) generates this file
+ * from the project manifest.
  */
 
 export type Tier = "brochure" | "business" | "commerce";

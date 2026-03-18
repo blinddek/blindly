@@ -1,6 +1,6 @@
 /**
  * CMS types for the client template.
- * Stripped of Yoros-specific types (pricing tiers, quote wizard, etc.)
+ * CMS types for Blindly.
  */
 
 // ─── Localization ─────────────────────────────────────────

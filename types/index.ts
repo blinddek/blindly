@@ -1,6 +1,6 @@
 /**
  * Shared TypeScript types for the client template.
- * Stripped of Yoros-specific types (quotes, milestones, onboarding, reviews, etc.)
+ * Shared TypeScript types for Blindly.
  */
 
 // ─── Auth & Users ─────────────────────────────────────────

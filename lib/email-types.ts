@@ -1,6 +1,6 @@
 /**
  * Email template types for the client template.
- * Stripped down from Yoros's 30+ templates to just the template-relevant set.
+ * Email template types for Blindly.
  */
 
 export type EmailTemplate =

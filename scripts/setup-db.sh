@@ -235,7 +235,7 @@ fi
 
 # ── Print plan ───────────────────────────────────────────────
 echo -e "${CYAN}╔══════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║         Yoros Template — DB Setup            ║${NC}"
+echo -e "${CYAN}║         Blindly — DB Setup                   ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  Tier:     ${GREEN}${TIER}${NC}"

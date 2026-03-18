@@ -155,7 +155,7 @@ create policy "page_seo: admin write"
 
 -- ============================================================
 -- homepage_sections — flexible homepage content blocks
--- Replaces Yoros-specific how_it_works_steps + homepage_services
+-- Flexible homepage content blocks
 -- ============================================================
 create table if not exists public.homepage_sections (
   id             uuid primary key default gen_random_uuid(),
