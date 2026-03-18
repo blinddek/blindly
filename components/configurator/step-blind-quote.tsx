@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Loader2, RefreshCw, ShoppingCart, Check } from "lucide-react";
 import type { SelectedExtra } from "@/types/blinds";
 import type {
@@ -23,6 +24,7 @@ interface Props {
   readonly selectedExtras: SelectedExtra[];
   readonly onRecalculate: () => void;
   readonly onAddToCart: () => void;
+  readonly onChangeLocationLabel: (v: string) => void;
 }
 
 function formatRand(cents: number): string {
@@ -43,6 +45,7 @@ export function StepBlindQuote({
   selectedExtras,
   onRecalculate,
   onAddToCart,
+  onChangeLocationLabel,
 }: Props) {
   const [added, setAdded] = useState(false);
 
@@ -115,6 +118,15 @@ export function StepBlindQuote({
           </dd>
           <dt className="text-muted-foreground">Control Side</dt>
           <dd className="font-medium capitalize">{state.control_side}</dd>
+          <dt className="text-muted-foreground">Room / Location</dt>
+          <dd>
+            <Input
+              value={state.location_label}
+              onChange={(e) => onChangeLocationLabel(e.target.value)}
+              placeholder="e.g. Master Bedroom"
+              className="h-7 text-sm"
+            />
+          </dd>
         </dl>
       </div>
 

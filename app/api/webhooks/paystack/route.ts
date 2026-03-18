@@ -234,6 +234,7 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string, _meta
   const addr = order.delivery_address as Record<string, string> ?? {};
 
   // 1. Customer confirmation email
+  console.log("[webhook] Sending customer confirmation to", order.customer_email);
   try {
     await sendEmail({
       to: order.customer_email,
@@ -252,14 +253,17 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string, _meta
         deliveryType: order.delivery_type,
       },
     });
+    console.log("[webhook] Customer confirmation sent OK");
   } catch (err) {
     console.error("[webhook] Failed to send customer confirmation:", err);
   }
 
   // 2. Supplier order email with XLS attachment
   const supplierEmail = process.env.SUPPLIER_EMAIL;
+  console.log("[webhook] SUPPLIER_EMAIL:", supplierEmail ? `${supplierEmail} (set)` : "NOT SET");
   if (supplierEmail) {
     try {
+      console.log("[webhook] Generating supplier XLS for", order.order_number, "with", orderItems.length, "items");
       const xlsBuffer = await generateSupplierOrderXls({
         order_number: order.order_number,
         order_date: new Date().toLocaleDateString("en-ZA"),
@@ -273,6 +277,7 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string, _meta
         },
         items: orderItems,
       });
+      console.log("[webhook] XLS generated:", xlsBuffer.length, "bytes");
 
       await sendEmailWithAttachment({
         to: supplierEmail,
@@ -297,6 +302,7 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string, _meta
           content: xlsBuffer,
         },
       });
+      console.log("[webhook] Supplier order email sent to", supplierEmail);
     } catch (err) {
       console.error("[webhook] Failed to send supplier order:", err);
     }

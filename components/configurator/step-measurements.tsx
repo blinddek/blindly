@@ -11,10 +11,12 @@ interface Props {
   dropMm: number;
   mountType: "inside" | "outside";
   controlSide: "left" | "right";
+  locationLabel: string;
   onChangeWidth: (v: number) => void;
   onChangeDrop: (v: number) => void;
   onChangeMountType: (v: "inside" | "outside") => void;
   onChangeControlSide: (v: "left" | "right") => void;
+  onChangeLocationLabel: (v: string) => void;
   selectedType?: TypeOption;
 }
 
@@ -23,10 +25,12 @@ export function StepMeasurements({
   dropMm,
   mountType,
   controlSide,
+  locationLabel,
   onChangeWidth,
   onChangeDrop,
   onChangeMountType,
   onChangeControlSide,
+  onChangeLocationLabel,
   selectedType,
 }: Props) {
   const [widthStr, setWidthStr] = useState(String(widthMm));
@@ -47,6 +51,21 @@ export function StepMeasurements({
 
   return (
     <div className="space-y-6">
+      {/* Room / location label */}
+      <div className="space-y-2">
+        <Label htmlFor="blind-location">What room is this blind for?</Label>
+        <Input
+          id="blind-location"
+          type="text"
+          placeholder="e.g. Master Bedroom, Kitchen Window 2"
+          value={locationLabel}
+          onChange={(e) => onChangeLocationLabel(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          Optional — helps identify each blind during installation.
+        </p>
+      </div>
+
       {/* Mount type */}
       <div className="space-y-3">
         <div>

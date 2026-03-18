@@ -64,6 +64,7 @@ export interface BlindState {
   width_mm: number;
   drop_mm: number;
   control_side: "left" | "right";
+  location_label: string;
 }
 
 export interface BlindPriceResult {
@@ -84,6 +85,7 @@ const INITIAL_STATE: BlindState = {
   width_mm: 900,
   drop_mm: 1500,
   control_side: "left",
+  location_label: "",
 };
 
 const STEP_LABELS = ["Type", "Range", "Colour", "Measurements", "Accessories", "Quote"];
@@ -222,6 +224,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
       width_mm: state.width_mm,
       drop_mm: state.drop_mm,
       control_side: state.control_side,
+      location_label: state.location_label || undefined,
       matched_width_cm: quote.matched_width_cm,
       matched_drop_cm: quote.matched_drop_cm,
       customer_price_cents: quote.customer_price_cents,
@@ -330,10 +333,12 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
               dropMm={state.drop_mm}
               mountType={state.mount_type}
               controlSide={state.control_side}
+              locationLabel={state.location_label}
               onChangeWidth={(v) => update({ width_mm: v })}
               onChangeDrop={(v) => update({ drop_mm: v })}
               onChangeMountType={(v) => update({ mount_type: v })}
               onChangeControlSide={(v) => update({ control_side: v })}
+              onChangeLocationLabel={(v) => update({ location_label: v })}
               selectedType={types.find((t) => t.id === state.type_id)}
             />
           )}
@@ -358,6 +363,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
               selectedExtras={selectedExtras}
               onRecalculate={calculatePrice}
               onAddToCart={handleAddToCart}
+              onChangeLocationLabel={(v) => update({ location_label: v })}
             />
           )}
         </CardContent>
