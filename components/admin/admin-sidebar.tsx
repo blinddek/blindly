@@ -86,7 +86,7 @@ function buildSidebarNav(unreadContacts = 0): NavGroup[] {
     );
   }
   shopItems.push(
-    { href: "/admin/shop/orders", label: "Orders", icon: ShoppingCart },
+    { href: "/admin/blinds/orders", label: "Orders", icon: ShoppingCart },
   );
   groups.push({ title: "Shop", items: shopItems });
 

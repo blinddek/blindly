@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ContactSubmission, NewsletterSubscriber, BlogPost, PortfolioItem, ActivityLogEntry } from "@/types";
+import type { BlindlyOrder, BlindlyOrderWithItems, BlindlyOrderItem } from "@/types/blinds";
 
 // ---------- Blindly Shop Dashboard ----------
 
@@ -314,4 +315,83 @@ export async function getSiteSettings(): Promise<Record<string, unknown>> {
     .single();
 
   return (data?.content as Record<string, unknown>) ?? {};
+}
+
+// ---------- Blindly Orders (Admin) ----------
+
+export async function getAllBlindlyOrders(): Promise<BlindlyOrder[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("blindly_orders")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[getAllBlindlyOrders]", error.message);
+    return [];
+  }
+  return (data ?? []) as BlindlyOrder[];
+}
+
+export async function getBlindlyOrderWithItems(
+  orderId: string
+): Promise<BlindlyOrderWithItems | null> {
+  const admin = createAdminClient();
+
+  const { data: order, error: orderError } = await admin
+    .from("blindly_orders")
+    .select("*")
+    .eq("id", orderId)
+    .single();
+
+  if (orderError || !order) {
+    console.error("[getBlindlyOrderWithItems]", orderError?.message);
+    return null;
+  }
+
+  const { data: items, error: itemsError } = await admin
+    .from("blindly_order_items")
+    .select("*")
+    .eq("order_id", orderId)
+    .order("display_order");
+
+  if (itemsError) {
+    console.error("[getBlindlyOrderWithItems] items", itemsError.message);
+  }
+
+  // Fetch range names for each item
+  const rangeIds = [...new Set((items ?? []).map((i: BlindlyOrderItem) => i.blind_range_id))];
+  let rangeNameMap = new Map<string, string>();
+  if (rangeIds.length > 0) {
+    const { data: ranges } = await admin
+      .from("blind_ranges")
+      .select("id, name, blind_type_id")
+      .in("id", rangeIds);
+
+    if (ranges?.length) {
+      const typeIds = [...new Set(ranges.map((r: { blind_type_id: string }) => r.blind_type_id))];
+      const { data: types } = await admin
+        .from("blind_types")
+        .select("id, name")
+        .in("id", typeIds);
+      const typeNameMap = new Map((types ?? []).map((t: { id: string; name: string }) => [t.id, t.name]));
+
+      rangeNameMap = new Map(
+        ranges.map((r: { id: string; name: string; blind_type_id: string }) => [
+          r.id,
+          `${typeNameMap.get(r.blind_type_id) ?? "Blind"} — ${r.name}`,
+        ])
+      );
+    }
+  }
+
+  const enrichedItems = (items ?? []).map((item: BlindlyOrderItem) => ({
+    ...item,
+    range_display_name: rangeNameMap.get(item.blind_range_id) ?? "Unknown Range",
+  }));
+
+  return {
+    ...(order as BlindlyOrder),
+    items: enrichedItems as BlindlyOrderItem[],
+  };
 }

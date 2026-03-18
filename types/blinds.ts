@@ -240,6 +240,8 @@ export interface BlindlyOrder {
   installation_fee_cents: number;
   vat_cents: number;
   total_cents: number;
+  discount_rate: number;
+  discount_cents: number;
   paystack_reference: string | null;
   paystack_access_code: string | null;
   payment_status: PaymentStatus;

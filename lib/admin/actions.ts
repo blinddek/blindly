@@ -111,6 +111,55 @@ export async function updateProjectUrls(
   return {};
 }
 
+// ---------- Update Blindly Order Status ----------
+
+const VALID_ORDER_STATUSES = [
+  "new", "confirmed", "ordered_from_supplier", "shipped", "delivered", "installed", "cancelled",
+] as const;
+
+export async function updateBlindlyOrderStatus(
+  orderId: string,
+  orderStatus: string
+): Promise<{ error?: string }> {
+  const auth = await requireAdmin();
+  if ("error" in auth) return { error: auth.error };
+
+  if (!VALID_ORDER_STATUSES.includes(orderStatus as typeof VALID_ORDER_STATUSES[number])) {
+    return { error: `Invalid order status: ${orderStatus}` };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("blindly_orders")
+    .update({ order_status: orderStatus, updated_at: new Date().toISOString() })
+    .eq("id", orderId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/admin/blinds/orders");
+  revalidatePath(`/admin/blinds/orders/${orderId}`);
+  return {};
+}
+
+// ---------- Update Blindly Admin Notes ----------
+
+export async function updateBlindlyAdminNotes(
+  orderId: string,
+  adminNotes: string
+): Promise<{ error?: string }> {
+  const auth = await requireAdmin();
+  if ("error" in auth) return { error: auth.error };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("blindly_orders")
+    .update({ admin_notes: adminNotes, updated_at: new Date().toISOString() })
+    .eq("id", orderId);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/admin/blinds/orders/${orderId}`);
+  return {};
+}
+
 // ---------- Update Site Settings ----------
 
 export async function updateSiteSettings(
