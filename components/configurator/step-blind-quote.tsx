@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Loader2, RefreshCw, ShoppingCart, Check } from "lucide-react";
 import type { SelectedExtra } from "@/types/blinds";
 import type {
@@ -120,11 +119,11 @@ export function StepBlindQuote({
           <dd className="font-medium capitalize">{state.control_side}</dd>
           <dt className="text-muted-foreground">Room / Location</dt>
           <dd>
-            <Input
+            <input
               value={state.location_label}
               onChange={(e) => onChangeLocationLabel(e.target.value)}
               placeholder="e.g. Master Bedroom"
-              className="h-7 text-sm"
+              className="w-full bg-transparent font-medium text-sm border-b border-dashed border-muted-foreground/30 focus:border-primary focus:outline-none py-0.5 placeholder:text-muted-foreground/40"
             />
           </dd>
         </dl>
