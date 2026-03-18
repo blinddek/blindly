@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Menu, X, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
-import { LanguageSelector } from "@/components/shared/language-selector";
+// import { LanguageSelector } from "@/components/shared/language-selector";
 import { NavbarAuthButton } from "@/components/shared/navbar-auth-button";
 import { useLocale } from "@/lib/locale";
 import { CartIcon } from "@/components/shop/cart-icon";
@@ -62,7 +62,7 @@ export function Navbar({ links, settings }: NavbarProps) {
 
         {/* Desktop actions */}
         <div className="hidden items-center gap-1 md:flex">
-          <LanguageSelector />
+          {/* <LanguageSelector /> */}
           <ThemeToggle />
           <CartButton />
           <div className="mx-1 h-5 w-px bg-border" />
@@ -113,7 +113,7 @@ export function Navbar({ links, settings }: NavbarProps) {
             )}
             <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
               <div className="flex items-center gap-1">
-                <LanguageSelector />
+                {/* <LanguageSelector /> */}
                 <ThemeToggle />
                 <CartButton />
               </div>
