@@ -260,7 +260,7 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string, _meta
   const supplierEmail = process.env.SUPPLIER_EMAIL;
   if (supplierEmail) {
     try {
-      const xlsBuffer = generateSupplierOrderXls({
+      const xlsBuffer = await generateSupplierOrderXls({
         order_number: order.order_number,
         order_date: new Date().toLocaleDateString("en-ZA"),
         customer_name: order.customer_name,
