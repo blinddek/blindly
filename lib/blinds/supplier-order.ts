@@ -1,4 +1,7 @@
-import ExcelJS from "exceljs";
+/* eslint-disable @typescript-eslint/no-require-imports */
+// Dynamic require bypasses Turbopack static analysis — exceljs has Node.js
+// dependencies (streams, fs) that Turbopack cannot bundle.
+const ExcelJS = require("exceljs") as typeof import("exceljs");
 
 export interface SupplierOrderItem {
   location_label?: string | null;
