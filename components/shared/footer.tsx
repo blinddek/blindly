@@ -59,7 +59,7 @@ export function Footer({ sections, settings }: FooterProps) {
             <p className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()}{" "}
               <a
-                href="https://nortier.co.za"
+                href="https://nortiercupboards.co.za"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-foreground transition-colors"
