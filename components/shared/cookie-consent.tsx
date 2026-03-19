@@ -3,9 +3,12 @@
 import { useSyncExternalStore, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-const CONSENT_KEY = "yt-cookie-consent";
+const CONSENT_KEY = "blindly-cookie-consent";
 
-const emptySubscribe = () => () => {};
+function subscribe(callback: () => void) {
+  globalThis.addEventListener("storage", callback);
+  return () => globalThis.removeEventListener("storage", callback);
+}
 
 function getConsentSnapshot(): boolean {
   return !globalThis.localStorage?.getItem(CONSENT_KEY);
@@ -22,7 +25,7 @@ function getServerSnapshot(): boolean {
  */
 export function CookieConsent() {
   const needsBanner = useSyncExternalStore(
-    emptySubscribe,
+    subscribe,
     getConsentSnapshot,
     getServerSnapshot,
   );
