@@ -64,7 +64,7 @@ export function Footer({ sections, settings }: FooterProps) {
                 rel="noopener noreferrer"
                 className="hover:text-foreground transition-colors"
               >
-                Nortier Cupboards (Pty) Ltd
+                Nortier Cupboards
               </a>{" "}
               {t({ en: "trading as", af: "handeldrywend as" })}{" "}
               <span className="font-semibold text-foreground">Blindly</span>.{" "}
