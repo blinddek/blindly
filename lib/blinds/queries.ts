@@ -12,12 +12,32 @@ import type {
 
 export async function getCategories(): Promise<BlindCategory[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data: categories } = await supabase
     .from("blind_categories")
     .select("*")
     .eq("is_active", true)
     .order("display_order");
-  return (data as BlindCategory[]) ?? [];
+  if (!categories?.length) return [];
+
+  // Only return categories that have at least one type with priced ranges
+  const { data: pricedRanges } = await supabase
+    .from("blind_ranges")
+    .select("blind_type_id")
+    .eq("is_active", true)
+    .not("starting_price_cents", "is", null);
+  if (!pricedRanges?.length) return [];
+
+  const pricedTypeIds = new Set(pricedRanges.map((r) => r.blind_type_id));
+
+  const { data: types } = await supabase
+    .from("blind_types")
+    .select("id, category_id")
+    .in("id", [...pricedTypeIds])
+    .eq("is_active", true);
+  const categoriesWithPricing = new Set(types?.map((t) => t.category_id));
+  return (categories as BlindCategory[]).filter((c) =>
+    categoriesWithPricing.has(c.id)
+  );
 }
 
 export async function getCategoryBySlug(
@@ -39,13 +59,23 @@ export async function getTypesByCategory(
   categoryId: string
 ): Promise<BlindType[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data: types } = await supabase
     .from("blind_types")
     .select("*")
     .eq("category_id", categoryId)
     .eq("is_active", true)
     .order("display_order");
-  return (data as BlindType[]) ?? [];
+  if (!types?.length) return [];
+
+  // Only return types that have at least one priced range
+  const { data: pricedRanges } = await supabase
+    .from("blind_ranges")
+    .select("blind_type_id")
+    .in("blind_type_id", types.map((t) => t.id))
+    .eq("is_active", true)
+    .not("starting_price_cents", "is", null);
+  const typesWithPricing = new Set(pricedRanges?.map((r) => r.blind_type_id));
+  return (types as BlindType[]).filter((t) => typesWithPricing.has(t.id));
 }
 
 export async function getTypeBySlug(slug: string): Promise<BlindType | null> {
@@ -68,6 +98,7 @@ export async function getRangesByType(typeId: string): Promise<BlindRange[]> {
     .select("*")
     .eq("blind_type_id", typeId)
     .eq("is_active", true)
+    .not("starting_price_cents", "is", null)
     .order("display_order");
   return (data as BlindRange[]) ?? [];
 }
