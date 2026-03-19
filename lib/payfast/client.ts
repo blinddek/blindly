@@ -67,16 +67,15 @@ function generateSignature(
   passphrase: string
 ): string {
   // 1. Build param string from data (excluding signature & empty values)
-  //    PayFast requires RAW (unencoded) values in the signature string.
-  //    The browser form POST handles URL encoding separately.
+  //    PayFast checkout requires URL-encoded values in doc-specified field order.
   const paramString = Object.entries(data)
     .filter(([key, val]) => key !== "signature" && val !== "")
-    .map(([key, val]) => `${key}=${val.trim()}`)
+    .map(([key, val]) => `${key}=${encodeURIComponent(val.trim()).replace(/%20/g, "+")}`)
     .join("&");
 
   // 2. Append passphrase if set (non-empty)
   const sigString = passphrase
-    ? `${paramString}&passphrase=${passphrase.trim()}`
+    ? `${paramString}&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, "+")}`
     : paramString;
 
   // 3. MD5 hash
