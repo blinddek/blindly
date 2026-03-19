@@ -66,13 +66,13 @@ function generateSignature(
   data: Record<string, string>,
   passphrase: string
 ): string {
-  // 1. Build param string from data (excluding signature itself)
+  // 1. Build param string from data (excluding signature & empty values)
   const paramString = Object.entries(data)
-    .filter(([key]) => key !== "signature")
+    .filter(([key, val]) => key !== "signature" && val !== "")
     .map(([key, val]) => `${key}=${encodeURIComponent(val.trim()).replace(/%20/g, "+")}`)
     .join("&");
 
-  // 2. Append passphrase if set
+  // 2. Append passphrase if set (non-empty)
   const sigString = passphrase
     ? `${paramString}&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, "+")}`
     : paramString;
@@ -119,8 +119,19 @@ export function buildPayFastForm(params: PayFastPaymentParams): PayFastFormData 
       : {}),
   };
 
+  // Remove empty values before signing (PayFast requires this)
+  for (const key of Object.keys(data)) {
+    if (data[key] === "") delete data[key];
+  }
+
   // Sign
   data.signature = generateSignature(data, config.passphrase);
+
+  console.log("[payfast] Signature input:", Object.entries(data)
+    .filter(([k]) => k !== "signature")
+    .map(([k, v]) => `${k}=${v}`)
+    .join("&"));
+  console.log("[payfast] Generated signature:", data.signature);
 
   return {
     action: getPayFastUrl(),
