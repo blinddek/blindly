@@ -51,25 +51,26 @@ export function Footer({ sections, settings }: FooterProps) {
         )}
 
         <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
-          <div className="flex items-center gap-3">
-            <Image src="/logo-icon.png" alt="" width={48} height={48} className="h-12 w-auto dark:brightness-0 dark:invert" />
-            <Image src="/logo-name.png" alt={settings.logo_text} width={200} height={60} className="h-14 w-auto dark:brightness-0 dark:invert" />
+          <div className="flex flex-col items-center gap-2 md:items-start">
+            <div className="flex items-center gap-3">
+              <Image src="/logo-icon.png" alt="" width={48} height={48} className="h-12 w-auto dark:brightness-0 dark:invert" />
+              <Image src="/logo-name.png" alt={settings.logo_text} width={200} height={60} className="h-14 w-auto dark:brightness-0 dark:invert" />
+            </div>
             <p className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} {settings.company_name}.{" "}
+              &copy; {new Date().getFullYear()}{" "}
+              <a
+                href="https://nortier.co.za"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+              >
+                Nortier Cupboards (Pty) Ltd
+              </a>{" "}
+              {t({ en: "trading as", af: "handeldrywend as" })}{" "}
+              <span className="font-semibold text-foreground">Blindly</span>.{" "}
               {t({ en: "All rights reserved.", af: "Alle regte voorbehou." })}
             </p>
           </div>
-          <p className="text-xs text-muted-foreground/60">
-            Built by{" "}
-            <a
-              href="https://nortier.co.za"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-muted-foreground transition-colors"
-            >
-              Nortier
-            </a>
-          </p>
         </div>
       </div>
     </footer>
