@@ -50,12 +50,12 @@ export function Footer({ sections, settings }: FooterProps) {
           </div>
         )}
 
-        <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
-          <div className="flex flex-col items-center gap-2 md:items-start">
-            <div className="flex items-center gap-3">
-              <Image src="/logo-icon.png" alt="" width={48} height={48} className="h-12 w-auto dark:brightness-0 dark:invert" />
-              <Image src="/logo-name.png" alt={settings.logo_text} width={200} height={60} className="h-14 w-auto dark:brightness-0 dark:invert" />
-            </div>
+        <div className="mt-8 border-t border-border pt-8">
+          <div className="flex items-center gap-3">
+            <Image src="/logo-icon.png" alt="" width={48} height={48} className="h-12 w-auto dark:brightness-0 dark:invert" />
+            <Image src="/logo-name.png" alt={settings.logo_text} width={200} height={60} className="h-14 w-auto dark:brightness-0 dark:invert" />
+          </div>
+          <div className="mt-4 flex flex-col items-center justify-between gap-2 md:flex-row">
             <p className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()}{" "}
               <a
@@ -69,6 +69,17 @@ export function Footer({ sections, settings }: FooterProps) {
               {t({ en: "trading as", af: "handeldrywend as" })}{" "}
               <span className="font-semibold text-foreground">Blindly</span>.{" "}
               {t({ en: "All rights reserved.", af: "Alle regte voorbehou." })}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Powered by{" "}
+              <a
+                href="https://yoros.co.za"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+              >
+                Yoros
+              </a>
             </p>
           </div>
         </div>
