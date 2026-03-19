@@ -37,8 +37,19 @@ export function EnrollButton({ courseId, courseSlug, priceCents }: EnrollButtonP
           return;
         }
 
-        if (data.authorization_url) {
-          window.location.href = data.authorization_url;
+        if (data.payfast) {
+          const form = document.createElement("form");
+          form.method = "POST";
+          form.action = data.payfast.action;
+          for (const [key, val] of Object.entries(data.payfast.fields)) {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = key;
+            input.value = val as string;
+            form.appendChild(input);
+          }
+          document.body.appendChild(form);
+          form.submit();
           return;
         }
       } catch {

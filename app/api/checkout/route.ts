@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { getProductsByIds, getShopSettings } from "@/lib/shop/queries";
 import { validateAndDecrementStock } from "@/lib/shop/actions";
 import {
-  initializeTransaction,
+  buildPayFastForm,
   generateReference,
-} from "@/lib/paystack/client";
+} from "@/lib/payfast/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { siteConfig } from "@/config/site";
 
@@ -121,32 +121,35 @@ export async function POST(request: Request) {
     );
   }
 
-  // 5. Initialize Paystack transaction
+  // 5. Build PayFast form data
   const siteUrl =
     process.env.NEXT_PUBLIC_APP_URL || `https://${siteConfig.domain}`;
 
   try {
-    const txn = await initializeTransaction({
-      email: shipping.email,
+    const nameParts = shipping.name.split(" ");
+    const firstName = nameParts[0] ?? "";
+    const lastName = nameParts.slice(1).join(" ") || undefined;
+
+    const formData = buildPayFastForm({
       amount: totalCents,
+      item_name: `Shop Order ${reference}`,
+      email: shipping.email,
+      name_first: firstName,
+      name_last: lastName,
       reference,
-      currency: "ZAR",
-      callback_url: `${siteUrl}/shop/checkout/success`,
-      metadata: {
-        order_id: order.id,
-        client_name: shipping.name,
-        payment_type: "once_off",
-      },
-      channels: ["card", "eft"],
+      return_url: `${siteUrl}/shop/checkout/success?reference=${reference}`,
+      cancel_url: `${siteUrl}/shop/checkout`,
+      notify_url: `${siteUrl}/api/webhooks/payfast`,
+      custom_str1: "shop_order",
+      custom_str2: order.id,
     });
 
     return NextResponse.json({
-      authorization_url: txn.data.authorization_url,
-      reference: txn.data.reference,
+      payfast: formData,
+      reference,
     });
   } catch (err) {
-    console.error("[checkout] Paystack init failed:", err);
-    // Mark order as cancelled if payment init fails
+    console.error("[checkout] PayFast form build failed:", err);
     await supabase
       .from("orders")
       .update({ status: "cancelled" })

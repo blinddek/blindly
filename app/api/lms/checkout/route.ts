@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  initializeTransaction,
+  buildPayFastForm,
   generateReference,
-} from "@/lib/paystack/client";
+} from "@/lib/payfast/client";
 import { siteConfig } from "@/config/site";
 
 export async function POST(request: Request) {
@@ -64,26 +64,24 @@ export async function POST(request: Request) {
     );
   }
 
-  // 5. Initialize Paystack transaction
+  // 5. Build PayFast form data
   const siteUrl =
     process.env.NEXT_PUBLIC_APP_URL || `https://${siteConfig.domain}`;
   const reference = generateReference(course.id);
   const courseName = (course.title as { en?: string })?.en ?? "Course";
 
   try {
-    const txn = await initializeTransaction({
-      email: user.email!,
+    const formData = buildPayFastForm({
       amount: course.price_cents,
+      item_name: courseName,
+      email: user.email!,
       reference,
-      currency: "ZAR",
-      callback_url: `${siteUrl}/courses/${course.slug}?enrolled=true`,
-      metadata: {
-        course_id: course.id,
-        user_id: user.id,
-        payment_type: "once_off",
-        client_name: courseName,
-      },
-      channels: ["card", "eft"],
+      return_url: `${siteUrl}/courses/${course.slug}?enrolled=true`,
+      cancel_url: `${siteUrl}/courses/${course.slug}`,
+      notify_url: `${siteUrl}/api/webhooks/payfast`,
+      custom_str1: "course",
+      custom_str2: course.id,
+      custom_str3: user.id,
     });
 
     // 6. Log payment reference for webhook matching
@@ -98,11 +96,11 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({
-      authorization_url: txn.data.authorization_url,
-      reference: txn.data.reference,
+      payfast: formData,
+      reference,
     });
   } catch (err) {
-    console.error("[lms-checkout] Paystack init failed:", err);
+    console.error("[lms-checkout] PayFast form build failed:", err);
     return NextResponse.json(
       { error: "Payment initialization failed" },
       { status: 500 }

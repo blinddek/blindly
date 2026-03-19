@@ -548,7 +548,21 @@ export default function BlindCheckoutPage() {
       sessionStorage.setItem("blindly_order_ref", data.reference);
       try { localStorage.removeItem("blindly_checkout"); } catch { /* ignore */ }
       clearCart();
-      globalThis.location.href = data.authorization_url;
+
+      // PayFast: submit hidden form to redirect to payment page
+      const { payfast } = data;
+      const form_el = document.createElement("form");
+      form_el.method = "POST";
+      form_el.action = payfast.action;
+      for (const [key, val] of Object.entries(payfast.fields)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = val as string;
+        form_el.appendChild(input);
+      }
+      document.body.appendChild(form_el);
+      form_el.submit();
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -722,7 +736,7 @@ export default function BlindCheckoutPage() {
               )}
 
               <p className="mt-3 text-center text-xs text-muted-foreground">
-                Secure payment via Paystack.
+                Secure payment via PayFast.
               </p>
             </CardContent>
           </Card>

@@ -337,11 +337,11 @@ export default async function OrderDetailPage({
                   {order.payment_status}
                 </span>
               </div>
-              {order.paystack_reference && (
+              {order.payment_reference && (
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Reference</span>
                   <span className="text-xs font-mono">
-                    {order.paystack_reference}
+                    {order.payment_reference}
                   </span>
                 </div>
               )}

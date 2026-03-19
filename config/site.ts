@@ -61,7 +61,7 @@ export interface SiteConfig {
     microsoftGraph: boolean;
   };
   integrations: {
-    paystack: boolean;
+    payfast: boolean;
     googleAnalytics: boolean;
     resend: boolean;
   };
@@ -142,7 +142,7 @@ export const siteConfig: SiteConfig = {
     microsoftGraph: false,
   },
   integrations: {
-    paystack: true,
+    payfast: true,
     googleAnalytics: true,
     resend: true,
   },

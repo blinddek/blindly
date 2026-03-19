@@ -84,8 +84,20 @@ export default function CheckoutPage() {
       sessionStorage.setItem("yt-order-ref", data.reference);
       sessionStorage.setItem("yt-order-email", shipping.email);
 
-      // Redirect to Paystack
-      window.location.href = data.authorization_url;
+      // PayFast: submit hidden form to redirect to payment page
+      const { payfast } = data;
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = payfast.action;
+      for (const [key, val] of Object.entries(payfast.fields)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = val as string;
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
     } catch {
       setError("Network error. Please try again.");
       setLoading(false);

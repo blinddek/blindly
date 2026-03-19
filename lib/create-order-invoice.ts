@@ -1,6 +1,6 @@
 /**
  * Auto-generate an invoice when a Blindly order is paid.
- * Called from the Paystack webhook after payment confirmation.
+ * Called from the PayFast ITN webhook after payment confirmation.
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";

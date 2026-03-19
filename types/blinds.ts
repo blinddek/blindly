@@ -242,8 +242,7 @@ export interface BlindlyOrder {
   total_cents: number;
   discount_rate: number;
   discount_cents: number;
-  paystack_reference: string | null;
-  paystack_access_code: string | null;
+  payment_reference: string | null;
   payment_status: PaymentStatus;
   order_status: BlindlyOrderStatus;
   customer_notes: string | null;

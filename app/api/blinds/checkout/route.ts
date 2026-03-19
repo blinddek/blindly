@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { lookupPrice } from "@/lib/pricing";
-import { initializeTransaction, generateReference } from "@/lib/paystack/client";
+import { buildPayFastForm, generateReference } from "@/lib/payfast/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getInstallationPricing, getVolumeDiscounts } from "@/lib/pricing-rules";
 import {
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
       delivery_fee_cents: deliveryFeeCents,
       distance_km: distance_km ?? null,
       total_cents: totalCents,
-      paystack_reference: reference,
+      payment_reference: reference,
       payment_status: "pending",
       order_status: "new",
     })
@@ -189,31 +189,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to create order items" }, { status: 500 });
   }
 
-  // Initialise Paystack transaction
+  // Build PayFast form data
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${siteConfig.domain}`;
 
   try {
-    const txn = await initializeTransaction({
-      email: customer.email,
+    const nameParts = customer.name.split(" ");
+    const firstName = nameParts[0] ?? "";
+    const lastName = nameParts.slice(1).join(" ") || undefined;
+
+    const formData = buildPayFastForm({
       amount: totalCents,
+      item_name: `Blindly Order ${reference}`,
+      email: customer.email,
+      name_first: firstName,
+      name_last: lastName,
       reference,
-      currency: "ZAR",
-      callback_url: `${siteUrl}/cart/success`,
-      metadata: {
-        blindly_order_id: order.id,
-        client_name: customer.name,
-        payment_type: "blindly_order",
-      },
-      channels: ["card", "eft"],
+      return_url: `${siteUrl}/cart/success?reference=${reference}`,
+      cancel_url: `${siteUrl}/cart/checkout`,
+      notify_url: `${siteUrl}/api/webhooks/payfast`,
+      custom_str1: "blindly_order",
+      custom_str2: order.id,
     });
 
     return NextResponse.json({
-      authorization_url: txn.data.authorization_url,
-      reference: txn.data.reference,
+      payfast: formData,
+      reference,
       order_id: order.id,
     });
   } catch (err) {
-    console.error("[blinds/checkout] Paystack init failed:", err);
+    console.error("[blinds/checkout] PayFast form build failed:", err);
     await supabase
       .from("blindly_orders")
       .update({ order_status: "cancelled", payment_status: "failed" })
