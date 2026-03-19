@@ -100,7 +100,7 @@ insert into public.homepage_sections (section_key, content, display_order, is_ac
 
   ('trust_stats', '{
     "items": [
-      {"icon": "🚚", "value": "Free", "label": {"en": "Delivery Over R5,000", "af": "Aflewering Bo R5,000"}},
+      {"icon": "🚚", "value": "Fast", "label": {"en": "Nationwide Delivery", "af": "Landswye Aflewering"}},
       {"icon": "📐", "value": "Custom", "label": {"en": "Made to Measure", "af": "Op Maat Gemaak"}},
       {"icon": "🇿🇦", "value": "SA", "label": {"en": "Manufactured Locally", "af": "Plaaslik Vervaardig"}},
       {"icon": "⚡", "value": "Instant", "label": {"en": "Online Pricing", "af": "Aanlyn Pryse"}}
@@ -169,7 +169,7 @@ insert into public.homepage_sections (section_key, content, display_order, is_ac
 
 -- ─── Trust Strip (key-value) ─────────────────────────────────
 insert into public.site_content (section_key, content) values
-  ('trust_strip', '{"values": ["Free Delivery Over R5,000", "Professional Installation Available", "Quality Materials", "SA Manufactured", "Instant Online Pricing"]}'::jsonb)
+  ('trust_strip', '{"values": ["Nationwide Delivery", "Professional Installation Available", "Quality Materials", "SA Manufactured", "Instant Online Pricing"]}'::jsonb)
 on conflict (section_key) do update set content = excluded.content;
 
 -- ─── About Page Content ──────────────────────────────────────
@@ -181,14 +181,14 @@ insert into public.site_content (section_key, content) values
     "process": [
       {"step": "1", "title": {"en": "Configure", "af": "Konfigureer"}, "description": {"en": "Use our guided wizard to choose your blind type, material, colour, and enter your exact measurements.", "af": "Gebruik ons begeleide slimgids om jou blindingtipe, materiaal, kleur te kies en jou presiese afmetings in te voer."}},
       {"step": "2", "title": {"en": "Price", "af": "Prys"}, "description": {"en": "See your price update live — no waiting for callbacks or quotes. What you see is what you pay.", "af": "Sien jou prys lewendig opdateer — geen wag vir terugbelletjies of kwotasies nie. Wat jy sien is wat jy betaal."}},
-      {"step": "3", "title": {"en": "Order", "af": "Bestel"}, "description": {"en": "Pay securely via Paystack. Your custom blinds go straight into production.", "af": "Betaal veilig via Paystack. Jou pasgemaakte blindings gaan direk in produksie."}},
+      {"step": "3", "title": {"en": "Order", "af": "Bestel"}, "description": {"en": "Pay securely via PayFast. Your custom blinds go straight into production.", "af": "Betaal veilig via PayFast. Jou pasgemaakte blindings gaan direk in produksie."}},
       {"step": "4", "title": {"en": "Enjoy", "af": "Geniet"}, "description": {"en": "Receive your blinds at your door within 7-14 business days. Install yourself or book our team.", "af": "Ontvang jou blindings by jou deur binne 7-14 werksdae. Installeer self of bespreek ons span."}}
     ],
     "values": [
       {"title": {"en": "Instant Pricing", "af": "Onmiddellike Pryse"}, "description": {"en": "No more waiting for quotes. Our configurator calculates your price in real time based on your exact specifications.", "af": "Geen meer wag vir kwotasies nie. Ons konfigurator bereken jou prys intyds op grond van jou presiese spesifikasies."}},
       {"title": {"en": "Premium Quality", "af": "Premium Kwaliteit"}, "description": {"en": "We source from trusted SA manufacturers. Every blind is made from quality materials with professional finishes.", "af": "Ons bekom van betroubare SA-vervaardigers. Elke blinding word van gehalte-materiale met professionele afwerkings gemaak."}},
       {"title": {"en": "Made to Measure", "af": "Op Maat Gemaak"}, "description": {"en": "Every blind is manufactured to your exact window dimensions. No off-the-shelf compromises.", "af": "Elke blinding word volgens jou presiese vensterafmetings vervaardig. Geen van-die-rak-kompromieë nie."}},
-      {"title": {"en": "Free Delivery", "af": "Gratis Aflewering"}, "description": {"en": "Orders over R5,000 ship free anywhere in South Africa. Smaller orders attract a flat-rate fee.", "af": "Bestellings bo R5,000 word gratis enige plek in Suid-Afrika versend. Kleiner bestellings het ''n vastetarief-fooi."}},
+      {"title": {"en": "Nationwide Delivery", "af": "Landswye Aflewering"}, "description": {"en": "We deliver anywhere in South Africa. A flat delivery fee is calculated at checkout based on your location.", "af": "Ons lewer enige plek in Suid-Afrika af. ''n Vastetarief-afleweringsfooi word by afhandeling bereken op grond van jou ligging."}},
       {"title": {"en": "Easy DIY or Pro Install", "af": "Maklike Selfdoen of Professionele Installasie"}, "description": {"en": "Our blinds come with clear fitting instructions. Or add professional installation at checkout.", "af": "Ons blindings kom met duidelike monteerinstruksies. Of voeg professionele installasie by afhandeling by."}},
       {"title": {"en": "No Showroom Needed", "af": "Geen Vertoonlokaal Nodig"}, "description": {"en": "Everything happens online — from configuration to checkout. Shop from the comfort of your home.", "af": "Alles gebeur aanlyn — van konfigurasie tot afhandeling. Koop vanuit die gemak van jou huis."}}
     ]
@@ -199,7 +199,7 @@ on conflict (section_key) do update set content = excluded.content;
 delete from public.faqs;
 insert into public.faqs (question, answer, display_order, is_active) values
   ('{"en": "How do I measure my windows?", "af": "Hoe meet ek my vensters?"}'::jsonb,
-   '{"en": "We provide a detailed step-by-step measuring guide for each blind type. You''ll need a metal tape measure and a few minutes per window. Measure width and drop in three places (top, middle, bottom for width; left, centre, right for drop) and use the smallest measurement. If you''d prefer professional help, we offer a free measure service in select areas.", "af": "Ons verskaf ''n gedetailleerde stap-vir-stap meetgids vir elke blindingtipe. Jy sal ''n metaal maatband en ''n paar minute per venster nodig hê. Meet wydte en val op drie plekke (bo, middel, onder vir wydte; links, middel, regs vir val) en gebruik die kleinste meting. As jy professionele hulp verkies, bied ons ''n gratis meetdiens in uitgesoekte gebiede aan."}'::jsonb,
+   '{"en": "We provide a detailed step-by-step measuring guide for each blind type. You''ll need a metal tape measure and a few minutes per window. Measure width and drop in three places (top, middle, bottom for width; left, centre, right for drop) and use the smallest measurement. If you need assistance, feel free to get in touch via our contact page.", "af": "Ons verskaf ''n gedetailleerde stap-vir-stap meetgids vir elke blindingtipe. Jy sal ''n metaal maatband en ''n paar minute per venster nodig hê. Meet wydte en val op drie plekke (bo, middel, onder vir wydte; links, middel, regs vir val) en gebruik die kleinste meting. As jy hulp nodig het, is jy welkom om via ons kontakbladsy in verbinding te tree."}'::jsonb,
    1, true),
 
   ('{"en": "What blind types do you offer?", "af": "Watter blindingtipes bied julle aan?"}'::jsonb,
@@ -215,7 +215,7 @@ insert into public.faqs (question, answer, display_order, is_active) values
    4, true),
 
   ('{"en": "Is delivery free?", "af": "Is aflewering gratis?"}'::jsonb,
-   '{"en": "Delivery is free on orders over R5,000. For smaller orders, a flat delivery fee is calculated at checkout based on your location within South Africa.", "af": "Aflewering is gratis op bestellings bo R5,000. Vir kleiner bestellings word ''n vastetarief-afleweringsfooi by afhandeling bereken op grond van jou ligging binne Suid-Afrika."}'::jsonb,
+   '{"en": "A flat delivery fee is calculated at checkout based on your location within South Africa. The exact amount will be shown before you complete your order.", "af": "''n Vastetarief-afleweringsfooi word by afhandeling bereken op grond van jou ligging binne Suid-Afrika. Die presiese bedrag sal getoon word voordat jy jou bestelling voltooi."}'::jsonb,
    5, true),
 
   ('{"en": "Do you offer installation?", "af": "Bied julle installasie aan?"}'::jsonb,
@@ -223,11 +223,11 @@ insert into public.faqs (question, answer, display_order, is_active) values
    6, true),
 
   ('{"en": "Will the colour match what I see on screen?", "af": "Sal die kleur ooreenstem met wat ek op die skerm sien?"}'::jsonb,
-   '{"en": "Screen colours can vary depending on your device and display settings. We recommend ordering a free colour swatch before placing a large order. While we do our best to represent colours accurately, slight variations between screen and actual product are normal and not grounds for a return.", "af": "Skermkleure kan verskil afhangende van jou toestel en skerminstellings. Ons beveel aan dat jy ''n gratis kleurmonster bestel voordat jy ''n groot bestelling plaas. Alhoewel ons ons bes doen om kleure akkuraat voor te stel, is geringe verskille tussen die skerm en die werklike produk normaal en nie gronde vir ''n terugkeer nie."}'::jsonb,
+   '{"en": "Screen colours can vary depending on your device and display settings. While we do our best to represent colours accurately, slight variations between screen and actual product are normal and not grounds for a return. If you are unsure about a colour, please contact us before placing your order.", "af": "Skermkleure kan verskil afhangende van jou toestel en skerminstellings. Alhoewel ons ons bes doen om kleure akkuraat voor te stel, is geringe verskille tussen die skerm en die werklike produk normaal en nie gronde vir ''n terugkeer nie. As jy onseker is oor ''n kleur, kontak ons asseblief voordat jy jou bestelling plaas."}'::jsonb,
    7, true),
 
-  ('{"en": "Can I order swatches before buying?", "af": "Kan ek monsters bestel voor ek koop?"}'::jsonb,
-   '{"en": "Yes! We offer free colour swatches for all our materials. Request swatches through our product pages or contact form, and we''ll post them to you within 2-3 business days.", "af": "Ja! Ons bied gratis kleurmonsters vir al ons materiale aan. Versoek monsters deur ons produkbladsye of kontakvorm, en ons sal dit binne 2-3 werksdae aan jou pos."}'::jsonb,
+  ('{"en": "I''m unsure about a colour — what should I do?", "af": "Ek is onseker oor ''n kleur — wat moet ek doen?"}'::jsonb,
+   '{"en": "If you''re unsure about a colour or material, reach out to us via the contact form or WhatsApp before placing your order. We''re happy to help you make the right choice.", "af": "As jy onseker is oor ''n kleur of materiaal, kontak ons via die kontakvorm of WhatsApp voordat jy jou bestelling plaas. Ons help jou graag om die regte keuse te maak."}'::jsonb,
    8, true),
 
   ('{"en": "What is your return policy?", "af": "Wat is julle terugkeerbeleid?"}'::jsonb,
@@ -239,11 +239,11 @@ insert into public.faqs (question, answer, display_order, is_active) values
    10, true),
 
   ('{"en": "What payment methods do you accept?", "af": "Watter betaalmetodes aanvaar julle?"}'::jsonb,
-   '{"en": "We accept all major credit and debit cards via Paystack, including Visa, Mastercard, and American Express. All transactions are processed securely with SSL encryption.", "af": "Ons aanvaar alle groot krediet- en debietkaarte via Paystack, insluitend Visa, Mastercard en American Express. Alle transaksies word veilig met SSL-enkripsie verwerk."}'::jsonb,
+   '{"en": "We accept all major credit and debit cards via PayFast, including Visa, Mastercard, and American Express. All transactions are processed securely with SSL encryption.", "af": "Ons aanvaar alle groot krediet- en debietkaarte via PayFast, insluitend Visa, Mastercard en American Express. Alle transaksies word veilig met SSL-enkripsie verwerk."}'::jsonb,
    11, true),
 
   ('{"en": "Do you sell outside South Africa?", "af": "Verkoop julle buite Suid-Afrika?"}'::jsonb,
-   '{"en": "Currently, we only deliver within South Africa. We''re exploring options for neighbouring countries — sign up for our newsletter to be the first to know.", "af": "Tans lewer ons slegs binne Suid-Afrika af. Ons ondersoek opsies vir buurlande — registreer vir ons nuusbrief om eerste te weet."}'::jsonb,
+   '{"en": "Currently, we only deliver within South Africa. If you are based outside SA and would like to enquire, feel free to contact us directly.", "af": "Tans lewer ons slegs binne Suid-Afrika af. As jy buite SA geleë is en wil navraag doen, is jy welkom om ons direk te kontak."}'::jsonb,
    12, true);
 
 -- ─── Legacy Key-Value Content ────────────────────────────────
