@@ -131,7 +131,7 @@ async function handleShopOrderPayment(supabase: any, reference: string) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleBlindlyOrderPayment(supabase: any, reference: string) {
-  const { data: order } = await supabase
+  const { data: order, error: lookupError } = await supabase
     .from("blindly_orders")
     .select(`
       id, payment_status, customer_name, customer_email, customer_phone,
@@ -141,6 +141,12 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string) {
     `)
     .eq("payment_reference", reference)
     .single();
+
+  // A failed read is not an unknown reference: throw so the ITN answers 500 and
+  // PayFast retries. PGRST116 (no rows) is a genuinely unknown reference.
+  if (lookupError && lookupError.code !== "PGRST116") {
+    throw new Error(`order lookup failed for ${reference}: ${lookupError.message}`);
+  }
 
   if (!order) {
     console.warn("[payfast-itn] No blindly_order found for reference:", reference);
