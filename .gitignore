@@ -47,3 +47,10 @@ next-env.d.ts
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Claude Code — machine-local only, never doctrine
+.claude/settings.local.json
+.claude/.context-budget.state.json
+.claude/agent-memory/
+# agent handoff artefacts — generated, and outside .claude because that path is protected
+.handoff/
