@@ -1,8 +1,20 @@
 "use server";
 
+import { ensureAdmin } from "@/lib/admin/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const DEFAULT_BUCKET = "uploads";
+
+// Server actions are public POST endpoints and both of these use the
+// service-role client, so this check is all that stops anonymous writes.
+async function adminOrError(): Promise<string | null> {
+  try {
+    await ensureAdmin();
+    return null;
+  } catch {
+    return "Not authorised";
+  }
+}
 
 /**
  * Upload a file to Supabase Storage.
@@ -12,6 +24,9 @@ const DEFAULT_BUCKET = "uploads";
 export async function uploadFile(
   formData: FormData
 ): Promise<{ url: string } | { error: string }> {
+  const denied = await adminOrError();
+  if (denied) return { error: denied };
+
   const file = formData.get("file") as File | null;
   if (!file) return { error: "No file provided" };
 
@@ -45,6 +60,9 @@ export async function uploadFile(
 export async function deleteFile(
   publicUrl: string
 ): Promise<{ error?: string }> {
+  const denied = await adminOrError();
+  if (denied) return { error: denied };
+
   const supabase = createAdminClient();
   // Extract bucket and path from: .../storage/v1/object/public/{bucket}/{path}
   const match = publicUrl.match(
