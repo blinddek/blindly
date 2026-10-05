@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, notifyAdmin } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -54,20 +55,24 @@ export async function submitContactForm(
     return { error: "Something went wrong. Please try again." };
   }
 
-  // Fire-and-forget confirmation + admin notification
-  Promise.all([
-    sendEmail({
-      to: email,
-      template: "contact_form_confirmation",
-      props: { senderName: name },
-    }),
-    notifyAdmin("admin_new_message", {
-      clientName: name,
-      projectName: "Contact Form",
-      messagePreview: message.slice(0, 200),
-      adminUrl: `${process.env.NEXT_PUBLIC_APP_URL}/admin`,
-    }),
-  ]).catch((err) => console.error("[email] contact_form failed:", err));
+  // Send confirmation + admin notification after the response. `after` keeps the
+  // serverless function alive until they finish — a bare unawaited promise gets
+  // frozen on Vercel and the emails are silently dropped.
+  after(() =>
+    Promise.all([
+      sendEmail({
+        to: email,
+        template: "contact_form_confirmation",
+        props: { senderName: name },
+      }),
+      notifyAdmin("admin_new_message", {
+        clientName: name,
+        projectName: "Contact Form",
+        messagePreview: message.slice(0, 200),
+        adminUrl: `${process.env.NEXT_PUBLIC_APP_URL}/admin`,
+      }),
+    ]).catch((err) => console.error("[email] contact_form failed:", err))
+  );
 
   return { success: true };
 }
