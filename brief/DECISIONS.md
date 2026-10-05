@@ -13,4 +13,10 @@
 
 | Date | Decision |
 |---|---|
-| YYYY-MM-DD | **<The decision, as a sentence.>** <Why, and what it supersedes — name the file or row it replaces.> |
+| 2026-10-05 | **blindly adopts dev-standards canon.** Kit installed (5bbee43), seven canon agents (a91b802), tier-0 gates wired and baselined (d52d18b, 373706a). |
+| 2026-10-05 | **Push policy: announce-then-push.** A push to `main` deploys the live site; announce it, have `npm run check` green first, and bash-gate asks. |
+| 2026-10-05 | **The four live security defects found at intake are fixed on adoption day, ahead of go-live** — an exception to canon's "adoption changes zero application code", made by Stéan because the shop goes live today. Price-import guard, atomic ITN claim, contact emails in `after()`, migration 039 closing public order access. |
+| 2026-10-05 | **The red tier-0 gates are baselined, not fixed.** tsc, eslint, knip and madge are held to `scripts/baseline/` and may only shrink; a fix lands with its shrunken baseline. Supersedes nothing. |
+| 2026-10-05 | **`project_brief/` is filed into `brief/`, project docs only.** PROJECT_BRIEF, TECHNICAL_DESIGN, the 29 build specs, BUILD_INDEX, the brand design doc and PROJECT_TODO moved under their own names; build specs numbered by build number. The YOROS template docs, binaries (supplier price lists, mockups, logos) and `build plan/migrations/` stay in `project_brief/`. |
+| 2026-10-05 | **PayFast is the payment provider; every document saying Paystack is stale.** Code and migration 038 settle it; the build specs and tech sheet are historical and are not rewritten. |
+| 2026-10-05 | **`brief/product/10-PROJECT_TODO.md` is a frozen snapshot (2026-02-26), not a live list.** Live status is `brief/CURRENT.md`; open work is in `GATES.md` and `build/INDEX.md`. |
