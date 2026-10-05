@@ -147,10 +147,19 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string) {
     return;
   }
 
-  await supabase
+  // Claim the order atomically: only the ITN whose update flips it from unpaid wins. Two ITNs racing
+  // through the check above would otherwise both send the supplier a real manufacturing order.
+  const { data: claimed } = await supabase
     .from("blindly_orders")
     .update({ payment_status: "paid", order_status: "confirmed" })
-    .eq("id", order.id);
+    .eq("id", order.id)
+    .neq("payment_status", "paid")
+    .select("id");
+
+  if (!claimed?.length) {
+    console.log("[payfast-itn] Blindly order already claimed by a concurrent ITN:", order.id);
+    return;
+  }
 
   console.log("[payfast-itn] Blindly order paid:", order.order_number);
 
