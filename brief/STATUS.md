@@ -26,7 +26,7 @@
 | `CURRENT.md` | 1.4 KB | 2026-10-05 |
 | `DECISIONS.md` | 2.5 KB | 2026-10-05 |
 | `EVIDENCE.md` | 6.7 KB | 2026-10-05 |
-| `GATES.md` | 2.1 KB | 2026-10-05 |
+| `GATES.md` | 2.2 KB | 2026-10-05 |
 | `README.md` | 1.6 KB | 2026-10-05 |
 | `STATUS.md` | 0.1 KB | 2026-10-05 |
 | `build\00-BUILD_INDEX.md` | 59.6 KB | 2026-10-05 |
