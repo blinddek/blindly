@@ -54,6 +54,11 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     console.error("[payfast-itn] Handler error:", err);
+    // Blinds orders are claimed atomically, so a retry cannot double-send the supplier order:
+    // answer non-2xx and let PayFast retry rather than acknowledge a payment we failed to process.
+    if (paymentType === "blindly_order") {
+      return NextResponse.json({ error: "Handler failed" }, { status: 500 });
+    }
   }
 
   // 7. Always return 200 to acknowledge receipt
@@ -149,12 +154,16 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string) {
 
   // Claim the order atomically: only the ITN whose update flips it from unpaid wins. Two ITNs racing
   // through the check above would otherwise both send the supplier a real manufacturing order.
-  const { data: claimed } = await supabase
+  const { data: claimed, error: claimError } = await supabase
     .from("blindly_orders")
     .update({ payment_status: "paid", order_status: "confirmed" })
     .eq("id", order.id)
     .neq("payment_status", "paid")
     .select("id");
+
+  // A failed update is not a lost race: throw so the ITN answers 500 and PayFast retries. The
+  // claim above makes a retry safe.
+  if (claimError) throw new Error(`claim failed for ${order.id}: ${claimError.message}`);
 
   if (!claimed?.length) {
     console.log("[payfast-itn] Blindly order already claimed by a concurrent ITN:", order.id);
