@@ -8,15 +8,14 @@
 > so its size is a per-session tax. Anything older than the current step is history: finished
 > decisions go to `DECISIONS.md`, finished steps to `build/INDEX.md`, the rest nowhere.
 
-**Active** — canon adoption, Phase 3 (CLAUDE.md, registers, token economy), going live 2026-10-05.
+**Active** — canon adoption done through Phase 3; next is the go-live push, 2026-10-05.
 
 **Just done** —
-- Brief filed from `project_brief/` (project docs only); EVIDENCE, DECISIONS, GATES written from the intake survey.
-- Security fixes ca5fef1, 1437581, 2a962c8, c53246b, plus walker follow-ups (claim error retries; `import.ts` no longer `"use server"`).
-- Tier-0 gates baselined (`scripts/check-baseline.mjs`, `scripts/baseline/`).
+- Security fixes ca5fef1, 1437581, 2a962c8, c53246b, 4eeef4d, a163b0c, and `lib/storage.ts` guarded (82d5344).
+- Tier-0 gates baselined; `CLAUDE.md`, `docs/MECHANISABLE.md` (M-001..003), `docs/EXPERIMENTS.md`, context-budget (9f89756).
 
-**Next action** — write `CLAUDE.md` from `kit/CLAUDE_TEMPLATE.md` and this brief; then
-`docs/MECHANISABLE.md`, `docs/EXPERIMENTS.md`, context-budget (token economy tier 2–3).
+**Next action** — `/walk` the unpushed range, announce, push (deploys live). Then the operator closes
+G-01 (apply 039), G-02 and G-04 (read the Vercel production env) — no connector here reaches them.
 
 **Decided mid-build, not yet in DECISIONS.md** — nothing.
 

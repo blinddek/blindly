@@ -50,7 +50,10 @@ names what was measured and how.
   specs, `00-BUILD_INDEX.md` and `project_brief/blindly-tech-sheet.md` still say Paystack. —
   *source: scout + census, 2026-10-05*
 - **`PAYFAST_SANDBOX=true` in the local `.env.local`; the production value is not visible from here.**
-  In sandbox mode the ITN source-IP allow-list is skipped. — *source: .env.local; lib/payfast/webhooks.ts*
+  In sandbox mode the ITN source-IP allow-list is skipped. The Vercel and Supabase connectors in this
+  session do not reach blindly (no blindly project in team `stean-bouwers-projects`; Supabase lists
+  only Pleks), so production env must be read by the operator. — *source: .env.local;
+  lib/payfast/webhooks.ts; Vercel/Supabase MCP listings, 2026-10-05*
 - **A paid ITN emails `SUPPLIER_EMAIL` a Shademaster order form** (`lib/blinds/supplier-order.ts`), and
   the ITN handler always answers 200, even when it throws. — *source: grounder + census, 2026-10-05*
 - **The ITN does not check `amount_gross` against the order total.** — *source: census, 2026-10-05*
@@ -69,6 +72,12 @@ names what was measured and how.
   **not yet applied to production**. — *source: grounder + census, 2026-10-05*
 - **`/api/cron/daily` runs unauthenticated if `CRON_SECRET` is unset** (its own fail-open check; the
   shared `lib/cron/auth.ts` is unused). Whether it is set on Vercel is not visible. — *source: grounder*
+- **`lib/storage.ts` `uploadFile`/`deleteFile` wrote to any storage bucket with the service key and no
+  admin check**, reachable from the admin upload components — fixed in 82d5344 (same fix as
+  nortiercupboards 5d8c906). — *source: grep of `"use server"` files, 2026-10-05*
+- **`lib/booking/actions.ts` `cancelBookingByCustomer` and `updateClientNotes` trust a client-supplied
+  `userId` with the service key; `lib/shop/actions.ts` `validateAndDecrementStock` has no guard.** Booking
+  and shop are off; not fixed (M-002). — *source: grep of `"use server"` files, 2026-10-05*
 - **`lib/blinds/actions.ts` (13 unguarded writes) is imported nowhere**, so it is not reachable. —
   *source: knip, 2026-10-05*
 
