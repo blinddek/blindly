@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check": "npm run check:hooks && npm run lint",
+    "check": "npm run check:hooks && npm run check:agents && npm run lint",
+    "check:agents": "node scripts/check-commands.mjs --selftest && node scripts/check-commands.mjs && node scripts/check-handoff-contract.mjs --selftest && node scripts/check-handoff-contract.mjs && node scripts/agent-distribution.mjs --selftest",
     "check:hooks": "node scripts/check-hook-registration.mjs && node .claude/hooks/bash-gate.probe.mjs && node .claude/hooks/canon-inbox.probe.mjs && node .claude/hooks/agent-write-scope.probe.mjs && node .claude/hooks/agent-brief-gate.probe.mjs"
   },
   "dependencies": {
