@@ -210,6 +210,8 @@ interface SendWithAttachmentOptions {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   props: Record<string, any>;
   attachment: { filename: string; content: Buffer };
+  /** Resend's Idempotency-Key: a retried send with the same key is delivered at most once. */
+  idempotencyKey?: string;
 }
 
 export async function sendEmailWithAttachment({
@@ -217,6 +219,7 @@ export async function sendEmailWithAttachment({
   template,
   props,
   attachment,
+  idempotencyKey,
 }: SendWithAttachmentOptions) {
   try {
     const mod = await templates[template]();
@@ -239,7 +242,7 @@ export async function sendEmailWithAttachment({
             content_type: "application/vnd.ms-excel",
           },
         ],
-      });
+      }, idempotencyKey ? { idempotencyKey } : undefined);
 
       if (error) {
         console.error(`[Email] Resend failed for ${template}:`, error);

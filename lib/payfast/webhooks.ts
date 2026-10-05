@@ -1,6 +1,7 @@
 // PayFast ITN (Instant Transaction Notification) verification
 // See https://developers.payfast.co.za/docs#step-4-confirm-payment
 
+import crypto from "crypto";
 import { verifySignature } from "./client";
 
 // PayFast server IPs that send ITN notifications
@@ -55,10 +56,30 @@ export function parseItnBody(body: string): Record<string, string> {
   for (const pair of body.split("&")) {
     const [key, ...rest] = pair.split("=");
     if (key) {
-      params[decodeURIComponent(key)] = decodeURIComponent(rest.join("="));
+      // Form encoding writes a space as "+", which decodeURIComponent does not undo.
+      const decode = (s: string) => decodeURIComponent(s.replaceAll("+", " "));
+      params[decode(key)] = decode(rest.join("="));
     }
   }
   return params;
+}
+
+/**
+ * Verify the ITN signature against the raw body, exactly as PayFast encoded it: every posted field
+ * except `signature`, in the order received, empties included, then the passphrase. Rebuilding the
+ * string from parsed values (verifySignature) cannot be relied on for an ITN — the body is
+ * form-encoded, so a space arrives as `+`, which decodeURIComponent leaves as a literal plus and
+ * re-encoding turns into %2B; and that path drops empty fields. Every checkout item_name has spaces.
+ */
+function verifyRawSignature(rawBody: string, received: string, passphrase: string): boolean {
+  const paramString = rawBody
+    .split("&")
+    .filter((pair) => pair && !pair.startsWith("signature="))
+    .join("&");
+  const sigString = passphrase
+    ? `${paramString}&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, "+")}`
+    : paramString;
+  return crypto.createHash("md5").update(sigString).digest("hex") === received;
 }
 
 /**
@@ -69,13 +90,15 @@ export function parseItnBody(body: string): Record<string, string> {
  */
 export function verifyItn(
   data: Record<string, string>,
-  sourceIp: string
+  sourceIp: string,
+  rawBody: string
 ): { valid: boolean; error?: string } {
   const passphrase = process.env.PAYFAST_PASSPHRASE || "";
   const isSandbox = process.env.PAYFAST_SANDBOX === "true";
 
   // 1. Verify signature
-  if (!verifySignature(data, passphrase)) {
+  const rawOk = Boolean(data.signature) && verifyRawSignature(rawBody, data.signature, passphrase);
+  if (!rawOk && !verifySignature(data, passphrase)) {
     return { valid: false, error: "Invalid signature" };
   }
 

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const sourceIp = forwarded?.split(",")[0]?.trim() ?? "unknown";
 
   // 3. Verify ITN
-  const verification = verifyItn(data, sourceIp);
+  const verification = verifyItn(data, sourceIp, rawBody);
   if (!verification.valid) {
     console.error("[payfast-itn] Verification failed:", verification.error);
     return NextResponse.json({ error: verification.error }, { status: 400 });
@@ -332,6 +332,9 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string, amoun
           filename: `${order.order_number}.xls`,
           content: xlsBuffer,
         },
+        // A first attempt can be delivered yet reported failed; the key stops the retry becoming a
+        // second manufacturing order.
+        idempotencyKey: `supplier-order/${order.id}`,
       });
       let sent = await sendSupplierOrder();
       if (!sent.success) {
