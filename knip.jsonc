@@ -62,6 +62,7 @@
     // should name the route that makes it reachable.
     "tailwindcss",     // reached by `@import "tailwindcss"` in app/globals.css
     "tw-animate-css",  // reached by `@import "tw-animate-css"` in app/globals.css
-    "shadcn"           // reached by `@import "shadcn/tailwind.css"` in app/globals.css
+    "shadcn",          // reached by `@import "shadcn/tailwind.css"` in app/globals.css
+    "madge"            // run from node_modules/.bin by scripts/check-baseline.mjs (check:cycles)
   ]
 }

@@ -1,0 +1,15 @@
+{
+  "tool": "eslint",
+  "seeded": "2026-10-05",
+  "violations": {
+    "app/(public)/cart/checkout/page.tsx react/no-unescaped-entities": 1,
+    "app/(public)/cart/success/page.tsx react-hooks/set-state-in-effect": 1,
+    "app/admin/pages/services/page.tsx react/no-unescaped-entities": 2,
+    "app/admin/products/page.tsx react-hooks/set-state-in-effect": 1,
+    "app/admin/settings/page.tsx react-hooks/set-state-in-effect": 1,
+    "components/admin/blinds/import-tabs.tsx react-hooks/set-state-in-effect": 1,
+    "components/blinds/blind-cart-provider.tsx react-hooks/set-state-in-effect": 1,
+    "components/configurator/step-accessories.tsx react-hooks/set-state-in-effect": 1,
+    "lib/pricing/lookup.ts prefer-const": 2
+  }
+}

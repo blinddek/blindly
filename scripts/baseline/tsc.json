@@ -1,0 +1,13 @@
+{
+  "tool": "tsc",
+  "seeded": "2026-10-05",
+  "violations": {
+    "app/(public)/blinds/[categorySlug]/page.tsx TS18047": 2,
+    "app/(public)/cart/checkout/page.tsx TS2322": 1,
+    "app/(public)/contact/page.tsx TS2322": 1,
+    "app/admin/products/page.tsx TS2339": 2,
+    "app/admin/products/page.tsx TS2353": 1,
+    "components/email/blindly-supplier-order.tsx TS2322": 1,
+    "lib/email.ts TS2561": 1
+  }
+}

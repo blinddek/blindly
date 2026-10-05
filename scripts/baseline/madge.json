@@ -1,0 +1,13 @@
+{
+  "tool": "madge",
+  "seeded": "2026-10-05",
+  "violations": {
+    "components/booking/booking-form-step.tsx > components/booking/booking-widget.tsx": 1,
+    "components/booking/booking-widget.tsx > components/booking/booking-review-step.tsx": 1,
+    "components/configurator/blind-configurator.tsx > components/configurator/step-blind-quote.tsx": 1,
+    "components/configurator/blind-configurator.tsx > components/configurator/step-category.tsx": 1,
+    "components/configurator/blind-configurator.tsx > components/configurator/step-colour.tsx": 1,
+    "components/configurator/blind-configurator.tsx > components/configurator/step-measurements.tsx": 1,
+    "components/configurator/blind-configurator.tsx > components/configurator/step-type-range.tsx": 1
+  }
+}
