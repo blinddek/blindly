@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseItnBody, verifyItn } from "@/lib/payfast/webhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEmail, sendEmailWithAttachment, notifyAdmin } from "@/lib/email";
+import { sendEmail, sendEmailWithAttachment, sendRawEmail, notifyAdmin } from "@/lib/email";
 import { formatPrice } from "@/lib/shop/format";
 import { generateSupplierOrderXls } from "@/lib/blinds/supplier-order";
 import { createInvoiceFromOrder } from "@/lib/create-order-invoice";
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     if (paymentType === "course" && relatedId && userId) {
       await handleCoursePayment(supabase, relatedId, userId, reference);
     } else if (paymentType === "blindly_order") {
-      await handleBlindlyOrderPayment(supabase, reference);
+      await handleBlindlyOrderPayment(supabase, reference, data.amount_gross);
     } else {
       // Default: shop order
       await handleShopOrderPayment(supabase, reference);
@@ -130,7 +130,7 @@ async function handleShopOrderPayment(supabase: any, reference: string) {
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleBlindlyOrderPayment(supabase: any, reference: string) {
+async function handleBlindlyOrderPayment(supabase: any, reference: string, amountGross: string | undefined) {
   const { data: order, error: lookupError } = await supabase
     .from("blindly_orders")
     .select(`
@@ -155,6 +155,24 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string) {
 
   if (order.payment_status === "paid") {
     console.log("[payfast-itn] Blindly order already paid:", order.id);
+    return;
+  }
+
+  // The signature proves PayFast sent this ITN, not that the amount paid is the order's total —
+  // the checkout form is built in the browser. Checkout charges exactly total_cents, so any
+  // difference is a tampered or wrong payment: never claim it or send the supplier an order.
+  // Answer 200 (a retry cannot change the amount) and tell the admin to resolve it by hand.
+  const paidCents = Math.round(Number.parseFloat(amountGross ?? "") * 100);
+  if (paidCents !== order.total_cents) {
+    console.error("[payfast-itn] Amount mismatch for", order.order_number, "paid", paidCents, "expected", order.total_cents);
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (adminEmail) {
+      await sendRawEmail({
+        to: adminEmail,
+        subject: `Payment amount mismatch on order ${order.order_number}`,
+        html: `<p>PayFast reported a payment of ${formatPrice(paidCents)} for order ${order.order_number}, whose total is ${formatPrice(order.total_cents)}.</p><p>The order was not marked paid and no supplier order was sent. Check the payment in PayFast before acting.</p>`,
+      });
+    }
     return;
   }
 
@@ -290,7 +308,9 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string) {
       });
       console.log("[payfast-itn] XLS generated:", xlsBuffer.length, "bytes");
 
-      await sendEmailWithAttachment({
+      // sendEmailWithAttachment reports failure in its result rather than throwing. Try twice, then
+      // fall through to the log below as before — the order is claimed, so a PayFast retry won't resend.
+      const sendSupplierOrder = () => sendEmailWithAttachment({
         to: supplierEmail,
         template: "blindly_supplier_order",
         props: {
@@ -313,7 +333,13 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string) {
           content: xlsBuffer,
         },
       });
-      console.log("[payfast-itn] Supplier order email sent to", supplierEmail);
+      let sent = await sendSupplierOrder();
+      if (!sent.success) {
+        console.warn("[payfast-itn] Supplier order send failed, retrying once:", sent.error);
+        sent = await sendSupplierOrder();
+      }
+      if (!sent.success) throw sent.error ?? new Error("supplier order send failed twice");
+      console.log("[payfast-itn] Supplier order email sent for", order.order_number);
     } catch (err) {
       console.error("[payfast-itn] Failed to send supplier order:", err);
     }
