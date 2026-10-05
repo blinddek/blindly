@@ -10,7 +10,7 @@
 |---|---|---|
 | B-1 | pass | 6 spine files present |
 | B-2 | pass | 35 documents, all indexed |
-| B-3 | pass | 6 open gates, all complete |
+| B-3 | pass | 7 open gates, all complete |
 | B-4 | pass | 10 rows, under the 40-row sweep trigger |
 | B-5 | skipped | no unresolved markers |
 | B-6 | pass | current |
@@ -26,7 +26,7 @@
 | `CURRENT.md` | 1.5 KB | 2026-10-05 |
 | `DECISIONS.md` | 3.2 KB | 2026-10-05 |
 | `EVIDENCE.md` | 7.2 KB | 2026-10-05 |
-| `GATES.md` | 2.7 KB | 2026-10-05 |
+| `GATES.md` | 3.0 KB | 2026-10-05 |
 | `README.md` | 1.6 KB | 2026-10-05 |
 | `STATUS.md` | 0.1 KB | 2026-10-05 |
 | `build\00-BUILD_INDEX.md` | 59.6 KB | 2026-10-05 |
@@ -82,3 +82,4 @@
 | G-06 | Stéan | 2026-10-05 | 0 d |
 | G-07 | Stéan | 2026-10-05 | 0 d |
 | G-08 | Stéan | 2026-10-05 | 0 d |
+| G-09 | Stéan | 2026-10-05 | 0 d |

@@ -17,6 +17,7 @@
 | G-06 | Filing the rest of `project_brief/` | Your uncommitted `blindly-tech-sheet.md`, `customcolor/`, the modified Roller Blind price list and the deleted `public/` logo and favicon: commit, file or drop? | Stéan | 2026-10-05 | Each is committed or removed |
 | G-07 | Trusting the PayFast fix | Does a real sandbox ITN now verify? 9877ca1 was probed against a body signed the way PayFast documents, not a captured one. Run one sandbox payment end to end (`SUPPLIER_EMAIL` pointed at yourself) before the first live order. | Stéan | 2026-10-05 | A sandbox order reaches `paid` and its emails arrive; recorded in `EVIDENCE.md` |
 | G-08 | Transport fee | Checkout takes `distance_km` from the browser and charges no transport fee when it is null, so a professional-install order can skip the fee. Compute distance on the server, or accept the leak? | Stéan | 2026-10-05 | A DECISIONS row, and the fix if yes |
+| G-09 | Log hygiene (the unanswered half of G-05) | Should checkout stop logging the signature input, which includes `merchant_key`, and the ITN stop logging customer email and the supplier address to Vercel logs? | Stéan | 2026-10-05 | A DECISIONS row, and the fix if yes |
 
 ## Closed
 
