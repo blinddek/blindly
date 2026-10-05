@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { AvailableGrid } from "@/types/blinds";
 
 /**
@@ -8,7 +8,9 @@ import type { AvailableGrid } from "@/types/blinds";
 export async function getAvailableGrid(
   blindRangeId: string
 ): Promise<AvailableGrid> {
-  const supabase = await createClient();
+  // price_matrices holds supplier cost prices and is closed to anon (migration 040), so read the
+  // grid with the service client. Only width_cm and drop_cm leave this function.
+  const supabase = createAdminClient();
 
   const [{ data: widthRows }, { data: dropRows }] = await Promise.all([
     supabase
