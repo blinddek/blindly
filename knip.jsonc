@@ -43,7 +43,9 @@
   "project": [
     "app/**/*.{ts,tsx}",
     "components/**/*.{ts,tsx}",
-    "lib/**/*.ts",
+    "lib/**/*.{ts,tsx}",
+    "config/**/*.ts",
+    "types/**/*.ts",
     "scripts/**/*.mjs",
     ".claude/hooks/**/*.{js,mjs}"
   ],
@@ -58,6 +60,8 @@
     // Only for dependencies reached by a route knip does not follow — a CSS `@import`, a
     // PostCSS plugin, a runtime string require. These are FALSE POSITIVES, and each one
     // should name the route that makes it reachable.
-    // "tailwindcss"  // reached by `@import "tailwindcss"` in globals.css
+    "tailwindcss",     // reached by `@import "tailwindcss"` in app/globals.css
+    "tw-animate-css",  // reached by `@import "tw-animate-css"` in app/globals.css
+    "shadcn"           // reached by `@import "shadcn/tailwind.css"` in app/globals.css
   ]
 }
