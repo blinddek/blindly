@@ -241,13 +241,16 @@ async function repriceExtras(item: CheckoutItem): Promise<SelectedExtra[]> {
     getApplicableExtras(item.blind_range_id, widthCm),
     getMotorOptions(widthCm, dropCm),
   ]);
-  const prices = new Map<string, number>([
-    ...extras.map((e) => [e.id, e.price_cents] as const),
-    ...motors.filter((m) => m.compatible).map((m) => [m.id, m.price_cents] as const),
+  // Name as well as price: the name is printed on the supplier's order form.
+  const offered = new Map<string, { name: string; price_cents: number }>([
+    ...extras.map((e) => [e.id, { name: e.name, price_cents: e.price_cents }] as const),
+    ...motors
+      .filter((m) => m.compatible)
+      .map((m) => [m.id, { name: `${m.brand} ${m.model}`.trim(), price_cents: m.price_cents }] as const),
   ]);
   return selected.map((e) => {
-    const price = prices.get(e.extra_id);
-    if (price === undefined) throw new Error(`Accessory not available for this blind: ${e.name}`);
-    return { ...e, price_cents: price };
+    const server = offered.get(e.extra_id);
+    if (!server) throw new Error("An accessory in your cart is not available for this blind");
+    return { extra_id: e.extra_id, ...server };
   });
 }
