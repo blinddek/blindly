@@ -1,4 +1,6 @@
-"use server";
+// Server-only module, called by the admin-guarded import actions and app/api/admin/import.
+// Deliberately NOT "use server": that would make every export here a public server-action
+// endpoint writing prices with the service-role key and no admin check.
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseWorkbook } from "@/lib/parsers/workbook";
