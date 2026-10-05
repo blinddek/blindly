@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { lookupPrice } from "@/lib/pricing";
+import { lookupPrice, getApplicableExtras, getMotorOptions } from "@/lib/pricing";
 import { buildPayFastForm, generateReference } from "@/lib/payfast/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getInstallationPricing, getVolumeDiscounts } from "@/lib/pricing-rules";
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
         drop_mm: item.drop_mm,
         mount_type: item.mount_type,
       });
-      return { item, price };
+      return { item: { ...item, selected_extras: await repriceExtras(item) }, price };
     })
   ).catch((err: unknown) => {
     const message = err instanceof Error ? err.message : "Price lookup failed";
@@ -224,4 +224,30 @@ export async function POST(request: Request) {
       .eq("id", order.id);
     return NextResponse.json({ error: "Payment initialization failed" }, { status: 500 });
   }
+}
+
+/**
+ * Replace each selected extra's client-sent price with the server's price for this blind, using the
+ * same width/drop the configurator's accessories step priced it at. Extras and motors share the
+ * list (a motor is stored as an extra keyed by its motor id). An id the server does not offer for this
+ * blind is refused rather than charged at whatever the browser said.
+ */
+async function repriceExtras(item: CheckoutItem): Promise<SelectedExtra[]> {
+  const selected = item.selected_extras ?? [];
+  if (!selected.length) return [];
+  const widthCm = Math.ceil(item.width_mm / 10);
+  const dropCm = Math.ceil(item.drop_mm / 10);
+  const [extras, motors] = await Promise.all([
+    getApplicableExtras(item.blind_range_id, widthCm),
+    getMotorOptions(widthCm, dropCm),
+  ]);
+  const prices = new Map<string, number>([
+    ...extras.map((e) => [e.id, e.price_cents] as const),
+    ...motors.filter((m) => m.compatible).map((m) => [m.id, m.price_cents] as const),
+  ]);
+  return selected.map((e) => {
+    const price = prices.get(e.extra_id);
+    if (price === undefined) throw new Error(`Accessory not available for this blind: ${e.name}`);
+    return { ...e, price_cents: price };
+  });
 }
