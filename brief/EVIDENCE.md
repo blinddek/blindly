@@ -78,6 +78,12 @@ names what was measured and how.
 - **`lib/booking/actions.ts` `cancelBookingByCustomer` and `updateClientNotes` trust a client-supplied
   `userId` with the service key; `lib/shop/actions.ts` `validateAndDecrementStock` has no guard.** Booking
   and shop are off; not fixed (M-002). — *source: grep of `"use server"` files, 2026-10-05*
+- **PayFast ITN signature verification rejected correctly signed ITNs.** The body is form-encoded
+  (space → `+`); parsing kept the `+`, re-encoding made it `%2B`, and empty fields were dropped. A
+  body signed the documented way fails at 05adaff and passes at 9877ca1; a tampered amount fails
+  both. Not yet confirmed against a real PayFast ITN (G-07). — *source: node probe, 2026-10-05*
+- **Checkout charged accessory prices sent by the browser** — fixed in b1493f3 (repriced on the
+  server). `distance_km` is still browser-supplied (G-08). — *source: walker, 2026-10-05*
 - **`lib/blinds/actions.ts` (13 unguarded writes) is imported nowhere**, so it is not reachable. —
   *source: knip, 2026-10-05*
 

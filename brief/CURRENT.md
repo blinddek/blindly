@@ -8,14 +8,16 @@
 > so its size is a per-session tax. Anything older than the current step is history: finished
 > decisions go to `DECISIONS.md`, finished steps to `build/INDEX.md`, the rest nowhere.
 
-**Active** — canon adoption done through Phase 3; next is the go-live push, 2026-10-05.
+**Active** — go-live, 2026-10-05: G-03 and G-05 closed in code; payment-path fixes awaiting push.
 
 **Just done** —
-- Security fixes ca5fef1, 1437581, 2a962c8, c53246b, 4eeef4d, a163b0c, and `lib/storage.ts` guarded (82d5344).
-- Tier-0 gates baselined; `CLAUDE.md`, `docs/MECHANISABLE.md` (M-001..003), `docs/EXPERIMENTS.md`, context-budget (9f89756).
+- dbaf240 grid off anon + migration 040; 679258e ITN amount check + supplier retry; 9877ca1 ITN
+  signature verified on the raw body (it rejected real ITNs) + idempotency key; b1493f3 accessories
+  priced on the server.
 
-**Next action** — `/walk` the unpushed range, announce, push (deploys live). Then the operator closes
-G-01 (apply 039), G-02 and G-04 (read the Vercel production env) — no connector here reaches them.
+**Next action** — walk 9877ca1..b1493f3, push. Then, in order: apply 039 (any time) and 040 (after
+the push deploys) via the Management API once the operator supplies a token (G-01); one sandbox
+payment end to end (G-07); operator reads the Vercel env (G-02, G-04).
 
 **Decided mid-build, not yet in DECISIONS.md** — nothing.
 

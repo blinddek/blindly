@@ -13,12 +13,14 @@
 |---|---|---|---|---|---|
 | G-01 | Taking the first real order safely | Has migration 039 been applied to production? Nothing in this tree can run DDL; apply it in the Supabase SQL editor. | Stéan | 2026-10-05 | An anon GET on `blindly_orders` returns 401/empty with a row present, or `pg_policies` shows the three policies gone |
 | G-02 | Taking real money | Is `PAYFAST_SANDBOX` `false` on Vercel production, with a passphrase set? In sandbox mode the ITN IP allow-list is off. | Stéan | 2026-10-05 | The Vercel production env is read and recorded in `EVIDENCE.md` |
-| G-03 | Supplier price confidentiality | Are the 11,501 `price_matrices` rows Shademaster cost prices, and should anon stop reading them? (030 makes them public.) | Stéan | 2026-10-05 | A DECISIONS row: keep public, or a migration narrowing the policy |
 | G-04 | Fulfilment and the daily cron | Are `SUPPLIER_EMAIL`, `ADMIN_EMAIL`, `RESEND_FROM` and `CRON_SECRET` set on Vercel production? Unset, the supplier order silently does not send, admin mail goes to `admin@example.com`, and the cron runs unauthenticated. | Stéan | 2026-10-05 | All four confirmed set, recorded in `EVIDENCE.md` |
-| G-05 | ITN robustness | Should the ITN verify `amount_gross` against the order total, and stop logging `merchant_key` and customer email? And should a failed supplier send be retried? Today it is caught, logged and answered 200, so it is lost (walker N2). | Stéan | 2026-10-05 | A DECISIONS row, and the fix if yes |
 | G-06 | Filing the rest of `project_brief/` | Your uncommitted `blindly-tech-sheet.md`, `customcolor/`, the modified Roller Blind price list and the deleted `public/` logo and favicon: commit, file or drop? | Stéan | 2026-10-05 | Each is committed or removed |
+| G-07 | Trusting the PayFast fix | Does a real sandbox ITN now verify? 9877ca1 was probed against a body signed the way PayFast documents, not a captured one. Run one sandbox payment end to end (`SUPPLIER_EMAIL` pointed at yourself) before the first live order. | Stéan | 2026-10-05 | A sandbox order reaches `paid` and its emails arrive; recorded in `EVIDENCE.md` |
+| G-08 | Transport fee | Checkout takes `distance_km` from the browser and charges no transport fee when it is null, so a professional-install order can skip the fee. Compute distance on the server, or accept the leak? | Stéan | 2026-10-05 | A DECISIONS row, and the fix if yes |
 
 ## Closed
 
 | id | Closed | Answer |
 |---|---|---|
+| G-03 | 2026-10-05 | Supplier prices are not public: migration 040 drops anon read; the configurator grid reads with the service client (dbaf240). Apply 040 after that deploys. |
+| G-05 | 2026-10-05 | Yes: the ITN checks `amount_gross` against `total_cents` (679258e), and a failed supplier send is retried once with an idempotency key, then logged as before (679258e, 9877ca1). |
