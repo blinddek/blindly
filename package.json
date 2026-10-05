@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check": "npm run lint"
+    "check": "npm run check:hooks && npm run lint",
+    "check:hooks": "node scripts/check-hook-registration.mjs && node .claude/hooks/bash-gate.probe.mjs && node .claude/hooks/canon-inbox.probe.mjs && node .claude/hooks/agent-write-scope.probe.mjs && node .claude/hooks/agent-brief-gate.probe.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -1,0 +1,63 @@
+{
+  // knip.jsonc — KIT TEMPLATE, install at the project root. Fills the TIER-0 DEAD-CODE
+  // slot (`0-GREENFIELD.md` phase 2.4). Pair it with a cycles tool and wire BOTH into the
+  // gate: `check` → typecheck → lint → deadcode → cycles → …
+  //
+  // NOT DRIFT-CHECKED — every path below is this project's own, so `check-kit-drift.mjs`
+  // treats it as a template. Read it and adapt it; do not copy it and hope.
+  //
+  // ⚠ INSTALL IT ON DAY ONE, WHILE THE COUNT IS HONESTLY ZERO. Pointed at a scaffold this
+  // returns nothing and ratchets from zero, and every later violation arrives as a
+  // one-line diff attributable to the commit that caused it. Pointed at a mature tree it
+  // returns a wall that gets triaged into "later" and becomes permanent. The first project
+  // to install it late got 45 unused files and 65 unused exports on a repo weeks old.
+  //
+  // ⚠ EVERY ENTRY BELOW IS A REACHABILITY STATEMENT, NEVER A SUPPRESSED FINDING. The
+  // distinction is the whole discipline: "this file is reached by a route knip cannot see"
+  // is configuration; "this finding is inconvenient" is rot with a config file in front of
+  // it. A genuine dead export gets DELETED. If you cannot write the one-line reason, it is
+  // the second kind.
+
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+
+  // Framework entry discovery (routes, config, middleware) comes from knip's own plugin for
+  // your framework. These are the entries OUTSIDE any framework's knowledge:
+  "entry": [
+    // Invoked by the Claude Code harness through settings.json, never imported. WITHOUT
+    // THIS YOUR GATES READ AS DEAD FILES — the exact inversion of the truth, and the most
+    // alarming thing in an unconfigured first run.
+    ".claude/hooks/*.js",
+    ".claude/hooks/*.probe.mjs",
+
+    // Run by the gate script, likewise never imported.
+    "scripts/*.mjs",
+
+    // THE DECLARED SEAMS — list yours. A barrel that your CLAUDE.md names as the way to
+    // reach something is a PUBLISHED INTERFACE: an export nobody imports yet is the seam
+    // doing its job, not dead code. Marking them entry keeps that judgement in one place
+    // instead of scattering ignore rules through the tree.
+    // "lib/content/index.ts",
+    // "lib/<domain>/index.ts"
+  ],
+
+  "project": [
+    "app/**/*.{ts,tsx}",
+    "components/**/*.{ts,tsx}",
+    "lib/**/*.ts",
+    "scripts/**/*.mjs",
+    ".claude/hooks/**/*.{js,mjs}"
+  ],
+
+  // ⚠ PREFER NARROWING `project` OVER ADDING TO `ignore`. A directory of reference material
+  // — a design system read rather than imported, fixtures, vendored samples — simply sits
+  // outside the globs above, and knip reports a redundant `ignore` entry as a configuration
+  // hint. Say WHY it is outside, here, so the next person does not re-derive it from 40
+  // "unused" files.
+
+  "ignoreDependencies": [
+    // Only for dependencies reached by a route knip does not follow — a CSS `@import`, a
+    // PostCSS plugin, a runtime string require. These are FALSE POSITIVES, and each one
+    // should name the route that makes it reachable.
+    // "tailwindcss"  // reached by `@import "tailwindcss"` in globals.css
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": [
+    "KIT TEMPLATE — install at .claude/settings.json. NOT drift-checked: every path,",
+    "matcher and twin below is this project's own. Read it and adapt it.",
+    "",
+    "TIER 0 OF THE TOKEN ECONOMY. autoCompactWindow is the single highest-value line",
+    "in the whole setup and takes thirty seconds: without it every session pays the",
+    "default ~1M compaction window. It goes in at phase 0.2, BEFORE any source file",
+    "exists. See playbooks/3-TOKEN-ECONOMY.md §1.",
+    "",
+    "statusLine is deliberately absent HERE and may not be for you: it is CLI-only and",
+    "is never invoked by the VS Code extension. An extension adopter who installs it",
+    "sees nothing and cannot tell unsupported from broken (2-SETUP-LAYOUT.md §2.1).",
+    "",
+    "ONE HOOK, ONE QUESTION, so a failure in any of them is legible on its own.",
+    "bash-gate holds the irreversible shell acts and whatever constitutes deployment;",
+    "agent-write-scope bounds where a SUBAGENT may write, denies it a commit, and",
+    "decides who may spawn. Add a third only for a danger your census actually names —",
+    "a DDL gate written against a project with no database is a control that cannot",
+    "fire, and a gate that cannot fire reports green forever.",
+    "",
+    "⚠ A HOOK FILE IS NOT A HOOK UNTIL THIS FILE WIRES IT. Every entry below must",
+    "match the @event and @matcher its hook file declares; check-hook-registration.mjs",
+    "reconciles all three and its selftest covers seven ways a hook can be unwired",
+    "while every artefact still says it exists.",
+    "",
+    "⚠ HOOKS ARE READ AT SESSION START. A hook installed mid-session does nothing for",
+    "that session — it will pass its own probes from the command line while the",
+    "session that wrote it keeps prompting on every command. Restart (L-64).",
+    "",
+    "TWINS are the settings-layer fallback for when a hook is dead, and each is named in",
+    "the fallback of the bash-gate rule it backs (its fallbacks region). They are NOT",
+    "dormant while the hook lives: the permissions docs (read 2026-09-11) say an ask rule",
+    "still prompts under a hook allow and a deny still blocks — life-therapy measured",
+    "otherwise on 2026-08-18. So do NOT add a twin that is wrong in the opposite direction",
+    "to its rule: Bash(git push --force*) also matches --force-with-lease, which the hook",
+    "allows; Bash(git push --force *), with the space, does not. Write a trailing :* or",
+    "a spaced *: Bash(git merge:*main*) has a literal colon and matches NO command, and",
+    "the two twins below read that way until 2026-09-11. agent-write-scope has NO twin and CANNOT have",
+    "one: a permissions rule has no agent dimension, so it cannot say 'only when the",
+    "caller is a subagent'. Its probe suite is the backstop instead.",
+    "",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH pins Main → parent → child. The platform",
+    "default is 3, which lets a spawned child fan out again. THE CAP MUST LAND IN THE",
+    "SAME CHANGE AS THE Agent GRANT it constrains — the first adoption propagated the",
+    "census spine (which carries the grant) and not the cap, and ran a day with an",
+    "unbounded fan-out available. That split is exactly what 4-AGENT-PIPELINES.md",
+    "warns against, and it is L-63: the propagation unit is the contract, not the",
+    "files that changed.",
+    "",
+    "⚠ DENY PowerShell, and keep it denied (M-KIT-22). On Windows the harness offers a",
+    "PowerShell tool BESIDE Bash — on some machines as the primary shell — and every hook",
+    "matcher above says `Bash`. A command-gate that one tool bypasses is not a gate: the",
+    "lethal set, the install ban and the branch twins all go quiet for the tool the agent",
+    "may prefer. Do not widen the matcher instead — bash-gate parses POSIX tokens, and a",
+    "POSIX parser over PowerShell syntax is partial coverage that reads as whole. The Bash",
+    "tool exists on every platform, so one shell, gated. check-kit-drift asserts this line."
+  ],
+  "autoCompactWindow": 300000,
+  "env": {
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2"
+  },
+  "permissions": {
+    "deny": [
+      "PowerShell",
+      "Bash(npm publish *)",
+      "Bash(git push --force *)",
+      "Bash(git push * --force *)",
+      "Bash(git push * --force)",
+      "Bash(git push -f *)",
+      "Bash(git push * -f *)",
+      "Bash(git push * -f)"
+    ],
+    "ask": [
+      "Bash(git merge *main*)",
+      "Bash(git push *main*)",
+      "Bash(git push *--all*)",
+      "Bash(git push *--mirror*)",
+      "Bash(git push * +*)",
+      "Bash(gh pr merge *)",
+      "Bash(git reset *--hard*)",
+      "Bash(git clean *)",
+      "Bash(supabase db push*)",
+      "Bash(supabase db reset*)",
+      "Bash(npx supabase db *)",
+      "Bash(./scripts/setup-db.sh*)",
+      "Bash(scripts/setup-db.sh*)",
+      "Bash(bash scripts/setup-db.sh*)",
+      "Bash(bash ./scripts/setup-db.sh*)",
+      "Bash(psql *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/bash-gate.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/agent-write-scope.js\""
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/agent-brief-gate.js\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/canon-inbox.js\""
+          }
+        ]
+      }
+    ]
+  }
+}
