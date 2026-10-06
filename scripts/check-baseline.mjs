@@ -29,8 +29,14 @@ const rel = (p) => relative(ROOT, p).replaceAll("\\", "/")
 const TOOLS = {
   tsc: {
     args: ["--noEmit", "--pretty", "false"],
-    keys: (out) =>
-      [...out.matchAll(/^(.+?)\(\d+,\d+\): error (TS\d+):/gm)].map((m) => `${m[1].replaceAll("\\", "/")} ${m[2]}`),
+    // tsc has no machine format, so its exit status is the cross-check on the regex: a failing run
+    // with nothing parsed (a crash, a config error, a changed format) is unreadable, not clean.
+    keys: (out, status) => {
+      const found = [...out.matchAll(/^(.+?)\(\d+,\d+\): error (TS\d+):/gm)].map((m) => `${m[1].replaceAll("\\", "/")} ${m[2]}`)
+      if (status !== 0 && found.length === 0) throw new Error(`tsc exited ${status} but no error line parsed:\n${out.slice(0, 2000)}`)
+      if (status === 0 && found.length > 0) throw new Error(`tsc exited 0 yet ${found.length} error line(s) parsed`)
+      return found
+    },
   },
   eslint: {
     args: ["-f", "json"],
@@ -70,7 +76,7 @@ if (run.error) {
 
 let found
 try {
-  found = spec.keys(run.stdout)
+  found = spec.keys(run.stdout, run.status)
 } catch (err) {
   // An output we cannot parse is a failure, never an empty list: zero findings parsed from garbage
   // reads exactly like a clean tree.
