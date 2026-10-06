@@ -68,6 +68,7 @@ FIX        template itself. Then a kit check for Next + Supabase projects: every
            `docs/MECHANISABLE.md`). Must not flag public-by-design actions (contact, password reset).
 
 ### CF-3 · An adoption handover named a line that did not exist in this project
+LIFTED     canon 7f2c9b5 (2026-10-06): handovers state per-project facts
 OBSERVED   The Session B message told blindly to remove `brief/` from `.gitignore` "(line 45)";
            blindly's `.gitignore` never ignored `brief/`. Nothing broke, but the instruction could not
            be followed as written, and a session following it literally edits the wrong line.
@@ -78,6 +79,7 @@ SMALLEST   Derive per-project facts in a handover from that project's tree, or s
 FIX        condition ("if .gitignore ignores brief/, remove it").
 
 ### CF-4 · `git mv` stages immediately, and a later bare `git commit` sweeps it into an unrelated commit
+LIFTED     canon 7f2c9b5 (2026-10-06): CLAUDE_TEMPLATE §8 says commit with a pathspec
 OBSERVED   34 staged `git mv` renames (the brief filing) went into a one-file security fix, because
            `git commit` takes the whole index. Recovered before any push: soft reset, then commits
            with a pathspec (4eeef4d, a163b0c, a32ca74).
@@ -90,6 +92,7 @@ FIX        the index may hold anything else; or bash-gate asks on a bare `git co
            holds paths outside the files the session edited. Must not block a deliberate full commit.
 
 ### CF-5 · bash-gate v10 loosened three verdicts and declares none of them
+LIFTED     canon c34cc93, bash-gate v11 (2026-10-06): the three v10 loosenings are declared
 OBSERVED   Taking v10 by `--carry-only` (7de853b), the differential against blindly's v9 finds three
            cases that were deny and are now allow, with no entry in v10's LOOSENED table.
 COMMAND    git show 7de853b^:.claude/hooks/bash-gate.js > v9.js
@@ -107,6 +110,7 @@ CANON'S    shape) says a loosening is declared by the version that makes it; eve
 SMALLEST   Three LOOSENED entries in canon's v10 probe, each with its reason. Must not change a verdict.
 
 ### CF-6 · bash-gate matches command names case-sensitively and without `.exe`, so on win32 every canon rule is bypassed by spelling
+LIFTED     canon bash-gate v12 (2026-10-06), taken here at v13: all four spellings deny
 OBSERVED   On this machine (Windows, Git Bash) `GIT push --force origin main`, `git.exe push --force
            origin main`, `rm.exe -rf /*` and `Git.EXE -c alias.q='!rm -rf /*' q` are all ALLOW
            under v10 and v11. Git Bash resolves `GIT`, `Git.EXE` and `git.exe` to
@@ -127,6 +131,7 @@ FIX        lowercase it, strip a trailing `.exe`. Probe both directions: `git.ex
            finding 1.)
 
 ### CF-7 · v11's "a string git runs is a command" misses three neighbours, and its NOT COVERED list names none of them
+LIFTED     canon bash-gate v12 (2026-10-06), taken here at v13: the wrapper and ext:: forms deny
 OBSERVED   ALLOW under v11 (and v10):
            - `env -i GIT_SSH_COMMAND='rm -rf /*' git fetch` and `sudo GIT_SSH_COMMAND='rm -rf /*' git
              fetch`. `envStrings` reads an assignment only at segment start or after a bare
