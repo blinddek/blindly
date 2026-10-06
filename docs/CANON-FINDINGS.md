@@ -97,7 +97,9 @@ COMMAND    git show 7de853b^:.claude/hooks/bash-gate.js > v9.js
            ✗ against: LOOSER: "v10: a grep pattern holding `|` is a pattern, not a pipe into a command" was deny and is now allow, and this version does not say why
            ✗ against: LOOSER: "v10: a quoted `;` in an echo is text" was deny and is now allow, and this version does not say why
            ✗ against: LOOSER: "v10: a quoted pattern, then a pipe into a sink" was deny and is now allow, and this version does not say why
-           ⇄ … 239 cases through both gates — 3 looser (0 declared), 4 stricter
+           ⇄ … 234 cases through both gates — 3 looser (0 declared), 0 stricter
+           (run from a 7de853b checkout of hook, probe and config. At HEAD it reads 239 cases and
+           4 stricter. Those 4 are blindly's own DB asks from 824c8ec, not v10's.)
 WHY IT IS  The three read as deliberate fixes of false denies, but canon's own differential (CF-9's
 CANON'S    shape) says a loosening is declared by the version that makes it; every project taking
            v10 inherits three undeclared loosenings, and a project cannot declare canon's in its
@@ -145,7 +147,7 @@ off this table and it stays open.
 | L-50 | 2026-10-05 | `grep -rnE "\b(ok\|assert)\(.*\|\|" scripts .claude/hooks` → 1 hit, `check-context-budget.mjs:237`, an OR over fixture output with the exact count pinned on the next line; empty `catch {}` → 0; single-line `for … ok(` → 0; `ok(<live>.length … ‖/&&)` → 8 hits, all `&&` joining two fixture results. Known-good: the same pattern fires on a planted `ok(Object.keys(ALLOW).length === 0 \|\| …)` |
 | L-52 | n/a: no exemption predicate exists to key on text | `grep -rn "getText(" scripts .claude/hooks eslint.config.mjs` → 0; `ls eslint-rules` → absent; `eslint.config.mjs` sets one stock rule's options. M-002's sketch ("calls `ensureAdmin`/`requireAdmin`/`getUser`") is text-keyed and unbuilt: resolve the binding when it is built |
 | L-53 | n/a: no control reads another control's baseline | baselines are `scripts/baseline/<tool>.json`, read only at `check-baseline.mjs:~108`; `grep -rnE "baseline/\|ceiling\.json" scripts .claude/hooks` outside that file with a read call → 0 |
-| L-56 | 2026-10-05 | `.claude/commands/walk.md:15,22` (5bbee43): "Spawn the walker in the background", "While it runs, send the claims out — all in ONE message… one `db-inspector` per live-data claim, one `census` per pattern claim". `git grep -i -E "while you|should be|is expected|ideally|in parallel" -- CLAUDE.md` → 0 |
+| L-56 | 2026-10-05 | `.claude/commands/walk.md:15,22` (5bbee43): "Spawn the walker in the background", "While it runs, send the claims out — all in ONE message… one `db-inspector` per live-data claim, one `census` per pattern claim". `git grep -i -E "while you\|should be\|is expected\|ideally\|in parallel" -- CLAUDE.md` → 0 |
 | L-57 | 2026-10-05 | `.claude/hooks/bash-gate.js:72-75,1099-1107`; run: `echo '"x"' \| node .claude/hooks/bash-gate.js` and `echo 'not json' \|…` → both `permissionDecision":"ask"… failing to a prompt, not to silence`; `scripts/check-baseline.mjs:63-69` unparseable output exits 1, never empty |
 | L-58 | n/a | no tree-rebuild-from-recorded-writes tool: `git grep -n -i -E "GIT_INDEX_FILE\|rewind\|tree-snapshot\|reconstruct\|replay" -- scripts .claude .githooks CLAUDE.md` → 7 hits, none a reconstruction (bash-gate prefix replay, context-budget cost tail) |
 | L-59 | n/a | blindly runs no experiment arms or blind probes: `docs/EXPERIMENTS.md:3-4` "This project runs none of its own yet"; `git grep -n -i -E "blind probe\|tell count\|\barms?\b.{0,20}(experiment\|probe)" -- scripts .claude docs brief CLAUDE.md` → 0 |
@@ -188,7 +190,7 @@ Measured 2026-10-06 at 661c87a/824c8ec: every ledger entry read whole, each answ
 
 **Still open — deliberately not answered** (39), each with what is missing:
 
-- **L-01** — CLAUDE.md:110 carries probe-first; the entry's absolute rule (no path/glob/regex through a shell string) is nowhere: Grep `shell string\
+- **L-01** — CLAUDE.md:110 carries probe-first; the entry's absolute rule (no path/glob/regex through a shell string) is nowhere: Grep `shell string\|node -e\|backslash\|heredoc` over CLAUDE.md, .claude/agents, .claude/commands, docs, brief → 0 hits
 - **L-02** — docs/EXPERIMENTS.md:8-16 maps premises to dependents, but the one premise that fell here (twins "dormant") is still stated at CLAUDE.md:86 against settings.json:34 and bash-gate.js:170; no sweep recorded
 - **L-10** — Enumerations carry zero-guards only (check-hook-registration.mjs:315 "empty … not a pass"; check-claude-md.mjs:968), no realistic floor against `git ls-files`; the only real floors are incidental (non-empty tier-0 baselines fail when a tool finds nothing)
 - **L-14** — 824c8ec gates `supabase@<ver>`, flags before `db`, and any command naming `api.supabase.com` or `SUPABASE_ACCESS_TOKEN`; a script that reads the token from `.env.local` itself is still not gated at the point the statement is written
@@ -201,7 +203,7 @@ Measured 2026-10-06 at 661c87a/824c8ec: every ledger entry read whole, each answ
 - **L-27** — scripts/baseline/ was seeded from the first run unclassified (373706a: "Seeded from the tree at adoption: tsc 9, eslint 11, knip 201, madge 7"); brief/EVIDENCE.md:20 records the count; no entry carries a verdict; scripts/baseline/knip.json has 144 export entries with no reason
 - **L-29** — `CLAUDE.md:223` and `:225` state tree observations in the present tense ("lists migrations 001–025 only", "has 13 unguarded writes and is imported nowhere")
 - **L-30** — `grep -niE "hypothesis\|diverg\|vantage" docs/MECHANISABLE.md CLAUDE.md` → 0 hits; the header says an entry "holds the sketch", with no divergence rule
-- **L-31** — writer/reader pairs exist and share nothing: `lib/payfast/client.ts:65` `generateSignature` vs `lib/payfast/webhooks.ts:74` `verifyRawSignature` (reader hardened in 9877ca1); `app/api/track/click/route.ts` is a forwarder with no writer; no round-trip test (`git ls-files \
+- **L-31** — writer/reader pairs exist and share nothing: `lib/payfast/client.ts:65` `generateSignature` vs `lib/payfast/webhooks.ts:74` `verifyRawSignature` (reader hardened in 9877ca1); `app/api/track/click/route.ts` is a forwarder with no writer; no round-trip test (`git ls-files \| grep -E "\.test\.\|\.spec\."` → none)
 - **L-37** — the only reconciliation control is `scripts/check-baseline.mjs` (baseline JSON vs live tool run); nothing in the tree records what its two sides share, and the lesson's mutation was not run (see worksheet)
 - **L-39** — `grep -rniE "turn boundary\|next turn\|nonce\|takes effect" CLAUDE.md docs .claude/agents brief` → 0 hits; the E-table in `docs/EXPERIMENTS.md` inherits E1b/E2/E3/E7/E8/E10 and omits E9
 - **L-42** — `grep -rn "L-42" CLAUDE.md .claude brief/*.md docs` → 0; nothing says a spec's "does" is intent or that a ruling asserting code behaviour cites its site. Nearest: `CLAUDE.md` §5 last bullet (feature flags only) and §8 "spec-vs-code conflict: flag and stop"
@@ -220,7 +222,7 @@ Measured 2026-10-06 at 661c87a/824c8ec: every ledger entry read whole, each answ
 - **L-82** — `grep -c "selftest\|KNOWN-GOOD" scripts/check-baseline.mjs` → 0. blindly's only own check has no known-good fixtures.
 - **L-85** — No blindly-authored rule has a narrowed grain or a recorded narrowing. `scripts/check-baseline.mjs` has no selftest (count 0).
 - **L-87** — `scripts/check-context-budget.mjs:30` `HOOK=".claude/hooks/context-budget.js"` is resolved from the cwd (`:32`, `:76`, `:169` `process.cwd()`). Not co-located.
-- **L-88** — `grep -n "r.error" scripts/check-context-budget.mjs` → 0 hits. Its `run()` returns `{error}` but no assertion checks it first. `ok(!/run \/compact/i.test(r.ctx ?? ""))` and `ok(!/batch\
+- **L-88** — `grep -n "r.error" scripts/check-context-budget.mjs` → 0 hits. Its `run()` returns `{error}` but no assertion checks it first. `ok(!/run \/compact/i.test(r.ctx ?? ""))` and `ok(!/batch\|compact\|billable/i.test(r.ctx))` are refusal-direction.
 - **L-92** — `grep -n "file you took\|dry run" CLAUDE.md` → 0. No rule is written. The labels do match (a91b802 names `walker v10`, file has `SPINE:walker v10`; 7de853b `v10`, file `@kit bash-gate v10`).
 - **L-95** — Same as L-82: `check-baseline.mjs` was run over the real tree only, and has no fixture. 661c87a's garbage-tsc false green is not kept as a probe.
 - **L-100** — `grep -in "recompute\|distinct output" .claude/agents/*.md .claude/commands/*.md CLAUDE.md` → 0 hits, so `walker`/`implementer` carry no such step.
