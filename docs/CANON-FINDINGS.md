@@ -106,6 +106,40 @@ CANON'S    shape) says a loosening is declared by the version that makes it; eve
            own `loosened` region, which is for its own.
 SMALLEST   Three LOOSENED entries in canon's v10 probe, each with its reason. Must not change a verdict.
 
+### CF-6 · bash-gate matches command names case-sensitively and without `.exe`, so on win32 every canon rule is bypassed by spelling
+OBSERVED   On this machine (Windows, Git Bash) `GIT push --force origin main`, `git.exe push --force
+           origin main`, `rm.exe -rf /*` and `Git.EXE -c alias.q='!rm -rf /*' q` are all ALLOW
+           under v10 and v11. Git Bash resolves `GIT`, `Git.EXE` and `git.exe` to
+           /mingw64/bin/git.exe, and `rm.exe` to /usr/bin/rm.exe. The force-push fallback twins
+           (`Bash(git push --force *)`) do not match these spellings either, so "force pushes are
+           denied" does not hold for them.
+COMMAND    printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git.exe push --force origin main"}}' \
+             | node .claude/hooks/bash-gate.js      → no deny
+           GIT --version                            → git version … (the spelling runs)
+WHY IT IS  `atCommand`, `GATED_NAMES` and `isGit` live outside every KIT:CONFIG region. Every
+CANON'S    project on win32 (or on any case-insensitive filesystem, such as macOS by default) has the
+           hole. A project rule built on `atCommand` inherits it too: blindly's `psql` rule does.
+SMALLEST   Normalise the command word once, in `commandWordIndex`'s consumers: take the basename,
+FIX        lowercase it, strip a trailing `.exe`. Probe both directions: `git.exe push --force`
+           and `GIT push -f` deny; `git.exe status` allows. (Source: .handoff/walk-kit-v11/01-walker.md
+           finding 1.)
+
+### CF-7 · v11's "a string git runs is a command" misses three neighbours, and its NOT COVERED list names none of them
+OBSERVED   ALLOW under v11 (and v10):
+           - `env -i GIT_SSH_COMMAND='rm -rf /*' git fetch` and `sudo GIT_SSH_COMMAND='rm -rf /*' git
+             fetch`. `envStrings` reads an assignment only at segment start or after a bare
+             `export`/`env`, so a wrapper or an option stops it. The bare form is DENY.
+           - `git -c protocol.ext.allow=always fetch 'ext::sh -c rm% -rf% /*'`: the `ext::`
+             transport runs its URL as a command. The verdict is reproduced; the execution rests on
+             git's docs and was not run.
+           - `SSH_ASKPASS=…` (not `GIT_`-prefixed), and `GIT_SSH_COMMAND="$(echo rm -rf /*)"`.
+COMMAND    each payload piped to `node .claude/hooks/bash-gate.js` (walker's battery,
+           .handoff/walk-kit-v11/01-walker.md findings 2–3)
+WHY IT IS  v11's header claims "the environment that sets them". A project reading that believes
+CANON'S    the wrapper forms are covered. The fix is in canon's own code.
+SMALLEST   Scan assignments after `commandWordIndex`'s wrappers as well as before them; treat an
+FIX        `ext::` argument as a command string. Or, at the least, add all three to NOT COVERED.
+
 ---
 
 ## 2 · Lesson answers
