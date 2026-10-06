@@ -697,6 +697,10 @@ const CASES = [
   { want: "ask", why: "DB: psql reaches production", payload: bash('psql "$DATABASE_URL" -f supabase/migrations/027_x.sql') },
   { want: "ask", why: "DB: psql behind a password assignment", payload: bash('PGPASSWORD=x psql "postgresql://h/postgres" -c "select 1"') },
   { want: "allow", why: "DB: a message naming psql is prose", payload: bash('git commit -m "document the psql fallback"') },
+  { want: "ask", why: "DB: psql.exe is psql on Windows", payload: bash('psql.exe "$DATABASE_URL" -c "select 1"') },
+  { want: "ask", why: "DB: PSQL is psql on a case-blind filesystem", payload: bash('PSQL "$DATABASE_URL"') },
+  { want: "ask", why: "DB: a Windows path to psql.exe", payload: bash('"C:/Program Files/PostgreSQL/16/bin/psql.exe" -h h') },
+  { want: "allow", why: "DB: psqlrc is a file, not psql", payload: bash("cat ~/.psqlrc") },
   // L-14 (2026-10-06): each of these walked past the adjacent-words predicate before the fix.
   { want: "ask", why: "DB: a pinned CLI version still pushes", payload: bash("npx supabase@latest db push") },
   { want: "ask", why: "DB: a global flag with a value before db", payload: bash("supabase --workdir . db reset") },

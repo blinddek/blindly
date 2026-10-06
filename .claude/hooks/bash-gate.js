@@ -180,7 +180,9 @@ const PROJECT_ASK = [
   [(t) => atCommand(t, "setup-db.sh"),
     "scripts/setup-db.sh runs migrations (or --reset) against the production database — there is no staging database",
     { twins: ["Bash(./scripts/setup-db.sh*)", "Bash(scripts/setup-db.sh*)", "Bash(bash scripts/setup-db.sh*)", "Bash(bash ./scripts/setup-db.sh*)"] }],
-  [(t) => atCommand(t, "psql"),
+  // Case-blind and `.exe`-tolerant: Git Bash runs `PSQL` and `psql.exe` as psql (CF-6). Found in any
+  // word, like the CLI: a quoted path with a space (`"C:/Program Files/…/psql.exe"`) splits in two.
+  [(t) => !isDbSearch(t) && t.some((x) => /^psql(\.exe)?$/i.test(baseName(x))),
     "psql here reaches the production database — there is no staging database",
     { twins: ["Bash(psql *)"] }],
 ];
