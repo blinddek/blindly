@@ -131,7 +131,10 @@ FIX        lowercase it, strip a trailing `.exe`. Probe both directions: `git.ex
            finding 1.)
 
 ### CF-7 · v11's "a string git runs is a command" misses three neighbours, and its NOT COVERED list names none of them
-LIFTED     canon bash-gate v12 (2026-10-06), taken here at v13: the wrapper and ext:: forms deny
+LIFTED     canon bash-gate v12 (2026-10-06), taken here at v13: the wrapper, ext:: and SSH_ASKPASS
+           forms deny. `GIT_SSH_COMMAND="$(…)"` still allows, and v12 declares it NOT COVERED above
+           `GIT_RUNS_ENV`, which this finding's SMALLEST FIX accepted. (867f5f2's body said every
+           case denies; walk-kit-v13 F2 corrects it.)
 OBSERVED   ALLOW under v11 (and v10):
            - `env -i GIT_SSH_COMMAND='rm -rf /*' git fetch` and `sudo GIT_SSH_COMMAND='rm -rf /*' git
              fetch`. `envStrings` reads an assignment only at segment start or after a bare
@@ -146,6 +149,40 @@ WHY IT IS  v11's header claims "the environment that sets them". A project readi
 CANON'S    the wrapper forms are covered. The fix is in canon's own code.
 SMALLEST   Scan assignments after `commandWordIndex`'s wrappers as well as before them; treat an
 FIX        `ext::` argument as a command string. Or, at the least, add all three to NOT COVERED.
+
+### CF-8 · A quoted Windows path to an executable gets past every bash-gate rule, the push-to-main ask included
+OBSERVED   Under v13 (and v11) every one of these is ALLOW:
+           - `"C:/Program Files/Git/cmd/git.exe" push --force origin main`
+           - `… git.exe" push origin main`, which is the deploy ask
+           - `… git.exe" commit --no-verify`
+           - `"C:/Program Files/Git/usr/bin/rm.exe" -rf /*`
+           Backslashes and single quotes give the same result. Tokens drop their quotes and split at the
+           space, so `commandName` sees `C:/Program` → `program`. This is Git for Windows' default
+           install path, and `"C:\Program Files\Git\cmd\git.exe" --version` runs in Git Bash here. No
+           settings twin matches it. The unquoted forms (`C:/Git/cmd/git.exe`,
+           `/c/Program\ Files/…`) deny.
+COMMAND    .handoff/walk-kit-v13/01-walker.md F1 (`scratch/winpath.mjs` piped each payload through
+           `node .claude/hooks/bash-gate.js`)
+WHY IT IS  `commandName` and `commandWordIndex` are outside every KIT:CONFIG region. v12's "HOW A
+CANON'S    COMMAND IS SPELLED" closed CF-6 for unquoted spellings only, and its NOT COVERED list does
+           not name this. CF-6 asked for the class to be closed in the helper. blindly's own psql
+           ask closes this exact split in its ask region (8c5922c): it matches the name in any word.
+SMALLEST   Tokenise a quoted word as one word before splitting, or, at the command position, rejoin
+FIX        a word that opens a quote through the word that closes it before `commandName` reads it.
+           Probe both directions: the four lines above deny or ask as their unquoted forms do;
+           `"C:/Program Files/Git/cmd/git.exe" status` allows.
+
+### CF-9 · agent-write-scope denies a `cat >` heredoc whose body names `git commit`
+OBSERVED   A subagent's `cat > scratch/routine.mjs <<'EOF'`, whose body held the text `git commit`,
+           was denied with agent-write-scope's commit reason. This is the class bash-gate v13 fixed
+           ("what consumes text decides whether it is text"), left open in the sibling hook.
+           It fails closed: friction, not exposure.
+COMMAND    .handoff/walk-kit-v13/01-walker.md F3 (observed live by the walker's own first write)
+WHY IT IS  agent-write-scope is a kit hook. Every project's subagents pay the false deny when they
+CANON'S    write a script or a note about git.
+SMALLEST   Mask a sink heredoc's body before agent-write-scope's commit test, as bash-gate's
+FIX        `maskSinkHeredocs` does. Probe: `cat > x <<'EOF'\ngit commit\nEOF` allows for a subagent,
+           and a bare `git commit` from a subagent still denies.
 
 ---
 
