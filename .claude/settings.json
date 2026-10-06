@@ -88,7 +88,11 @@
       "Bash(scripts/setup-db.sh*)",
       "Bash(bash scripts/setup-db.sh*)",
       "Bash(bash ./scripts/setup-db.sh*)",
-      "Bash(psql *)"
+      "Bash(psql *)",
+      "Bash(npx supabase@*)",
+      "Bash(supabase --*)",
+      "Bash(*api.supabase.com*)",
+      "Bash(*SUPABASE_ACCESS_TOKEN*)"
     ]
   },
   "hooks": {

@@ -663,6 +663,12 @@ const CASES = [
   { want: "ask", why: "DB: psql reaches production", payload: bash('psql "$DATABASE_URL" -f supabase/migrations/027_x.sql') },
   { want: "ask", why: "DB: psql behind a password assignment", payload: bash('PGPASSWORD=x psql "postgresql://h/postgres" -c "select 1"') },
   { want: "allow", why: "DB: a message naming psql is prose", payload: bash('git commit -m "document the psql fallback"') },
+  // L-14 (2026-10-06): each of these walked past the adjacent-words predicate before the fix.
+  { want: "ask", why: "DB: a pinned CLI version still pushes", payload: bash("npx supabase@latest db push") },
+  { want: "ask", why: "DB: a global flag with a value before db", payload: bash("supabase --workdir . db reset") },
+  { want: "ask", why: "DB: the Management API runs SQL on production", payload: bash("curl -X POST https://api.supabase.com/v1/projects/x/database/query") },
+  { want: "ask", why: "DB: the Management API token, by reference", payload: bash("node -e 'fetch(u, { headers: { Authorization: process.env.SUPABASE_ACCESS_TOKEN } })'") },
+  { want: "allow", why: "DB: a pinned CLI reading status is not DDL", payload: bash("npx supabase@latest status") },
   /* KIT:CONFIG /cases */
 ];
 

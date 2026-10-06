@@ -137,13 +137,23 @@ const PROJECT_DENY = [
 // through scripts/setup-db.sh, which runs `supabase db push`, `supabase db reset` or `psql
 // "$DATABASE_URL"`. Each of the three asks, whether run directly or through the script.
 const PROJECT_ASK = [
+  // Matched on the subcommand wherever it sits, not on `supabase db` being adjacent: a version
+  // (`npx supabase@latest`) or a global flag with a value (`--workdir . db reset`) walked past the
+  // adjacent-words form (canon L-14, probed 2026-10-06).
   [(t) => {
     const a = (atCommand(t, "npx") ? argsOf(t) : atCommand(t, "supabase") ? ["supabase", ...argsOf(t)] : [])
       .filter((x) => !x.startsWith("-"));
-    return a[0] === "supabase" && a[1] === "db" && (a[2] === "push" || a[2] === "reset");
+    if (!/^supabase(@.*)?$/.test(a[0] ?? "")) return false;
+    const db = a.indexOf("db");
+    return db > 0 && (a[db + 1] === "push" || a[db + 1] === "reset");
   },
     "supabase db push/reset writes DDL to the production database — there is no staging database",
-    { twins: ["Bash(supabase db push*)", "Bash(supabase db reset*)", "Bash(npx supabase db *)"] }],
+    { twins: ["Bash(supabase db push*)", "Bash(supabase db reset*)", "Bash(npx supabase db *)", "Bash(npx supabase@*)", "Bash(supabase --*)"] }],
+  // The Management API runs arbitrary SQL, DDL included, against the production project. The token
+  // is read by reference, so the gate matches the endpoint or the token's name wherever either appears.
+  [(t) => t.some((x) => x.includes("api.supabase.com") || x.includes("SUPABASE_ACCESS_TOKEN")),
+    "the Supabase Management API runs SQL, DDL included, against the production database — there is no staging database",
+    { twins: ["Bash(*api.supabase.com*)", "Bash(*SUPABASE_ACCESS_TOKEN*)"] }],
   [(t) => atCommand(t, "setup-db.sh"),
     "scripts/setup-db.sh runs migrations (or --reset) against the production database — there is no staging database",
     { twins: ["Bash(./scripts/setup-db.sh*)", "Bash(scripts/setup-db.sh*)", "Bash(bash scripts/setup-db.sh*)", "Bash(bash ./scripts/setup-db.sh*)"] }],
