@@ -260,7 +260,9 @@ const PROJECT_VERDICTS = {}
  *
  *   "PROSE: a gated command named in echo's arguments": "our old gate matched a name at any token",
  */
-const PROJECT_LOOSENED = {}
+const PROJECT_LOOSENED = {
+  "DB: a search for the endpoint is not a call": "824c8ec matched the endpoint in any token, so a search over our own docs asked (G-10, walk-canon-gates finding 3); grep, rg and git connect to nothing",
+}
 /* KIT:CONFIG /loosened */
 
 /**
@@ -669,6 +671,26 @@ const CASES = [
   { want: "ask", why: "DB: the Management API runs SQL on production", payload: bash("curl -X POST https://api.supabase.com/v1/projects/x/database/query") },
   { want: "ask", why: "DB: the Management API token, by reference", payload: bash("node -e 'fetch(u, { headers: { Authorization: process.env.SUPABASE_ACCESS_TOKEN } })'") },
   { want: "allow", why: "DB: a pinned CLI reading status is not DDL", payload: bash("npx supabase@latest status") },
+  // G-10 (2026-10-06, walk-canon-gates findings 2-3): each of these was allowed before the fix.
+  { want: "ask", why: "DB: pnpm dlx runs the CLI", payload: bash("pnpm dlx supabase db push") },
+  { want: "ask", why: "DB: bunx runs the CLI", payload: bash("bunx supabase db push") },
+  { want: "ask", why: "DB: npm exec runs the CLI", payload: bash("npm exec -- supabase db push") },
+  { want: "ask", why: "DB: cmd /c runs the CLI", payload: bash("cmd /c supabase db push") },
+  { want: "ask", why: "DB: powershell -c runs the CLI", payload: bash('powershell -c "supabase db push"') },
+  { want: "ask", why: "DB: the Windows binary", payload: bash("supabase.exe db reset") },
+  { want: "ask", why: "DB: a flag's value spelled db", payload: bash("supabase --workdir db db push") },
+  { want: "ask", why: "DB: migration up applies to the linked project", payload: bash("supabase migration up --linked") },
+  { want: "ask", why: "DB: migration repair writes the history table", payload: bash("npx supabase migration repair --status applied 039") },
+  { want: "ask", why: "DB: SUPABASE_DB is a direct connection string", payload: bash('npx -y postgres-shell "$SUPABASE_DB"') },
+  { want: "ask", why: "DB: SUPABASE_DB by reference in node", payload: bash("node -e 'new Client(process.env.SUPABASE_DB).connect()'") },
+  { want: "ask", why: "DB: the endpoint match ignores case", payload: bash("curl https://API.SUPABASE.COM/v1/projects/x/database/query") },
+  { want: "ask", why: "DB: printing the token is still a use", payload: bash("echo $SUPABASE_ACCESS_TOKEN") },
+  { want: "allow", why: "DB: a search for the endpoint is not a call", payload: bash("rg -n api.supabase.com .") },
+  { want: "allow", why: "DB: a search for the credential names is not a use", payload: bash("grep -rn SUPABASE_DB docs") },
+  { want: "allow", why: "DB: git grep for the CLI command is a search", payload: bash('git grep -n "supabase db push"') },
+  { want: "allow", why: "DB: supabase --version touches nothing", payload: bash("supabase --version") },
+  { want: "allow", why: "DB: supabase migration list reads only", payload: bash("supabase migration list") },
+  { want: "allow", why: "DB: bunx supabase status reads only", payload: bash("bunx supabase status") },
   /* KIT:CONFIG /cases */
 ];
 

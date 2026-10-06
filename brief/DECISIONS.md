@@ -23,3 +23,4 @@
 | 2026-10-05 | **Supplier prices are not public (G-03).** `price_matrices` anon read is dropped by migration 040; every public price read goes through the service client and returns customer prices only. |
 | 2026-10-05 | **The ITN refuses a payment whose amount is not the order total, and retries a failed supplier send once (G-05).** A mismatch is not claimed or sent and the admin is emailed; the retry carries a Resend idempotency key so it cannot become a second order. |
 | 2026-10-05 | **Migrations are applied through the Supabase Management API (G-01, Stéan),** not the SQL editor by hand — with a personal access token the operator supplies; the apply is recorded in `EVIDENCE.md`. |
+| 2026-10-06 | **Every route to production SQL asks (G-10, Stéan):** the Supabase CLI under any runner, `migration up` and `migration repair`, the Management API, and `SUPABASE_DB`. A search that only names them does not ask. |

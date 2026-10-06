@@ -18,7 +18,6 @@
 | G-07 | Trusting the PayFast fix | Does a real sandbox ITN now verify? 9877ca1 was probed against a body signed the way PayFast documents, not a captured one. Run one sandbox payment end to end (`SUPPLIER_EMAIL` pointed at yourself) before the first live order. | Stéan | 2026-10-05 | A sandbox order reaches `paid` and its emails arrive; recorded in `EVIDENCE.md` |
 | G-08 | Transport fee | Checkout takes `distance_km` from the browser and charges no transport fee when it is null, so a professional-install order can skip the fee. Compute distance on the server, or accept the leak? | Stéan | 2026-10-05 | A DECISIONS row, and the fix if yes |
 | G-09 | Log hygiene (the unanswered half of G-05) | Should checkout stop logging the signature input, which includes `merchant_key`, and the ITN stop logging customer email and the supplier address to Vercel logs? | Stéan | 2026-10-05 | A DECISIONS row, and the fix if yes |
-| G-10 | bash-gate production-DB ask gaps (walk `.handoff/walk-canon-gates/01-walker.md` findings 2–4) | The ask covers `npx` and bare `supabase` only. These run with no prompt: `pnpm dlx`/`bunx`/`npm exec`/`cmd /c`/`powershell -c` + `supabase db push`, `supabase migration up --linked`, `supabase --workdir db db push`, and any use of `SUPABASE_DB` (a direct DDL-capable connection string in `.env.local`). The API match is case-sensitive, it over-matches greps, and the `supabase --*`/`npx supabase@*` settings twins also prompt on `--version`/`status`. Widen the rule to key on `SUPABASE_DB` and any runner, or accept the gap? | Stéan | 2026-10-06 | A DECISIONS row, plus the hook change with probes in both directions |
 
 ## Closed
 
@@ -26,3 +25,4 @@
 |---|---|---|
 | G-03 | 2026-10-05 | Supplier prices are not public: migration 040 drops anon read; the configurator grid reads with the service client (dbaf240). Apply 040 after that deploys. |
 | G-05 | 2026-10-05 | Yes: the ITN checks `amount_gross` against `total_cents` (679258e), and a failed supplier send is retried once with an idempotency key, then logged as before (679258e, 9877ca1). |
+| G-10 | 2026-10-06 | Widened (Stéan): the CLI ask finds `supabase` under any runner and also catches `migration up` and `migration repair`; the credential ask adds `SUPABASE_DB` and ignores case; searches (`grep`, `rg`, `git`) pass. 19 new probes, both directions; the differential against 8a1e4be gives 12 stricter and 1 declared looser. |

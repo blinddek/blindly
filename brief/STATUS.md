@@ -10,8 +10,8 @@
 |---|---|---|
 | B-1 | pass | 6 spine files present |
 | B-2 | pass | 35 documents, all indexed |
-| B-3 | pass | 8 open gates, all complete |
-| B-4 | pass | 10 rows, under the 40-row sweep trigger |
+| B-3 | pass | 7 open gates, all complete |
+| B-4 | pass | 11 rows, under the 40-row sweep trigger |
 | B-5 | skipped | no unresolved markers |
 | B-6 | pass | current |
 | B-7 | pass | 34 numbered documents, no collisions · 1 name(s) B-7 CANNOT READ and did not check: build/INDEX.md — teach it their shape in the `names` config region |
@@ -24,11 +24,11 @@
 | File | Size | Last commit |
 |---|---|---|
 | `CURRENT.md` | 1.5 KB | 2026-10-05 |
-| `DECISIONS.md` | 3.2 KB | 2026-10-05 |
+| `DECISIONS.md` | 3.4 KB | 2026-10-05 |
 | `EVIDENCE.md` | 7.2 KB | 2026-10-05 |
-| `GATES.md` | 3.7 KB | 2026-10-05 |
+| `GATES.md` | 3.4 KB | 2026-10-06 |
 | `README.md` | 1.6 KB | 2026-10-05 |
-| `STATUS.md` | 0.1 KB | 2026-10-05 |
+| `STATUS.md` | 0.1 KB | 2026-10-06 |
 | `build\00-BUILD_INDEX.md` | 59.6 KB | 2026-10-05 |
 | `build\01-build_01_project_scaffold.md` | 12.1 KB | 2026-10-05 |
 | `build\02-build_02_universal_foundation.md` | 7.9 KB | 2026-10-05 |
@@ -83,4 +83,3 @@
 | G-07 | Stéan | 2026-10-05 | 1 d |
 | G-08 | Stéan | 2026-10-05 | 1 d |
 | G-09 | Stéan | 2026-10-05 | 1 d |
-| G-10 | Stéan | 2026-10-06 | 0 d |

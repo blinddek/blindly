@@ -136,24 +136,34 @@ const PROJECT_DENY = [
 // its service-role key and a SUPABASE_DB connection string, and there is no staging. DDL reaches it
 // through scripts/setup-db.sh, which runs `supabase db push`, `supabase db reset` or `psql
 // "$DATABASE_URL"`. Each of the three asks, whether run directly or through the script.
+// Commands that read text and connect to nothing: naming the CLI or a credential to them is a search.
+const DB_SEARCH = new Set(["grep", "egrep", "fgrep", "rg", "ag", "git"]);
+const baseName = (x) => x.slice(Math.max(x.lastIndexOf("/"), x.lastIndexOf("\\")) + 1);
+const isDbSearch = (t) => DB_SEARCH.has(baseName(t[commandWordIndex(t)] ?? ""));
 const PROJECT_ASK = [
-  // Matched on the subcommand wherever it sits, not on `supabase db` being adjacent: a version
-  // (`npx supabase@latest`) or a global flag with a value (`--workdir . db reset`) walked past the
-  // adjacent-words form (canon L-14, probed 2026-10-06).
+  // The CLI is found ANYWHERE in the segment, not at command position. Keying on `npx` and bare
+  // `supabase` let `pnpm dlx`, `bunx`, `npm exec`, `cmd /c`, `powershell -c` and `supabase.exe`
+  // through (walk-canon-gates finding 2, G-10). After it, the subcommand pair is matched among the
+  // non-flag words wherever it sits, so a version (`supabase@latest`) or a flag's value
+  // (`--workdir db db push`) cannot shift it. `migration up|repair` writes production too.
   [(t) => {
-    const a = (atCommand(t, "npx") ? argsOf(t) : atCommand(t, "supabase") ? ["supabase", ...argsOf(t)] : [])
-      .filter((x) => !x.startsWith("-"));
-    if (!/^supabase(@.*)?$/.test(a[0] ?? "")) return false;
-    const db = a.indexOf("db");
-    return db > 0 && (a[db + 1] === "push" || a[db + 1] === "reset");
+    if (isDbSearch(t)) return false;
+    const at = t.findIndex((x) => /^supabase(\.exe)?(@.*)?$/i.test(baseName(x)));
+    if (at === -1) return false;
+    const a = t.slice(at + 1).filter((x) => !x.startsWith("-")).map((x) => x.toLowerCase());
+    return a.some((x, i) =>
+      (x === "db" && (a[i + 1] === "push" || a[i + 1] === "reset")) ||
+      (x === "migration" && (a[i + 1] === "up" || a[i + 1] === "repair")));
   },
-    "supabase db push/reset writes DDL to the production database — there is no staging database",
-    { twins: ["Bash(supabase db push*)", "Bash(supabase db reset*)", "Bash(npx supabase db *)", "Bash(npx supabase@*)", "Bash(supabase --*)"] }],
-  // The Management API runs arbitrary SQL, DDL included, against the production project. The token
-  // is read by reference, so the gate matches the endpoint or the token's name wherever either appears.
-  [(t) => t.some((x) => x.includes("api.supabase.com") || x.includes("SUPABASE_ACCESS_TOKEN")),
-    "the Supabase Management API runs SQL, DDL included, against the production database — there is no staging database",
-    { twins: ["Bash(*api.supabase.com*)", "Bash(*SUPABASE_ACCESS_TOKEN*)"] }],
+    "supabase db push/reset or migration up/repair writes to the production database — there is no staging database",
+    { twins: ["Bash(*supabase* db push*)", "Bash(*supabase* db reset*)", "Bash(*supabase* migration up*)", "Bash(*supabase* migration repair*)"] }],
+  // Three credentials reach production SQL: the Management API (endpoint and token), and SUPABASE_DB,
+  // a direct connection string. Each is read by reference, so its NAME is matched wherever it appears,
+  // case-blind (finding 3). A search for the names is not a use of them.
+  [(t) => !isDbSearch(t) &&
+    t.some((x) => /api\.supabase\.com|SUPABASE_ACCESS_TOKEN|SUPABASE_DB/i.test(x)),
+    "the Management API and SUPABASE_DB run SQL, DDL included, against the production database — there is no staging database",
+    { twins: ["Bash(*api.supabase.com*)", "Bash(*SUPABASE_ACCESS_TOKEN*)", "Bash(*SUPABASE_DB*)"] }],
   [(t) => atCommand(t, "setup-db.sh"),
     "scripts/setup-db.sh runs migrations (or --reset) against the production database — there is no staging database",
     { twins: ["Bash(./scripts/setup-db.sh*)", "Bash(scripts/setup-db.sh*)", "Bash(bash scripts/setup-db.sh*)", "Bash(bash ./scripts/setup-db.sh*)"] }],

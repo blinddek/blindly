@@ -83,16 +83,18 @@
       "Bash(git clean *)",
       "Bash(supabase db push*)",
       "Bash(supabase db reset*)",
-      "Bash(npx supabase db *)",
+      "Bash(*supabase* db push*)",
+      "Bash(*supabase* db reset*)",
+      "Bash(*supabase* migration up*)",
+      "Bash(*supabase* migration repair*)",
       "Bash(./scripts/setup-db.sh*)",
       "Bash(scripts/setup-db.sh*)",
       "Bash(bash scripts/setup-db.sh*)",
       "Bash(bash ./scripts/setup-db.sh*)",
       "Bash(psql *)",
-      "Bash(npx supabase@*)",
-      "Bash(supabase --*)",
       "Bash(*api.supabase.com*)",
-      "Bash(*SUPABASE_ACCESS_TOKEN*)"
+      "Bash(*SUPABASE_ACCESS_TOKEN*)",
+      "Bash(*SUPABASE_DB*)"
     ]
   },
   "hooks": {
