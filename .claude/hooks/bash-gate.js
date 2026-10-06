@@ -137,9 +137,15 @@ const PROJECT_DENY = [
 // through scripts/setup-db.sh, which runs `supabase db push`, `supabase db reset` or `psql
 // "$DATABASE_URL"`. Each of the three asks, whether run directly or through the script.
 // Commands that read text and connect to nothing: naming the CLI or a credential to them is a search.
-const DB_SEARCH = new Set(["grep", "egrep", "fgrep", "rg", "ag", "git"]);
+// `git` only by a verb that reads: `git -c alias.x="!curl …" x` runs a shell (walk 02, finding 3).
+const DB_SEARCH = new Set(["grep", "egrep", "fgrep", "rg", "ag"]);
+const GIT_READS = new Set(["grep", "log", "show", "diff", "commit"]);
 const baseName = (x) => x.slice(Math.max(x.lastIndexOf("/"), x.lastIndexOf("\\")) + 1);
-const isDbSearch = (t) => DB_SEARCH.has(baseName(t[commandWordIndex(t)] ?? ""));
+const isDbSearch = (t) => {
+  const cw = commandWordIndex(t);
+  const name = baseName(t[cw] ?? "");
+  return DB_SEARCH.has(name) || (name === "git" && GIT_READS.has(t[cw + 1]));
+};
 const PROJECT_ASK = [
   // The CLI is found ANYWHERE in the segment, not at command position. Keying on `npx` and bare
   // `supabase` let `pnpm dlx`, `bunx`, `npm exec`, `cmd /c`, `powershell -c` and `supabase.exe`

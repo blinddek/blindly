@@ -261,7 +261,7 @@ const PROJECT_VERDICTS = {}
  *   "PROSE: a gated command named in echo's arguments": "our old gate matched a name at any token",
  */
 const PROJECT_LOOSENED = {
-  "DB: a search for the endpoint is not a call": "824c8ec matched the endpoint in any token, so a search over our own docs asked (G-10, walk-canon-gates finding 3); grep, rg and git connect to nothing",
+  "DB: a search for the endpoint is not a call": "824c8ec matched the endpoint in any token, so a search over our own docs asked (G-10, walk-canon-gates finding 3); grep, rg and git's reading verbs (grep, log, show, diff, commit) connect to nothing",
 }
 /* KIT:CONFIG /loosened */
 
@@ -691,6 +691,7 @@ const CASES = [
   { want: "allow", why: "DB: supabase --version touches nothing", payload: bash("supabase --version") },
   { want: "allow", why: "DB: supabase migration list reads only", payload: bash("supabase migration list") },
   { want: "allow", why: "DB: bunx supabase status reads only", payload: bash("bunx supabase status") },
+  { want: "ask", why: "DB: a git alias runs a shell, so git is not a search", payload: bash('git -c alias.q="!curl -X POST https://api.supabase.com/v1/projects/p/database/query" q') },
   /* KIT:CONFIG /cases */
 ];
 
