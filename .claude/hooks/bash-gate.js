@@ -177,7 +177,8 @@ const PROJECT_ASK = [
     t.some((x) => /api\.supabase\.com|SUPABASE_ACCESS_TOKEN|SUPABASE_DB/i.test(x)),
     "the Management API and SUPABASE_DB run SQL, DDL included, against the production database — there is no staging database",
     { twins: ["Bash(*api.supabase.com*)", "Bash(*SUPABASE_ACCESS_TOKEN*)", "Bash(*SUPABASE_DB*)"] }],
-  [(t) => atCommand(t, "setup-db.sh"),
+  // Case-blind, at command position (so `cat scripts/setup-db.sh` stays a read): CF-6.
+  [(t) => /^setup-db\.sh$/i.test(baseName(t[commandWordIndex(t)] ?? "")),
     "scripts/setup-db.sh runs migrations (or --reset) against the production database — there is no staging database",
     { twins: ["Bash(./scripts/setup-db.sh*)", "Bash(scripts/setup-db.sh*)", "Bash(bash scripts/setup-db.sh*)", "Bash(bash ./scripts/setup-db.sh*)"] }],
   // Case-blind and `.exe`-tolerant: Git Bash runs `PSQL` and `psql.exe` as psql (CF-6). Found in any

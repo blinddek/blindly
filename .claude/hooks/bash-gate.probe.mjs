@@ -694,6 +694,7 @@ const CASES = [
   { want: "ask", why: "DB: setup-db.sh runs migrations", payload: bash("./scripts/setup-db.sh") },
   { want: "ask", why: "DB: setup-db.sh through bash", payload: bash("bash scripts/setup-db.sh --reset") },
   { want: "allow", why: "DB: reading setup-db.sh is not running it", payload: bash("cat scripts/setup-db.sh") },
+  { want: "ask", why: "DB: SETUP-DB.SH is setup-db.sh on a case-blind filesystem", payload: bash("bash scripts/SETUP-DB.SH --reset") },
   { want: "ask", why: "DB: psql reaches production", payload: bash('psql "$DATABASE_URL" -f supabase/migrations/027_x.sql') },
   { want: "ask", why: "DB: psql behind a password assignment", payload: bash('PGPASSWORD=x psql "postgresql://h/postgres" -c "select 1"') },
   { want: "allow", why: "DB: a message naming psql is prose", payload: bash('git commit -m "document the psql fallback"') },

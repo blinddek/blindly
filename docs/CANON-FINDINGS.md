@@ -118,7 +118,9 @@ COMMAND    printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git.exe pus
            GIT --version                            → git version … (the spelling runs)
 WHY IT IS  `atCommand`, `GATED_NAMES` and `isGit` live outside every KIT:CONFIG region. Every
 CANON'S    project on win32 (or on any case-insensitive filesystem, such as macOS by default) has the
-           hole. A project rule built on `atCommand` inherits it too: blindly's `psql` rule does.
+           hole. A project rule built on `atCommand` inherits it too: blindly's `psql` and `setup-db.sh`
+           rules did, until this project fixed both in its own ask region (8c5922c and the commit
+           after it). Fix the whole class across every rule built on the helper, not one rule.
 SMALLEST   Normalise the command word once, in `commandWordIndex`'s consumers: take the basename,
 FIX        lowercase it, strip a trailing `.exe`. Probe both directions: `git.exe push --force`
            and `GIT push -f` deny; `git.exe status` allows. (Source: .handoff/walk-kit-v11/01-walker.md
