@@ -151,7 +151,9 @@ SMALLEST   Scan assignments after `commandWordIndex`'s wrappers as well as befor
 FIX        `ext::` argument as a command string. Or, at the least, add all three to NOT COVERED.
 
 ### CF-8 · A quoted Windows path to an executable gets past every bash-gate rule, the push-to-main ask included
-LIFTED     canon c77ba68, bash-gate v14 (2026-10-06), taken here: the four quoted-path cases deny or ask; `git.exe status` allows
+LIFTED     PARTIALLY: canon c77ba68 (bash-gate v14, merged with floor 14 at e145b3d), taken here.
+           The four cases above deny or ask, and `git.exe status` allows. But one whitespace-only
+           quoted word in the segment re-opens all of them; see CF-10.
 OBSERVED   Under v13 (and v11) every one of these is ALLOW:
            - `"C:/Program Files/Git/cmd/git.exe" push --force origin main`
            - `… git.exe" push origin main`, which is the deploy ask
@@ -184,6 +186,24 @@ CANON'S    write a script or a note about git.
 SMALLEST   Mask a sink heredoc's body before agent-write-scope's commit test, as bash-gate's
 FIX        `maskSinkHeredocs` does. Probe: `cat > x <<'EOF'\ngit commit\nEOF` allows for a subagent,
            and a bare `git commit` from a subagent still denies.
+
+### CF-10 · v14 reads a quoted path as one word only when the word and token counts differ, and a quoted space cancels the difference
+OBSERVED   v14 (and v13) ALLOW each of these:
+           - `"C:/Program Files/Git/cmd/git.exe" push --force origin main # " "`
+           - `"…/git.exe" push origin main # " "`, which skips the deploy ask
+           - `"C:/Program Files/Git/usr/bin/rm.exe" -rf /* " "`
+           - `"…/git.exe" reset --hard # " "`
+           `segments`/`piece` sets `seg.words` only when `w.tokens.length !== tokens.length`. A
+           quoted `" "` is 1 word but 0 tokens (`normToken` empties it and it is dropped), which
+           cancels the quoted path's −1. Bash ignores the comment, so the command runs as a force push.
+           `"…/git.exe" --version # " "` was run here and printed git's version.
+COMMAND    .handoff/walk-kit-v14/01-walker.md F1 (`scratch/drive.mjs pad`, old and new hooks)
+WHY IT IS  The CF-8 fix is in canon's code, outside every KIT:CONFIG region. Deciding between two
+CANON'S    readings by comparing their counts fails open: any input that moves both counts by the same
+           amount passes.
+SMALLEST   Use the shell-word reading whenever the two lists differ element by element, or whenever a
+FIX        quoted span holds whitespace, not when their lengths differ. Probe: the four lines above
+           deny or ask; `"C:/Program Files/Git/cmd/git.exe" status # " "` allows.
 
 ---
 
