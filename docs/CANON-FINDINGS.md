@@ -207,6 +207,20 @@ SMALLEST   Use the shell-word reading whenever the two lists differ element by e
 FIX        quoted span holds whitespace, not when their lengths differ. Probe: the four lines above
            deny or ask; `"C:/Program Files/Git/cmd/git.exe" status # " "` allows.
 
+### CF-11 · canon-inbox v3's push detector misses a push through the quoted Git path
+OBSERVED   `pushes()` in `.claude/hooks/canon-inbox.js` splits on bare whitespace, so
+           `"C:/Program Files/Git/cmd/git.exe" push origin main` becomes `"C:/Program` and
+           `Files/Git/cmd/git.exe"`. The trailing `"` stops `git(?:\.exe)?$` from matching, so the
+           hook says nothing after that push. bash-gate v15 still asks on it, so this is a missed
+           notice, not a missed gate.
+COMMAND    .handoff/walk-kit-v15/01-walker.md finding 1: the payload piped to canon-inbox.js as a
+           PostToolUse Bash event gives no output, where `git push origin main` speaks.
+WHY IT IS  This is the same raw-whitespace split that CF-8 and CF-10 closed in bash-gate, now in a
+CANON'S    sibling kit hook.
+SMALLEST   Read command words the way bash-gate v15 does (a quoted span is one word, with its quotes
+FIX        stripped), or strip quotes before the regex. Probe: the quoted-path push speaks;
+           `git status` stays silent.
+
 ---
 
 ## 2 · Lesson answers
