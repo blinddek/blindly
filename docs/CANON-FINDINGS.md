@@ -33,6 +33,17 @@ SMALLEST   the narrowest fix, and what it must not break
 FIX
 ```
 
+### CF-13 · canon-inbox treats `echo git push` as a push
+OBSERVED   A PostToolUse Bash event for `echo git push` asks canon and relays its line, as a real push
+           does. Severity is nil: the hook is non-blocking, and the cost is one extra notice. v4 and
+           v5 both do it. Canon's probe covers a commit message naming a push, but not a bare `echo`.
+COMMAND    .handoff/walk-kit-v18/01-walker.md note 1 (`scratch/inbox-run.mjs`, v4 and v5 against a
+           fake canon, so the result does not depend on the live inbox's contents)
+WHY IT IS  This is the detector in canon's own hook. bash-gate already has a PROSE set (`echo`,
+CANON'S    `printf`, `grep`…) for exactly this.
+SMALLEST   Skip a segment whose command word is prose, as bash-gate's PROSE set does. Probe: `echo git
+FIX        push` is silent; `git push origin main` speaks.
+
 ---
 
 ## 2 · Lesson answers
