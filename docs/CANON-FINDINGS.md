@@ -151,6 +151,7 @@ SMALLEST   Scan assignments after `commandWordIndex`'s wrappers as well as befor
 FIX        `ext::` argument as a command string. Or, at the least, add all three to NOT COVERED.
 
 ### CF-8 · A quoted Windows path to an executable gets past every bash-gate rule, the push-to-main ask included
+LIFTED     canon c77ba68, bash-gate v14 (2026-10-06), taken here: the four quoted-path cases deny or ask; `git.exe status` allows
 OBSERVED   Under v13 (and v11) every one of these is ALLOW:
            - `"C:/Program Files/Git/cmd/git.exe" push --force origin main`
            - `… git.exe" push origin main`, which is the deploy ask
