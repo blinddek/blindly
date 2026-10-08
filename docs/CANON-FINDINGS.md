@@ -33,20 +33,6 @@ SMALLEST   the narrowest fix, and what it must not break
 FIX
 ```
 
-### CF-12 · canon-inbox v4's word splitter honours quotes but not backslash escapes
-OBSERVED   `git -C my\ repo push origin main` as a PostToolUse Bash event prints nothing, while
-           `git push origin main` speaks. `segments` reads `-C`'s value as `my\` and takes `repo` as the
-           subcommand, so the push is not seen. The cost is a missed notice; the hook blocks nothing,
-           and bash-gate still asks on the push.
-COMMAND    each payload piped to `node .claude/hooks/canon-inbox.js` as
-           `{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":…}}`
-           (walk-kit-v17 note 2; reproduced here at 2c2bbb9, while the inbox held items). The
-           contrast needs a non-empty inbox: with nothing to say, both payloads are silent.
-WHY IT IS  This is the same word-reading that bash-gate v15 and later get right, living in a sibling
-CANON'S    kit hook (CF-11's class, one step on).
-SMALLEST   Treat `\<char>` as part of the word in `segments`, or share bash-gate's word reader. Probe:
-FIX        the escaped-space push speaks; `git status` stays silent.
-
 ---
 
 ## 2 · Lesson answers
@@ -213,3 +199,4 @@ A pointer, not a restatement — the canon entry is the record.
 | CF-9 | agent-write-scope denies a `cat >` heredoc whose body names `git commit` | §1 finding | c77ba68 |
 | CF-10 | v14 reads a quoted path as one word only when the word and token counts differ, and a quoted space cancels the difference | §1 finding | d5ec268 |
 | CF-11 | canon-inbox v3's push detector misses a push through the quoted Git path | §1 finding | 597b37e |
+| CF-12 | canon-inbox v4's word splitter honours quotes but not backslash escapes | §1 finding | baba8d8 |
