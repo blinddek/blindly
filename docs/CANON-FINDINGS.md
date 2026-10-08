@@ -34,6 +34,7 @@ FIX
 ```
 
 ### CF-11 · canon-inbox v3's push detector misses a push through the quoted Git path
+LIFTED     canon 597b37e, canon-inbox v4, taken here at 2c2bbb9: a quoted-path push now speaks.
 OBSERVED   `pushes()` in `.claude/hooks/canon-inbox.js` splits on bare whitespace, so
            `"C:/Program Files/Git/cmd/git.exe" push origin main` becomes `"C:/Program` and
            `Files/Git/cmd/git.exe"`. The trailing `"` stops `git(?:\.exe)?$` from matching, so the
