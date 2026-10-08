@@ -1,7 +1,7 @@
 /**
  * bash-gate.js — PreToolUse gate for Bash. KIT FILE, install at `.claude/hooks/`.
  *
- * @kit bash-gate v13 — tracked OUTSIDE its `KIT:CONFIG` regions. Those regions are yours;
+ * @kit bash-gate v14 — tracked OUTSIDE its `KIT:CONFIG` regions. Those regions are yours;
  * everything else is canon's, and `check-kit-drift.mjs` reconciles it.
  *
  * WHY THIS EXISTS, and it is not the reason you would guess. Allow-rules in
@@ -87,6 +87,12 @@
  * from what consumed it. See "WHAT CONSUMES TEXT DECIDES WHETHER IT IS TEXT". No rule is added, so
  * no fallback is owed: the existing rules read the consumed text, and the rm rule reads one more
  * kind of target.
+ *
+ * v14 (2026-10-06) is blindly CF-8: a QUOTED path to an executable was split at its space, so
+ * `"C:/Program Files/Git/cmd/git.exe" push --force` read as the command `C:/Program` and every rule
+ * allowed it — Git for Windows' default install path. A segment whose shell words differ from its
+ * tokens is now read a second time as those words (`segments`' `words`), appended after every other
+ * segment as v13's are, so every changed verdict is stricter. No rule is added, so no fallback is owed.
  *
  * A REASON IS ALWAYS SET, INCLUDING ON ALLOW. An empty reason makes an allow
  * indistinguishable from a hook that ran and decided nothing.
@@ -486,7 +492,29 @@ function segments(command) {
       tokens.push(t);
       bare.push(quoted[from + m.index] === 0);
     }
-    if (tokens.length > 0) out.push({ text: src.slice(from, to).trim(), tokens, bare, unknowable });
+    if (tokens.length === 0) return;
+    const seg = { text: src.slice(from, to).trim(), tokens, bare, unknowable };
+    const w = shellWords(from, to);
+    if (w.tokens.length !== tokens.length) seg.words = w;
+    out.push(seg);
+  };
+  // v14 (blindly CF-8): the segment's WORDS as bash splits them, at unquoted whitespace only.
+  const shellWords = (from, to) => {
+    const w = { tokens: [], bare: [] };
+    let start = -1;
+    for (let i = from; i <= to; i++) {
+      const gap = i === to || (quoted[i] === 0 && isSpace(src[i]));
+      if (!gap && start === -1) start = i;
+      else if (gap && start !== -1) {
+        const t = normToken(src.slice(start, i));
+        if (t) {
+          w.tokens.push(t);
+          w.bare.push(quoted[start] === 0);
+        }
+        start = -1;
+      }
+    }
+    return w;
   };
   const plain = plainQuoting(src, quoted);
   const whole = substitutedWords(src);
@@ -1609,7 +1637,9 @@ function decide(command) {
   // `-m "rm -rf /"` is prose either way (rm is not at command position there).
   // v13: after the command's own segments, those of every string something in it runs. Appended,
   // so the branch each of the command's own segments lands on is computed exactly as before.
-  const segs = [...segments(maskMessageText(command)), ...consumedSegments(command)];
+  // v14: then each segment again as its shell WORDS where a quoted word held a space — appended too.
+  const read = [...segments(maskMessageText(command)), ...consumedSegments(command)];
+  const segs = [...read, ...read.filter((s) => s.words).map((s) => ({ ...s, tokens: s.words.tokens, bare: s.words.bare }))];
   const plan = planOf(segs);
   let span = 0;
   let overBudget = false;
