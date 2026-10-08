@@ -33,180 +33,6 @@ SMALLEST   the narrowest fix, and what it must not break
 FIX
 ```
 
-### CF-1 · Tier 0 asks for four slots but the kit has no way to hold a red tool
-OBSERVED   blindly adopted with all four tier-0 tools red (tsc 9, eslint 11, knip 201, madge 7), and
-           canon's handover said "whether it passes is your Phase 2 call" — so the project had to
-           invent a ratchet, `scripts/check-baseline.mjs` + `scripts/baseline/<tool>.json` (373706a).
-COMMAND    node scripts/check-baseline.mjs knip
-           🔒 knip: at its baseline (200 owned violations, may only fall)
-WHY IT IS  Any repo adopting with legacy debt meets this on day one, whatever its stack; each will
-CANON'S    write its own wrapper, differently. And canon's tier-0 detection accepted blindly's slots
-           only because the tool names happen to appear in the wrapper's arguments — a match by
-           accident, which a renamed wrapper would silently break.
-SMALLEST   A kit row carrying a baseline wrapper (fail on growth AND on shrink, so a fix lands with
-FIX        its re-emitted baseline; an unparseable tool output fails), and tier-0 detection that
-           recognises the wrapper by name rather than by incidental regex. blindly's
-           `scripts/check-baseline.mjs` is a candidate. Must not break projects whose tools are green
-           and wired directly.
-
-### CF-2 · The Yoros template ships unauthenticated service-role server actions, and three estate projects carry them
-OBSERVED   `lib/storage.ts` `uploadFile`/`deleteFile` are `"use server"` exports using the service-role
-           client with no caller check — anyone can upload to or delete from any bucket. Fixed in
-           nortiercupboards (5d8c906) and blindly (82d5344) on 2026-10-05; **thedecklab still carries
-           it**, and its contact form sends email without `after()` (the bug that lost cupboards two
-           leads, M-001 there and here).
-COMMAND    grep -c ensureAdmin E:/dev/nortier/thedecklab/lib/storage.ts            → 0
-           grep -c createAdminClient E:/dev/nortier/thedecklab/lib/storage.ts      → 3
-           grep -c "after(" E:/dev/nortier/thedecklab/lib/contact/actions.ts       → 0
-WHY IT IS  The defect is in the template every Yoros client project is scaffolded from, so it
-CANON'S    recurs per project until it is fixed at the source — and no kit control catches it: a
-           "use server" export is a public endpoint whatever its file is called.
-SMALLEST   Route a handover to thedecklab (storage guard + contact `after()`), and to yoros for the
-FIX        template itself. Then a kit check for Next + Supabase projects: every exported function
-           in a `"use server"` file that reaches the service-role client calls an admin/user check
-           or sits on an allowlist with its reason (sketched as M-002 in blindly's and cupboards'
-           `docs/MECHANISABLE.md`). Must not flag public-by-design actions (contact, password reset).
-
-### CF-3 · An adoption handover named a line that did not exist in this project
-LIFTED     canon 7f2c9b5 (2026-10-06): handovers state per-project facts
-OBSERVED   The Session B message told blindly to remove `brief/` from `.gitignore` "(line 45)";
-           blindly's `.gitignore` never ignored `brief/`. Nothing broke, but the instruction could not
-           be followed as written, and a session following it literally edits the wrong line.
-COMMAND    grep -n "brief" .gitignore   → (no output)
-WHY IT IS  The handover was written once for several projects (it named blindly and thedecklab
-CANON'S    together) and carried one project's line number to the others.
-SMALLEST   Derive per-project facts in a handover from that project's tree, or state them as a
-FIX        condition ("if .gitignore ignores brief/, remove it").
-
-### CF-4 · `git mv` stages immediately, and a later bare `git commit` sweeps it into an unrelated commit
-LIFTED     canon 7f2c9b5 (2026-10-06): CLAUDE_TEMPLATE §8 says commit with a pathspec
-OBSERVED   34 staged `git mv` renames (the brief filing) went into a one-file security fix, because
-           `git commit` takes the whole index. Recovered before any push: soft reset, then commits
-           with a pathspec (4eeef4d, a163b0c, a32ca74).
-COMMAND    git show --stat 7944d25   (pre-recovery)  → "35 files changed" for a 1-file fix (still reachable by sha)
-WHY IT IS  CLAUDE_TEMPLATE §8 says "unrelated concerns split", but nothing says a staged index is
-CANON'S    swept, and an agent session that runs `git mv` (or `git rm`) mid-task leaves exactly that
-           state. True on any repo.
-SMALLEST   One line in CLAUDE_TEMPLATE §8: commit with a pathspec (`git commit -- <paths>`) whenever
-FIX        the index may hold anything else; or bash-gate asks on a bare `git commit` whose index
-           holds paths outside the files the session edited. Must not block a deliberate full commit.
-
-### CF-5 · bash-gate v10 loosened three verdicts and declares none of them
-LIFTED     canon c34cc93, bash-gate v11 (2026-10-06): the three v10 loosenings are declared
-OBSERVED   Taking v10 by `--carry-only` (7de853b), the differential against blindly's v9 finds three
-           cases that were deny and are now allow, with no entry in v10's LOOSENED table.
-COMMAND    git show 7de853b^:.claude/hooks/bash-gate.js > v9.js
-           node .claude/hooks/bash-gate.probe.mjs --against v9.js
-           ✗ against: LOOSER: "v10: a grep pattern holding `|` is a pattern, not a pipe into a command" was deny and is now allow, and this version does not say why
-           ✗ against: LOOSER: "v10: a quoted `;` in an echo is text" was deny and is now allow, and this version does not say why
-           ✗ against: LOOSER: "v10: a quoted pattern, then a pipe into a sink" was deny and is now allow, and this version does not say why
-           ⇄ … 234 cases through both gates — 3 looser (0 declared), 0 stricter
-           (run from a 7de853b checkout of hook, probe and config. At HEAD it reads 239 cases and
-           4 stricter. Those 4 are blindly's own DB asks from 824c8ec, not v10's.)
-WHY IT IS  The three read as deliberate fixes of false denies, but canon's own differential (CF-9's
-CANON'S    shape) says a loosening is declared by the version that makes it; every project taking
-           v10 inherits three undeclared loosenings, and a project cannot declare canon's in its
-           own `loosened` region, which is for its own.
-SMALLEST   Three LOOSENED entries in canon's v10 probe, each with its reason. Must not change a verdict.
-
-### CF-6 · bash-gate matches command names case-sensitively and without `.exe`, so on win32 every canon rule is bypassed by spelling
-LIFTED     canon bash-gate v12 (2026-10-06), taken here at v13: all four spellings deny
-OBSERVED   On this machine (Windows, Git Bash) `GIT push --force origin main`, `git.exe push --force
-           origin main`, `rm.exe -rf /*` and `Git.EXE -c alias.q='!rm -rf /*' q` are all ALLOW
-           under v10 and v11. Git Bash resolves `GIT`, `Git.EXE` and `git.exe` to
-           /mingw64/bin/git.exe, and `rm.exe` to /usr/bin/rm.exe. The force-push fallback twins
-           (`Bash(git push --force *)`) do not match these spellings either, so "force pushes are
-           denied" does not hold for them.
-COMMAND    printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git.exe push --force origin main"}}' \
-             | node .claude/hooks/bash-gate.js      → no deny
-           GIT --version                            → git version … (the spelling runs)
-WHY IT IS  `atCommand`, `GATED_NAMES` and `isGit` live outside every KIT:CONFIG region. Every
-CANON'S    project on win32 (or on any case-insensitive filesystem, such as macOS by default) has the
-           hole. A project rule built on `atCommand` inherits it too: blindly's `psql` and `setup-db.sh`
-           rules did, until this project fixed both in its own ask region (8c5922c and the commit
-           after it). Fix the whole class across every rule built on the helper, not one rule.
-SMALLEST   Normalise the command word once, in `commandWordIndex`'s consumers: take the basename,
-FIX        lowercase it, strip a trailing `.exe`. Probe both directions: `git.exe push --force`
-           and `GIT push -f` deny; `git.exe status` allows. (Source: .handoff/walk-kit-v11/01-walker.md
-           finding 1.)
-
-### CF-7 · v11's "a string git runs is a command" misses three neighbours, and its NOT COVERED list names none of them
-LIFTED     canon bash-gate v12 (2026-10-06), taken here at v13: the wrapper, ext:: and SSH_ASKPASS
-           forms deny. `GIT_SSH_COMMAND="$(…)"` still allows, and v12 declares it NOT COVERED above
-           `GIT_RUNS_ENV`, which this finding's SMALLEST FIX accepted. (867f5f2's body said every
-           case denies; walk-kit-v13 F2 corrects it.)
-OBSERVED   ALLOW under v11 (and v10):
-           - `env -i GIT_SSH_COMMAND='rm -rf /*' git fetch` and `sudo GIT_SSH_COMMAND='rm -rf /*' git
-             fetch`. `envStrings` reads an assignment only at segment start or after a bare
-             `export`/`env`, so a wrapper or an option stops it. The bare form is DENY.
-           - `git -c protocol.ext.allow=always fetch 'ext::sh -c rm% -rf% /*'`: the `ext::`
-             transport runs its URL as a command. The verdict is reproduced; the execution rests on
-             git's docs and was not run.
-           - `SSH_ASKPASS=…` (not `GIT_`-prefixed), and `GIT_SSH_COMMAND="$(echo rm -rf /*)"`.
-COMMAND    each payload piped to `node .claude/hooks/bash-gate.js` (walker's battery,
-           .handoff/walk-kit-v11/01-walker.md findings 2–3)
-WHY IT IS  v11's header claims "the environment that sets them". A project reading that believes
-CANON'S    the wrapper forms are covered. The fix is in canon's own code.
-SMALLEST   Scan assignments after `commandWordIndex`'s wrappers as well as before them; treat an
-FIX        `ext::` argument as a command string. Or, at the least, add all three to NOT COVERED.
-
-### CF-8 · A quoted Windows path to an executable gets past every bash-gate rule, the push-to-main ask included
-LIFTED     PARTIALLY: canon c77ba68 (bash-gate v14, merged with floor 14 at e145b3d), taken here.
-           The four cases above deny or ask, and `git.exe status` allows. But one whitespace-only
-           quoted word in the segment re-opens all of them; see CF-10.
-OBSERVED   Under v13 (and v11) every one of these is ALLOW:
-           - `"C:/Program Files/Git/cmd/git.exe" push --force origin main`
-           - `… git.exe" push origin main`, which is the deploy ask
-           - `… git.exe" commit --no-verify`
-           - `"C:/Program Files/Git/usr/bin/rm.exe" -rf /*`
-           Backslashes and single quotes give the same result. Tokens drop their quotes and split at the
-           space, so `commandName` sees `C:/Program` → `program`. This is Git for Windows' default
-           install path, and `"C:\Program Files\Git\cmd\git.exe" --version` runs in Git Bash here. No
-           settings twin matches it. The unquoted forms (`C:/Git/cmd/git.exe`,
-           `/c/Program\ Files/…`) deny.
-COMMAND    .handoff/walk-kit-v13/01-walker.md F1 (`scratch/winpath.mjs` piped each payload through
-           `node .claude/hooks/bash-gate.js`)
-WHY IT IS  `commandName` and `commandWordIndex` are outside every KIT:CONFIG region. v12's "HOW A
-CANON'S    COMMAND IS SPELLED" closed CF-6 for unquoted spellings only, and its NOT COVERED list does
-           not name this. CF-6 asked for the class to be closed in the helper. blindly's own psql
-           ask closes this exact split in its ask region (8c5922c): it matches the name in any word.
-SMALLEST   Tokenise a quoted word as one word before splitting, or, at the command position, rejoin
-FIX        a word that opens a quote through the word that closes it before `commandName` reads it.
-           Probe both directions: the four lines above deny or ask as their unquoted forms do;
-           `"C:/Program Files/Git/cmd/git.exe" status` allows.
-
-### CF-9 · agent-write-scope denies a `cat >` heredoc whose body names `git commit`
-OBSERVED   A subagent's `cat > scratch/routine.mjs <<'EOF'`, whose body held the text `git commit`,
-           was denied with agent-write-scope's commit reason. This is the class bash-gate v13 fixed
-           ("what consumes text decides whether it is text"), left open in the sibling hook.
-           It fails closed: friction, not exposure.
-COMMAND    .handoff/walk-kit-v13/01-walker.md F3 (observed live by the walker's own first write)
-WHY IT IS  agent-write-scope is a kit hook. Every project's subagents pay the false deny when they
-CANON'S    write a script or a note about git.
-SMALLEST   Mask a sink heredoc's body before agent-write-scope's commit test, as bash-gate's
-FIX        `maskSinkHeredocs` does. Probe: `cat > x <<'EOF'\ngit commit\nEOF` allows for a subagent,
-           and a bare `git commit` from a subagent still denies.
-
-### CF-10 · v14 reads a quoted path as one word only when the word and token counts differ, and a quoted space cancels the difference
-LIFTED     canon bash-gate v15 (floor 15, at 79ebcc2), taken here: the four cases deny or ask;
-           `"…/git.exe" status # " "` allows.
-OBSERVED   v14 (and v13) ALLOW each of these:
-           - `"C:/Program Files/Git/cmd/git.exe" push --force origin main # " "`
-           - `"…/git.exe" push origin main # " "`, which skips the deploy ask
-           - `"C:/Program Files/Git/usr/bin/rm.exe" -rf /* " "`
-           - `"…/git.exe" reset --hard # " "`
-           `segments`/`piece` sets `seg.words` only when `w.tokens.length !== tokens.length`. A
-           quoted `" "` is 1 word but 0 tokens (`normToken` empties it and it is dropped), which
-           cancels the quoted path's −1. Bash ignores the comment, so the command runs as a force push.
-           `"…/git.exe" --version # " "` was run here and printed git's version.
-COMMAND    .handoff/walk-kit-v14/01-walker.md F1 (`scratch/drive.mjs pad`, old and new hooks)
-WHY IT IS  The CF-8 fix is in canon's code, outside every KIT:CONFIG region. Deciding between two
-CANON'S    readings by comparing their counts fails open: any input that moves both counts by the same
-           amount passes.
-SMALLEST   Use the shell-word reading whenever the two lists differ element by element, or whenever a
-FIX        quoted span holds whitespace, not when their lengths differ. Probe: the four lines above
-           deny or ask; `"C:/Program Files/Git/cmd/git.exe" status # " "` allows.
-
 ### CF-11 · canon-inbox v3's push detector misses a push through the quoted Git path
 OBSERVED   `pushes()` in `.claude/hooks/canon-inbox.js` splits on bare whitespace, so
            `"C:/Program Files/Git/cmd/git.exe" push origin main` becomes `"C:/Program` and
@@ -376,3 +202,13 @@ A pointer, not a restatement — the canon entry is the record.
 
 | # | Item | Filed as | Canon SHA |
 |---|---|---|---|
+| CF-1 | Tier 0 asks for four slots but the kit has no way to hold a red tool | §1 finding | 4fc5e3d |
+| CF-2 | The Yoros template ships unauthenticated service-role server actions, and three estate projects carry them | §1 finding | 323cbc4 |
+| CF-3 | An adoption handover named a line that did not exist in this project | §1 finding | 7f2c9b5 |
+| CF-4 | `git mv` stages immediately, and a later bare `git commit` sweeps it into an unrelated commit | §1 finding | 7f2c9b5 |
+| CF-5 | bash-gate v10 loosened three verdicts and declares none of them | §1 finding | c4bc731 |
+| CF-6 | bash-gate matches command names case-sensitively and without `.exe`, so on win32 every canon rule is bypassed by spelling | §1 finding | 8a72737 |
+| CF-7 | v11's "a string git runs is a command" misses three neighbours, and its NOT COVERED list names none of them | §1 finding | 8a72737 |
+| CF-8 | A quoted Windows path to an executable gets past every bash-gate rule, the push-to-main ask included | §1 finding | c77ba68 |
+| CF-9 | agent-write-scope denies a `cat >` heredoc whose body names `git commit` | §1 finding | c77ba68 |
+| CF-10 | v14 reads a quoted path as one word only when the word and token counts differ, and a quoted space cancels the difference | §1 finding | d5ec268 |
