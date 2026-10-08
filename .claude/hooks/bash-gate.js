@@ -1,7 +1,7 @@
 /**
  * bash-gate.js — PreToolUse gate for Bash. KIT FILE, install at `.claude/hooks/`.
  *
- * @kit bash-gate v14 — tracked OUTSIDE its `KIT:CONFIG` regions. Those regions are yours;
+ * @kit bash-gate v15 — tracked OUTSIDE its `KIT:CONFIG` regions. Those regions are yours;
  * everything else is canon's, and `check-kit-drift.mjs` reconciles it.
  *
  * WHY THIS EXISTS, and it is not the reason you would guess. Allow-rules in
@@ -93,6 +93,11 @@
  * allowed it — Git for Windows' default install path. A segment whose shell words differ from its
  * tokens is now read a second time as those words (`segments`' `words`), appended after every other
  * segment as v13's are, so every changed verdict is stricter. No rule is added, so no fallback is owed.
+ *
+ * v15 (2026-10-08) is blindly CF-10: v14 chose between the two readings by comparing their COUNTS,
+ * and a quoted whitespace-only word (`# " "`) is one word and no token, which cancelled the path's
+ * split and re-opened every case CF-8 closed. The words are now read whenever the two lists differ
+ * at any position. Deciding by a count fails open to any input that moves both counts alike.
  *
  * A REASON IS ALWAYS SET, INCLUDING ON ALLOW. An empty reason makes an allow
  * indistinguishable from a hook that ran and decided nothing.
@@ -495,7 +500,9 @@ function segments(command) {
     if (tokens.length === 0) return;
     const seg = { text: src.slice(from, to).trim(), tokens, bare, unknowable };
     const w = shellWords(from, to);
-    if (w.tokens.length !== tokens.length) seg.words = w;
+    // v15 (blindly CF-10): element by element. v14 compared counts, and `" "` — one word, no token —
+    // cancelled a quoted path's split, so `"…/git.exe" push --force origin main # " "` read as v13 did.
+    if (w.tokens.length !== tokens.length || w.tokens.some((t, k) => t !== tokens[k])) seg.words = w;
     out.push(seg);
   };
   // v14 (blindly CF-8): the segment's WORDS as bash splits them, at unquoted whitespace only.
@@ -1637,7 +1644,7 @@ function decide(command) {
   // `-m "rm -rf /"` is prose either way (rm is not at command position there).
   // v13: after the command's own segments, those of every string something in it runs. Appended,
   // so the branch each of the command's own segments lands on is computed exactly as before.
-  // v14: then each segment again as its shell WORDS where a quoted word held a space — appended too.
+  // v14: then each segment again as its shell WORDS where they differ from its tokens — appended too.
   const read = [...segments(maskMessageText(command)), ...consumedSegments(command)];
   const segs = [...read, ...read.filter((s) => s.words).map((s) => ({ ...s, tokens: s.words.tokens, bare: s.words.bare }))];
   const plan = planOf(segs);
