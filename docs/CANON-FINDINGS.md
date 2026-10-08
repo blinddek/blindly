@@ -40,7 +40,8 @@ OBSERVED   `git -C my\ repo push origin main` as a PostToolUse Bash event prints
            and bash-gate still asks on the push.
 COMMAND    each payload piped to `node .claude/hooks/canon-inbox.js` as
            `{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":…}}`
-           (walk-kit-v17 note 2; reproduced here at 2c2bbb9)
+           (walk-kit-v17 note 2; reproduced here at 2c2bbb9, while the inbox held items). The
+           contrast needs a non-empty inbox: with nothing to say, both payloads are silent.
 WHY IT IS  This is the same word-reading that bash-gate v15 and later get right, living in a sibling
 CANON'S    kit hook (CF-11's class, one step on).
 SMALLEST   Treat `\<char>` as part of the word in `segments`, or share bash-gate's word reader. Probe:
