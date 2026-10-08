@@ -188,6 +188,8 @@ FIX        `maskSinkHeredocs` does. Probe: `cat > x <<'EOF'\ngit commit\nEOF` al
            and a bare `git commit` from a subagent still denies.
 
 ### CF-10 · v14 reads a quoted path as one word only when the word and token counts differ, and a quoted space cancels the difference
+LIFTED     canon bash-gate v15 (floor 15, at 79ebcc2), taken here: the four cases deny or ask;
+           `"…/git.exe" status # " "` allows.
 OBSERVED   v14 (and v13) ALLOW each of these:
            - `"C:/Program Files/Git/cmd/git.exe" push --force origin main # " "`
            - `"…/git.exe" push origin main # " "`, which skips the deploy ask
