@@ -1,14 +1,25 @@
 /**
  * scripts/check-baseline.mjs — run a tier-0 tool and hold it to a recorded baseline.
  *
+ * @kit check-baseline v1 — tracked OUTSIDE its `KIT:CONFIG` region. The region is yours; everything
+ * else is canon's, and `check-kit-drift.mjs` says so if it changes here.
+ *
  *   node scripts/check-baseline.mjs <tsc|eslint|knip|madge>          check against the baseline
  *   node scripts/check-baseline.mjs <tool> --emit > scripts/baseline/<tool>.json   re-seed it
+ *   node scripts/check-baseline.mjs --slots       which tier-0 slot each tool fills (check-tier0 reads it)
+ *   node scripts/check-baseline.mjs --selftest    drives fake tool binaries through every verdict
  *
- * WHY. Adoption (2026-10-05) found every tier-0 tool red on code that predates it: tsc 9 errors,
- * eslint 11, knip 21 unused files and 144 unused exports, madge circular imports. Canon's Phase 4
- * rule is to baseline from ground truth with defect-ratchet semantics — the recorded violators are
- * owned debt, anything NEW fails the gate, and the list may only shrink. Adoption fixes none of
- * them; that is a decision for later work (brief/DECISIONS.md).
+ * Gate it as the slot's own script — `"check:lint": "node scripts/check-baseline.mjs eslint"` — and
+ * canon's check-tier0 reports that slot as held by a ratchet rather than green. A tool that is
+ * already clean needs none of this: wire it directly.
+ *
+ * WHY. blindly adopted (2026-10-05) with every tier-0 tool red on code that predates it: tsc 9
+ * errors, eslint 11, knip 201, madge 7. Canon's Phase 4 rule (1-NEW-PROJECT) is to baseline from
+ * ground truth with defect-ratchet semantics — the recorded violators are owned debt, anything NEW
+ * fails the gate, and the list may only shrink — and canon shipped nothing to hold it, so blindly
+ * wrote this (373706a, 661c87a). v1 (2026-10-08, blindly CF-1) is those bytes plus: madge's source
+ * roots as the project's region, the binary path quoted so a checkout under a folder with a space
+ * still runs, `--slots`, and `--selftest`.
  *
  * THE RATCHET FAILS IN BOTH DIRECTIONS, like check-claude-md's. A violation that is not in the
  * baseline fails. A baseline entry that no longer occurs ALSO fails, so a fix lands together with
@@ -20,14 +31,21 @@
  * It PRINTS rather than writes on --emit. Seeding a ratchet is a deliberate act with a diff.
  */
 import { spawnSync } from "node:child_process"
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
+import { fileURLToPath } from "node:url"
 
 const ROOT = process.cwd()
 const rel = (p) => relative(ROOT, p).replaceAll("\\", "/")
 
+/* KIT:CONFIG madge — the extensions and source roots madge reads. These are blindly's (Next.js). */
+const MADGE_SOURCES = ["--extensions", "ts,tsx", "app", "components", "lib"]
+/* KIT:CONFIG /madge */
+
 const TOOLS = {
   tsc: {
+    slot: "types",
     args: ["--noEmit", "--pretty", "false"],
     // tsc has no machine format, so its exit status is the cross-check on the regex: a failing run
     // with nothing parsed (a crash, a config error, a changed format) is unreadable, not clean.
@@ -39,6 +57,7 @@ const TOOLS = {
     },
   },
   eslint: {
+    slot: "lint",
     args: ["-f", "json"],
     keys: (out) =>
       JSON.parse(out).flatMap((f) =>
@@ -46,6 +65,7 @@ const TOOLS = {
       ),
   },
   knip: {
+    slot: "dead-code",
     args: ["--reporter", "json", "--no-progress"],
     keys: (out) =>
       JSON.parse(out).issues.flatMap((issue) =>
@@ -55,9 +75,91 @@ const TOOLS = {
       ),
   },
   madge: {
-    args: ["--circular", "--json", "--extensions", "ts,tsx", "app", "components", "lib"],
+    slot: "cycles",
+    args: ["--circular", "--json", ...MADGE_SOURCES],
     keys: (out) => JSON.parse(out.slice(out.indexOf("["))).map((cycle) => cycle.join(" > ")),
   },
+}
+
+if (process.argv.includes("--slots")) {
+  console.log(JSON.stringify(Object.fromEntries(Object.entries(TOOLS).map(([t, s]) => [t, s.slot]))))
+  process.exit(0)
+}
+
+/* ── selftest ─────────────────────────────────────────────────────────────────────────────────
+ * Spawns THIS file, as the gate does, in a fixture whose node_modules/.bin holds fake tools that
+ * print a canned output and exit with a canned status. Asserted on exit code AND a line, because a
+ * ratchet that exits 0 on every path prints a plausible line on every path too. The fixture folder
+ * has a space in its name: the gate runs the binary through a shell, and an unquoted path splits. */
+if (process.argv.includes("--selftest")) {
+  const SELF = fileURLToPath(import.meta.url)
+  const dir = mkdtempSync(join(tmpdir(), "check baseline-"))
+  const bin = join(dir, "node_modules", ".bin")
+  mkdirSync(bin, { recursive: true })
+  mkdirSync(join(dir, "scripts", "baseline"), { recursive: true })
+  writeFileSync(
+    join(bin, "fake.mjs"),
+    'import { readFileSync } from "node:fs"\n' +
+      'process.stdout.write(readFileSync("fake-out.txt", "utf8"))\n' +
+      'process.exit(Number(readFileSync("fake-status.txt", "utf8")))\n',
+  )
+  for (const t of ["tsc", "eslint"]) {
+    writeFileSync(join(bin, t), '#!/bin/sh\nexec node "$(dirname "$0")/fake.mjs" "$@"\n', { mode: 0o755 })
+    writeFileSync(join(bin, `${t}.cmd`), '@node "%~dp0fake.mjs" %*\r\n')
+  }
+
+  const eslintOut = (...rules) =>
+    JSON.stringify([{ filePath: join(dir, "a.ts"), messages: [...rules.map((ruleId) => ({ severity: 2, ruleId })), { severity: 1, ruleId: "warn-only" }] }])
+  const run = ({ tool, out, status = 0, baseline, args = [] }) => {
+    writeFileSync(join(dir, "fake-out.txt"), out ?? "")
+    writeFileSync(join(dir, "fake-status.txt"), String(status))
+    const path = join(dir, "scripts", "baseline", `${tool}.json`)
+    rmSync(path, { force: true })
+    if (baseline) writeFileSync(path, JSON.stringify({ tool, seeded: "2026-10-08", violations: baseline }))
+    return spawnSync(process.execPath, [SELF, tool, ...args], { cwd: dir, encoding: "utf8" })
+  }
+
+  const CASES = [
+    ["KNOWN-GOOD: at its baseline (a warning is not counted)", { tool: "eslint", out: eslintOut("no-x"), status: 1, baseline: { "a.ts no-x": 1 } }, 0, /at its baseline \(1 owned violation,/],
+    ["KNOWN-GOOD: tsc clean against an empty baseline", { tool: "tsc", out: "", baseline: {} }, 0, /at its baseline \(0 owned/],
+    ["a violation not in the baseline", { tool: "eslint", out: eslintOut("no-x", "no-y"), status: 1, baseline: { "a.ts no-x": 1 } }, 1, /1 violation\(s\) not in the baseline/],
+    ["a known key occurring MORE often than recorded", { tool: "eslint", out: eslintOut("no-x", "no-x"), status: 1, baseline: { "a.ts no-x": 1 } }, 1, /a\.ts no-x {2}\(1 → 2\)/],
+    ["a baseline entry that no longer occurs — the slack must not stay open", { tool: "eslint", out: eslintOut("no-x"), status: 1, baseline: { "a.ts no-x": 1, "b.ts no-z": 1 } }, 1, /no longer occur/],
+    ["output that does not parse is not a clean tree", { tool: "eslint", out: "Oops! Something went wrong", status: 2, baseline: {} }, 1, /did not parse/],
+    ["tsc failing with no error line parsed (a config error, a crash)", { tool: "tsc", out: "error TS5083: Cannot read file 'tsconfig.json'.", status: 2, baseline: {} }, 1, /exited 2 but no error line parsed/],
+    ["tsc exiting 0 with error lines parsed", { tool: "tsc", out: "a.ts(1,1): error TS2322: x", status: 0, baseline: {} }, 1, /exited 0 yet 1 error line/],
+    ["no baseline recorded", { tool: "eslint", out: eslintOut(), status: 0 }, 1, /no baseline at scripts\/baseline\/eslint\.json/],
+    ["a tool that is not installed (no fake knip)", { tool: "knip", baseline: {} }, 1, /knip: (could not run|output did not parse)/],
+    ["a tool the wrapper does not know", { tool: "prettier" }, 2, /usage:/],
+  ]
+  let failed = 0
+  try {
+    for (const [label, input, wantStatus, wantLine] of CASES) {
+      const r = run(input)
+      const ok = r.status === wantStatus && wantLine.test(r.stdout + r.stderr)
+      if (!ok) failed++
+      console.log(`  ${ok ? "✓" : "✗"} ${label}${ok ? "" : `\n      exit ${r.status}, wanted ${wantStatus}: ${(r.stdout + r.stderr).trim().slice(0, 400)}`}`)
+    }
+    // --emit is how the baseline is seeded, so what it prints must be what the check reads back.
+    const e = run({ tool: "eslint", out: eslintOut("no-x", "no-x", "no-y"), status: 1, args: ["--emit"] })
+    let emitted = null
+    try {
+      emitted = JSON.parse(e.stdout).violations
+    } catch {
+      /* stays null and fails below */
+    }
+    const seeded = e.status === 0 && JSON.stringify(emitted) === JSON.stringify({ "a.ts no-x": 2, "a.ts no-y": 1 })
+    if (!seeded) failed++
+    console.log(`  ${seeded ? "✓" : "✗"} --emit prints the counts the check reads back${seeded ? "" : ` — exit ${e.status}: ${e.stdout.slice(0, 300)}`}`)
+    const reread = run({ tool: "eslint", out: eslintOut("no-x", "no-x", "no-y"), status: 1, baseline: emitted ?? {} })
+    const roundTrip = reread.status === 0
+    if (!roundTrip) failed++
+    console.log(`  ${roundTrip ? "✓" : "✗"} …and a baseline seeded from it is at its baseline on the same tree`)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+  console.log(failed ? `\n❌ ${failed} case(s) wrong` : "\n✅ check-baseline: holds in both directions, and fails on what it cannot read")
+  process.exit(failed ? 1 : 0)
 }
 
 const tool = process.argv[2]
@@ -68,7 +170,7 @@ if (!spec) {
 }
 
 const bin = join(ROOT, "node_modules", ".bin", tool)
-const run = spawnSync(bin, spec.args, { cwd: ROOT, encoding: "utf8", shell: true, maxBuffer: 64 * 1024 * 1024 })
+const run = spawnSync(`"${bin}"`, spec.args, { cwd: ROOT, encoding: "utf8", shell: true, maxBuffer: 64 * 1024 * 1024 })
 if (run.error) {
   console.error(`❌ ${tool}: could not run — ${run.error.message}`)
   process.exit(1)

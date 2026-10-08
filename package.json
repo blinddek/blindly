@@ -15,7 +15,7 @@
     "check:claude-md": "node scripts/check-claude-md.mjs --selftest && node scripts/check-claude-md.mjs",
     "check:agents": "node scripts/check-commands.mjs --selftest && node scripts/check-commands.mjs && node scripts/check-handoff-contract.mjs --selftest && node scripts/check-handoff-contract.mjs && node scripts/agent-distribution.mjs --selftest",
     "check:hooks": "node scripts/check-hook-registration.mjs && node .claude/hooks/bash-gate.probe.mjs && node .claude/hooks/canon-inbox.probe.mjs && node .claude/hooks/agent-write-scope.probe.mjs && node .claude/hooks/agent-brief-gate.probe.mjs && node scripts/check-context-budget.mjs",
-    "check:types": "node scripts/check-baseline.mjs tsc",
+    "check:types": "node scripts/check-baseline.mjs --selftest && node scripts/check-baseline.mjs tsc",
     "check:lint": "node scripts/check-baseline.mjs eslint"
   },
   "dependencies": {
