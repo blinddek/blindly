@@ -272,11 +272,12 @@ const CANON_FALLBACKS = {
   // ASK under a deny rule: the one glob that sees a leading `+` also sees a push option like
   // `-o 'note +1'`, which the rule allows. The user-level `git push *` allow makes this one matter.
   isForceRefspec: { twins: ["Bash(git push * +*)"] },
-  isNoVerify: {
-    noTwin: "No git hook is installed in this clone (.git/hooks holds samples only, core.hooksPath unset, no .husky or .githooks — checked 2026-10-05), so --no-verify skips nothing and a twin would guard nothing. The glob that finds the flag anywhere also matches a -m message naming it. Revisit the day a git hook lands",
-  },
+  // ASK under a deny rule: since 2026-10-11 .githooks/pre-commit and pre-push run check-scope, so
+  // --no-verify skips a real gate. The globs are wider than the rule — they also prompt on a -m
+  // message naming the flag, and `* -n *` on a commit message word — which is why they ask.
+  isNoVerify: { twins: ["Bash(git *--no-verify*)", "Bash(git *core.hooksPath=*)", "Bash(git commit -n *)", "Bash(git commit * -n *)"] },
   isSeamAssignment: {
-    noTwin: "inert: SEAM_VARS is empty, because there is no git hook to carry a probe seam. If one is added, measure first: deny and ask rules match PAST a leading assignment, so a rule may never see the assignment this one is about",
+    noTwin: "inert: SEAM_VARS is empty — .githooks/pre-commit and pre-push (canon's rows) read no environment seam, so no assignment can make them report PASSED unrun (checked 2026-10-11). If one is added, measure first: deny and ask rules match PAST a leading assignment, so a rule may never see the assignment this one is about",
   },
   // `*main*` also prompts on a branch like `maintenance`. A bare push while on main reaches the branch
   // by reference, which no glob resolves — and this is a single-branch repo, so every bare push does.
