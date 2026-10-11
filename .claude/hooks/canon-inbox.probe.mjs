@@ -2,7 +2,7 @@
 /**
  * .claude/hooks/canon-inbox.probe.mjs — canon-inbox.js in both directions, run as Claude Code runs it.
  *
- * @kit canon-inbox-probe v7 — tracked. It has no config region: its cases are the hook's contract.
+ * @kit canon-inbox-probe v8 — tracked. It has no config region: its cases are the hook's contract.
  *
  * Run: `node .claude/hooks/canon-inbox.probe.mjs` — exit 0 only if every case holds.
  *
@@ -171,7 +171,9 @@ try {
       // v6 (blindly CF-12): an escaped space is one word too, and so is a line joined by a backslash.
       "git -C my\\ repo push origin main", "C:/Program\\ Files/Git/cmd/git.exe push", "git -C \"a\\\"b\" push", "git \\\npush origin main",
       // v7 (blindly CF-13): prose silences only its own segment, and an assignment is not a command word.
-      "echo done && git push origin main", "GIT_TRACE=1 git push"]) {
+      "echo done && git push origin main", "GIT_TRACE=1 git push",
+      // v8 (blindly CF-15): a substitution's body runs, whatever the outer command word is.
+      "echo $( git push origin main )", 'echo "$(git push origin main)"', "echo `git push origin main`", "cat <(git push origin main)"]) {
       const r = run(hook, dir("push-proj"), bashCall(command));
       const args = (() => { try { return JSON.parse(msg(r)); } catch { return null; } })();
       check(`after \`${command}\`: canon is asked with --after-task, and the line is relayed under PostToolUse`,
@@ -192,7 +194,9 @@ try {
       // v6: an escape keeps a character in its word — it does not make one, nor end a quote.
       "git -C my\\ repo status", "echo git\\ push", "git commit -m \"a \\\" ; git push\"", "git commit -m 'a\\' && echo push",
       // v7 (blindly CF-13): a prose command's words are text, never run.
-      "echo git push", "printf '%s\\n' git push", "X=1 echo git push origin main", "/usr/bin/echo git push"]) {
+      "echo git push", "printf '%s\\n' git push", "X=1 echo git push origin main", "/usr/bin/echo git push",
+      // v8: a single-quoted or escaped substitution is text; so is one whose body is not a push.
+      "echo '$(git push)'", "echo \\$(git push)", "echo $(git status)"]) {
       const r = run(hook, dir("unasked-proj"), bashCall(command));
       check(`KNOWN-GOOD: after \`${command}\` the hook prints nothing and does not ask canon`, r.status === 0 && r.raw === "", r);
     }

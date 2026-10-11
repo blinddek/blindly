@@ -1,7 +1,7 @@
 /**
  * .claude/hooks/canon-inbox.js — SessionStart, and after a push: one line from canon about this project, or nothing.
  *
- * @kit canon-inbox v6 — tracked OUTSIDE its `KIT:CONFIG` region. The region is yours; everything
+ * @kit canon-inbox v7 — tracked OUTSIDE its `KIT:CONFIG` region. The region is yours; everything
  * else is canon's, and `check-kit-drift.mjs` says so if it changes here.
  *
  * Register it TWICE, with the same command `node "$CLAUDE_PROJECT_DIR/.claude/hooks/canon-inbox.js"`:
@@ -40,6 +40,8 @@
  * v5 (2026-10-08, blindly CF-12): so is an escaped one — `git -C my\ repo push` speaks.
  *
  * v6 (2026-10-09, blindly CF-13): `echo git push` is text, not a push — see `pushes`.
+ *
+ * v7 (2026-10-11, blindly CF-15): but `echo $( git push )` runs the push — see `substitutions`.
  */
 // @event SessionStart
 // @matcher startup
@@ -140,7 +142,47 @@ function segments(command) {
  */
 const PROSE = new Set(["echo", "printf", "grep", "egrep", "fgrep", "rg", "ag", "man", "help", "info", "whatis", "apropos", "which", "type", "whereis", ":", "true", "false"]);
 
+/**
+ * v7 (blindly CF-15): the commands inside `$( )`, `<( )`, `>( )` and backticks run, whatever the
+ * outer command word is, so `echo $( git push )` pushes. v6's prose skip silenced it. Each body is
+ * read as a command of its own; single quotes and a backslash keep the text literal, as bash does.
+ */
+function substitutions(command) {
+  const out = [];
+  const chars = [...command];
+  let single = false;
+  let i = 0;
+  while (i < chars.length) {
+    const ch = chars[i];
+    if (!single && ch === "\\") {
+      i += 2;
+    } else if (ch === "'") {
+      single = !single;
+      i += 1;
+    } else if (!single && ch === "`") {
+      let j = i + 1;
+      while (j < chars.length && chars[j] !== "`") j += chars[j] === "\\" ? 2 : 1;
+      out.push(chars.slice(i + 1, j).join(""));
+      i = j + 1;
+    } else if (!single && /[$<>]/.test(ch) && chars[i + 1] === "(") {
+      let depth = 1;
+      let j = i + 2;
+      while (j < chars.length && depth) {
+        if (chars[j] === "(") depth++;
+        else if (chars[j] === ")") depth--;
+        j++;
+      }
+      out.push(chars.slice(i + 2, j - 1).join(""));
+      i = j;
+    } else {
+      i += 1;
+    }
+  }
+  return out;
+}
+
 function pushes(command) {
+  if (substitutions(command).some(pushes)) return true;
   for (const words of segments(command)) {
     const cw = words.find((w) => !/^\w+=/.test(w));
     if (cw !== undefined && PROSE.has(cw.replace(/^.*[\\/]/, ""))) continue;

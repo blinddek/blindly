@@ -2,7 +2,7 @@
 /**
  * scripts/check-scope.mjs — the commit gate runs what the STAGED diff can affect; push runs everything.
  *
- * @kit check-scope v2 — tracked OUTSIDE its `KIT:CONFIG` region. The region is yours; everything
+ * @kit check-scope v3 — tracked OUTSIDE its `KIT:CONFIG` region. The region is yours; everything
  * else is canon's, and `check-kit-drift.mjs` says so if it changes here.
  *
  *   node scripts/check-scope.mjs              print the plan for the current index
@@ -211,13 +211,20 @@ const CANON_HOOKS = {
  * v2 (life-therapy CF-11): a project's own hook counts when it reaches the call through an
  * `npm run X` that expands to it, and its pre-push when it runs PUSH itself. A `#` comment line
  * naming the call never counts.
+ * v3 (blindly CF-14): each hook must be committed EXECUTABLE — 100755 in the index, not the
+ * filesystem, because Windows has no exec bit and commits what it was given. On macOS and Linux
+ * git skips a 100644 hook with a hint, so the gate is off while its content reads wired.
+ * `mode(path)` is the index mode, or null when the file is not tracked.
  */
-export function wiring(hooksPath, read, scripts = {}, push = PUSH) {
+export function wiring(hooksPath, read, scripts = {}, push = PUSH, mode = () => "100755") {
   const out = []
   if (hooksPath !== ".githooks") out.push(`core.hooksPath is ${hooksPath ? `"${hooksPath}"` : "unset"}, not ".githooks" — add "prepare": "git config core.hooksPath .githooks || true" to package.json and run it once`)
   for (const [hook, call] of Object.entries(HOOK_CALLS)) {
     const text = read(`.githooks/${hook}`)
     if (text === null) { out.push(`.githooks/${hook} is missing`); continue }
+    const m = mode(`.githooks/${hook}`)
+    if (m === null) out.push(`.githooks/${hook} is not committed — no other checkout has it. git add --chmod=+x .githooks/${hook}`)
+    else if (m !== "100755") out.push(`.githooks/${hook} is committed ${m}, not 100755 — macOS and Linux git will skip it. git add --chmod=+x .githooks/${hook}`)
     const body = text.split("\n").filter((l) => !l.trimStart().startsWith("#")).join("\n")
     const viaNpm = [...body.matchAll(/npm run ([\w:.-]+)/g)].some((m) => expand(scripts, `npm run ${m[1]}`).some((c) => c.includes(call)))
     if (!body.includes(call) && !viaNpm && !(hook === "pre-push" && body.includes(push))) out.push(`.githooks/${hook} does not call ${call}`)
@@ -236,7 +243,8 @@ function main() {
   if (flag("--wired")) {
     let hp = null
     try { hp = git(["config", "core.hooksPath"]) } catch { /* unset */ }
-    const found = wiring(hp, (p) => (existsSync(p) ? readFileSync(p, "utf8") : null), scripts)
+    const indexMode = (p) => { try { return git(["ls-files", "-s", "--", p]).split(" ")[0] || null } catch { return null } }
+    const found = wiring(hp, (p) => (existsSync(p) ? readFileSync(p, "utf8") : null), scripts, PUSH, indexMode)
     for (const f of found) console.log(`  ✗ ${f}`)
     console.log(found.length ? "check-scope --wired → the commit and push gates are NOT wired" : "check-scope --wired → .githooks/pre-commit and pre-push are wired")
     process.exit(found.length ? 1 : 0)
@@ -358,6 +366,11 @@ function selftest() {
   ok(wiring(".githooks", (p) => own[p] ?? null, ownScripts, "npm run check:push").length === 0, "KNOWN-GOOD: a hook reaching this file through `npm run`, and a pre-push running PUSH, are wired", JSON.stringify(wiring(".githooks", (p) => own[p] ?? null, ownScripts, "npm run check:push")))
   ok(wiring(".githooks", (p) => own[p] ?? null, { ...ownScripts, "check:commit": "npm run check" }, "npm run check:push").length === 1, "PLANTED: an `npm run` that does not reach this file is not wired")
   ok(wiring(".githooks", (p) => (p.endsWith("pre-commit") ? `#!/bin/sh\n# runs ${HOOK_CALLS["pre-commit"]}\nnpm run check\n` : hooks[p])).length === 1, "PLANTED: a comment naming the call is not a call")
+  // blindly CF-14: content wired, mode not — git on macOS and Linux skips the hook.
+  const modeOf = (m) => (p) => (p.endsWith("pre-push") ? "100755" : m)
+  ok(wiring(".githooks", (p) => hooks[p] ?? null, {}, PUSH, modeOf("100644")).some((f) => /100644, not 100755/.test(f)), "PLANTED: a hook committed 100644 is not wired, whatever it says")
+  ok(wiring(".githooks", (p) => hooks[p] ?? null, {}, PUSH, modeOf(null)).some((f) => /not committed/.test(f)), "PLANTED: an untracked hook is not wired — no other checkout has it")
+  ok(wiring(".githooks", (p) => own[p] ?? null, ownScripts, "npm run check:push", modeOf("100644")).length === 1, "PLANTED: a project's own hook reached through `npm run` must be 100755 too (CF-11 kept)")
 
   // The real diff reader, in a scratch repository: staged paths only, renames carry both sides.
   const dir = mkdtempSync(join(tmpdir(), "check scope "))
@@ -416,8 +429,13 @@ function selftest() {
       writeFileSync(join(repo, "package.json"), JSON.stringify({ scripts: chainScripts }))
       writeFileSync(join(repo, "chain.mjs"), 'import { readFileSync } from "node:fs"\nprocess.exit(Number(readFileSync("gate.txt", "utf8")))\n')
       r(["config", "core.hooksPath", ".githooks"])
-      const wired = spawnSync(process.execPath, ["scripts/check-scope.mjs", "--wired"], { cwd: repo, encoding: "utf8", env })
-      ok(wired.status === 0, "KNOWN-GOOD: a repository with the hooks installed and core.hooksPath set reports wired", wired.stdout)
+      const wiredNow = () => spawnSync(process.execPath, ["scripts/check-scope.mjs", "--wired"], { cwd: repo, encoding: "utf8", env })
+      r(["add", ".githooks"]); r(["update-index", "--chmod=-x", ".githooks/pre-commit"])
+      const plain = wiredNow()
+      ok(plain.status === 1 && /100644/.test(plain.stdout), "PLANTED: a hook staged 100644 — what a Windows checkout commits by default — reads NOT wired (blindly CF-14)", plain.stdout)
+      r(["update-index", "--chmod=+x", ".githooks/pre-commit", ".githooks/pre-push"])
+      const wired = wiredNow()
+      ok(wired.status === 0, "KNOWN-GOOD: a repository with the hooks installed executable and core.hooksPath set reports wired", wired.stdout)
       gate(0); r(["add", "."]); r(["commit", "-q", "-m", "first"])
       ok(commits() === 1, "KNOWN-GOOD: pre-commit lets a commit through when the chain is green")
       gate(1); writeFileSync(join(repo, "notes.md"), "x"); r(["add", "notes.md"])
