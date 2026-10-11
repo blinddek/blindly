@@ -32,6 +32,13 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // A response this function makes in place of supabaseResponse must carry the cookies getUser() just
+  // refreshed onto it, or a rotated refresh token is lost (walk F7).
+  const keepCookies = (res: NextResponse) => {
+    for (const c of supabaseResponse.cookies.getAll()) res.cookies.set(c);
+    return res;
+  };
+
   // Refresh the session — this keeps the auth token alive
   const {
     data: { user },
@@ -86,7 +93,7 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/portal";
     url.search = "";
-    return NextResponse.redirect(url);
+    return keepCookies(NextResponse.redirect(url));
   }
 
   // Protected routes — redirect to login if not authenticated
@@ -94,7 +101,7 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(url);
+    return keepCookies(NextResponse.redirect(url));
   }
 
   // The one admin rule (G-12, Stéan 2026-10-11): every /admin request is refused here unless
@@ -111,13 +118,13 @@ export async function updateSession(request: NextRequest) {
       .maybeSingle();
     if (error) {
       console.error("[proxy] admin role read failed:", error.message);
-      return new NextResponse("Service temporarily unavailable", { status: 503 });
+      return keepCookies(new NextResponse("Service temporarily unavailable", { status: 503 }));
     }
     if (profile?.role !== "admin") {
       const url = request.nextUrl.clone();
       url.pathname = "/portal";
       url.search = "";
-      return NextResponse.redirect(url);
+      return keepCookies(NextResponse.redirect(url));
     }
   }
 
@@ -127,12 +134,12 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       url.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(url);
+      return keepCookies(NextResponse.redirect(url));
     }
     // customerAuth disabled — portal routes don't exist, redirect home
     const url = request.nextUrl.clone();
     url.pathname = "/";
-    return NextResponse.redirect(url);
+    return keepCookies(NextResponse.redirect(url));
   }
 
   // /admin's role check is above (the database role, as the layouts read it). Sending admins from
