@@ -10,11 +10,14 @@ export async function updateVatPercent(percent: number): Promise<{ error?: strin
   await ensureAdmin();
   const pct = parseVatPercent(percent);
   if (pct == null) return { error: "VAT must be a number from 0 to 100." };
-  const { error } = await createAdminClient()
+  const { data, error } = await createAdminClient()
     .from("site_settings")
     .update({ value: String(pct) })
-    .eq("key", "vat_percent");
+    .eq("key", "vat_percent")
+    .select("key");
   if (error) return { error: error.message };
+  // An update that matched no row is not a save (walk round 5 F6).
+  if (!data?.length) return { error: "The vat_percent setting row is missing; nothing was saved." };
   revalidatePath("/admin/settings");
   return {};
 }

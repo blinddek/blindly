@@ -78,6 +78,10 @@ export async function createInvoiceFromOrder(
     }
   }
 
+  // The rate first: a failed read must not burn an invoice number (walk round 5 F1). It is the rate
+  // at invoicing; the order stores its VAT amount, not its rate, so a rate changed between order and
+  // a late payment shows here beside the amount charged at the old one.
+  const vatRate = (await getVatPercent()) / 100;
   const invoiceNumber = await getNextInvoiceNumber();
 
   // Build line items from order items
@@ -109,9 +113,7 @@ export async function createInvoiceFromOrder(
   }
 
   const subtotal = order.subtotal_cents + order.delivery_fee_cents + order.installation_fee_cents;
-  // The rate the order was charged at (G-13). vat_cents / subtotal understated it whenever there was a
-  // fee: delivery and installation are VAT-inclusive and add nothing to vat_cents (walk F3).
-  const vatRate = (await getVatPercent()) / 100;
+  // (vat_cents / subtotal understated the rate whenever a VAT-inclusive fee applied: walk F3.)
 
   const now = new Date();
 

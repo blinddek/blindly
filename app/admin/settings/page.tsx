@@ -256,7 +256,7 @@ export default function SiteSettingsPage() {
 /* ── Finance Panel ── */
 
 function FinancePanel() {
-  const [vatRate, setVatRate] = useState(15);
+  const [vatRate, setVatRate] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -265,8 +265,10 @@ function FinancePanel() {
       const supabase = createClient();
       // site_settings.vat_percent is the one VAT rate the blinds shop charges (G-13); shop_settings'
       // tax_rate_percent belongs to the template shop, which is off here.
+      // No default on screen: a failed load must not offer 15 to save over the real rate (walk round 5 F6).
       const { data } = await supabase.from("site_settings").select("value").eq("key", "vat_percent").maybeSingle();
-      if (data) setVatRate(Number(data.value));
+      const pct = data && String(data.value).trim() !== "" ? Number(data.value) : NaN;
+      if (Number.isFinite(pct)) setVatRate(pct);
       setLoading(false);
     }
     load();
@@ -275,6 +277,7 @@ function FinancePanel() {
   async function handleSave() {
     setSaving(true);
     try {
+      if (vatRate == null) throw new Error("not loaded");
       const res = await updateVatPercent(vatRate);
       if (res.error) throw new Error(res.error);
       toast.success("Finance settings saved.");
@@ -285,6 +288,7 @@ function FinancePanel() {
   }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
+  if (vatRate == null) return <p className="text-sm text-destructive">Could not load the VAT rate. Reload to try again.</p>;
 
   return (
     <div className="space-y-6">
