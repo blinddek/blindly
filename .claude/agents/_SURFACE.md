@@ -12,7 +12,8 @@ set-state-in-effect, unescaped entities, two `prefer-const` in `lib/pricing/look
 them is a Phase 2 decision for the operator, so a red gate on exactly those is the known state, not
 your regression. Anything else red is.
 
-There is no CI and no test suite.
+Since 2026-10-11: CI (`.github/workflows/ci.yml`) runs `npm run check`, which includes `npm run test` —
+`node:test` through `tsx` over `tests/*.test.ts`, no database. The ITN claim (M-003) has no test.
 
 ## What can actually hurt (the danger census, 2026-10-05)
 

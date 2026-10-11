@@ -96,7 +96,7 @@ Approval-gated actions sequence to the **end** of a task. Run the check after ea
 | ESLint rules | `eslint.config.mjs` (next core-web-vitals + typescript; no custom rules) |
 | Audit checks | `npm run check` — `check-scope` (selftest, and `--wired`: `core.hooksPath` is `.githooks`, set by `prepare`), `check:hooks`, `check:agents`, `check:brief`, `check:claude-md`, `check:actions`, and the four tier-0 tools through `scripts/check-baseline.mjs` |
 | Hooks + twins | `.claude/hooks/` + `.claude/settings.json` (`ask` twins) |
-| Tests | `npm run test` (in `check`) — `node:test` through `tsx`, `tests/*.test.ts`: order totals, checkout parsing, the price-size guard, the ITN signature. No database: a test that needs one does not belong here yet |
+| Tests | `npm run test` (in `check`) — `scripts/run-tests.mjs`: `node:test` through `tsx` over `tests/*.test.ts` (order totals, checkout parsing, the price-size guard, the ITN signature), failing on any `not ok` in the TAP, because a throwing `describe` exits 0 (L-103). No database: a test that needs one does not belong here yet |
 | Commands | `/walk` (adversarial pre-push review; does not push) · `/wrap` (end-of-session registers; does not push unasked) |
 | Rule files | none |
 

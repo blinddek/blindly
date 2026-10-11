@@ -15,8 +15,10 @@ names what was measured and how.
 - **Next.js 16.1.6, React, TypeScript, Tailwind 4, Supabase (`@supabase/ssr`), Resend, PayFast.** One
   branch, `main`; Vercel deploys every push; one cron, `/api/cron/daily` at 06:00 (`vercel.json`). —
   *source: package.json, vercel.json, git branch -a, 2026-10-05*
-- **No tests, no CI, no test runner.** `next.config.ts` sets `ignoreBuildErrors: true`, so type errors
-  do not stop a deploy. — *source: grounder survey, 2026-10-05*
+- **No tests, no CI, no test runner** at adoption. `next.config.ts` sets `ignoreBuildErrors: true`, so
+  type errors do not stop a deploy. — *source: grounder survey, 2026-10-05*
+- **Since 2026-10-11: a `node:test` tier (`npm run test`, 19 tests, no database) and CI running
+  `npm run check`; pre-push also runs `next build`.** — *source: 1ba2e26, 2e41994*
 - **The tier-0 tools were red at adoption: tsc 9 errors, eslint 11 errors (9 files), knip 201 findings
   (21 unused files, 144 unused exports, 33 unused types, 3 deps), madge 7 cycles.** Recorded as the
   baseline in `scripts/baseline/`. — *source: `node scripts/check-baseline.mjs <tool> --emit`, 2026-10-05*

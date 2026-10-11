@@ -24,11 +24,11 @@
 | File | Size | Last commit |
 |---|---|---|
 | `CURRENT.md` | 1.5 KB | 2026-10-05 |
-| `DECISIONS.md` | 4.5 KB | 2026-10-06 |
-| `EVIDENCE.md` | 7.2 KB | 2026-10-05 |
-| `GATES.md` | 3.7 KB | 2026-10-06 |
+| `DECISIONS.md` | 4.5 KB | 2026-10-11 |
+| `EVIDENCE.md` | 7.4 KB | 2026-10-05 |
+| `GATES.md` | 3.7 KB | 2026-10-11 |
 | `README.md` | 1.6 KB | 2026-10-05 |
-| `STATUS.md` | 0.1 KB | 2026-10-06 |
+| `STATUS.md` | 0.1 KB | 2026-10-11 |
 | `build\00-BUILD_INDEX.md` | 59.6 KB | 2026-10-05 |
 | `build\01-build_01_project_scaffold.md` | 12.1 KB | 2026-10-05 |
 | `build\02-build_02_universal_foundation.md` | 7.9 KB | 2026-10-05 |
