@@ -66,3 +66,7 @@ $$;
 -- Verify after applying (expect: the trigger listed; the function body without raw_user_meta_data ->> 'role'):
 --   select tgname from pg_trigger where tgrelid = 'public.user_profiles'::regclass and not tgisinternal;
 --   select prosrc from pg_proc where proname = 'handle_new_user';
+-- And what the tree cannot show (026+ were applied by an unrecorded route): every policy on the table,
+-- and every SECURITY DEFINER function that writes it, which runs as its owner and passes the trigger.
+--   select polname, cmd, roles from pg_policies where tablename = 'user_profiles';
+--   select proname from pg_proc where prosecdef and prosrc ilike '%user_profiles%';
