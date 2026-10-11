@@ -22,6 +22,32 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import ts from "typescript";
+
+/**
+ * The file asks for `only`, in any spelling the parser can see: `.only`, `["only"]`, an `only` option
+ * (`only: true`, `"only": true`, shorthand `{ only }`), or a computed member of test/it/describe/suite
+ * (`test[k]`), which could be either. Comments and strings are not code, so "digits only: no
+ * fractions" in a comment is not refused (walk g12-g13 F5). NOT COVERED: an option object built
+ * elsewhere and spread in.
+ */
+function namesOnly(file, src) {
+  const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const runners = new Set(["test", "it", "describe", "suite"]);
+  const isOnly = (name) => name && (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) && name.text === "only";
+  let hit = false;
+  const visit = (n) => {
+    if (hit) return;
+    if (ts.isPropertyAccessExpression(n) && n.name.text === "only") hit = true;
+    else if (ts.isElementAccessExpression(n)) {
+      const a = n.argumentExpression;
+      if (ts.isStringLiteralLike(a) ? a.text === "only" : ts.isIdentifier(n.expression) && runners.has(n.expression.text)) hit = true;
+    } else if ((ts.isPropertyAssignment(n) || ts.isShorthandPropertyAssignment(n)) && isOnly(n.name)) hit = true;
+    ts.forEachChild(n, visit);
+  };
+  visit(sf);
+  return hit;
+}
 
 const files = readdirSync("tests").filter((f) => f.endsWith(".test.ts")).sort().map((f) => `tests/${f}`);
 const dir = mkdtempSync(join(tmpdir(), "blindly-tap-"));
@@ -29,7 +55,7 @@ const bad = [];
 let total = 0;
 
 for (const [i, file] of files.entries()) {
-  if (/\.only\b|\bonly\s*:/.test(readFileSync(file, "utf8"))) {
+  if (namesOnly(file, readFileSync(file, "utf8"))) {
     bad.push(`${file}: names \`only\` — in-process it silently drops the file's other tests`);
     continue;
   }
