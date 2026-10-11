@@ -65,6 +65,36 @@ SMALLEST   canon-inbox's `segments` opens a segment at `$(`, a backtick and `<(`
 FIX        so the prose skip applies to the outer word only; probe all four spellings as pushes.
            Must keep CF-13's cases (`echo git push` and its prose kin) silent.
 
+### CF-16 · the kit's commit gate does not run on a merge, cherry-pick or revert
+OBSERVED   the kit carries githook-pre-commit and githook-pre-push only. git runs pre-commit for a
+           plain commit and for nothing else that creates one; a merge, cherry-pick or revert lands a
+           commit no gate saw until pre-push. life-therapy measured this 2026-08-21 and closed it with
+           pre-merge-commit + prepare-commit-msg; blindly cannot port that by hand, because the closure
+           needs pre-commit to write the tree it approved, and pre-commit is canon's bytes here.
+COMMAND    scratch repo, core.hooksPath at three hooks that log their name (2026-10-11):
+           commit → pre-commit prepare-commit-msg · merge → pre-merge-commit prepare-commit-msg ·
+           cherry-pick → prepare-commit-msg · revert → prepare-commit-msg
+           node E:/dev/dev-standards/tools/apply-kit.mjs blindly → no githook row beyond the two
+WHY IT IS  the githook rows and check-scope's HOOK_CALLS/`wiring()` are canon's; a project-local
+CANON'S    prepare-commit-msg either reruns the whole chain on every plain commit (no marker) or forks
+           pre-commit (drift). Pre-push still gates what leaves the machine, so the cost is a red tree
+           in local history, not on main.
+SMALLEST   canon's pre-commit writes `git write-tree` to `$(git rev-parse --git-path gate-ok)` on
+FIX        success; add rows githook-pre-merge-commit (the commit chain, then the marker) and
+           githook-prepare-commit-msg (consume a matching marker, skip during a rebase, else run the
+           chain), with `wiring()` asserting all four. life-therapy's .githooks are the worked copy.
+
+### CF-17 · a lesson answer can cite an artefact the repo does not keep
+OBSERVED   blindly's L-108 and L-109 answers (88d2101) cited `.handoff/lesson-10x/01-scout.md`, which
+           is gitignored: the citation proves nothing to any later reader. Walk F8 caught it; the rows
+           now carry the evidence inline.
+COMMAND    git check-ignore -v .handoff/lesson-108/01-scout.md → .gitignore rule `.handoff/`
+WHY IT IS  the lesson-answer format (§2 header) asks for "the command and its output" but the agent
+CANON'S    contract makes `.handoff/` the place answers are written, so citing it is the path of least
+           resistance; nothing in `check-brief` or the inbox flags a gitignored path in an answer.
+SMALLEST   the inbox's answer parser (or check-claude-md's CANON-FINDINGS read) fails a §2 row whose
+FIX        evidence cell names a path `git check-ignore` matches.
+
 ---
 
 ## 2 · Lesson answers
@@ -142,9 +172,9 @@ off this table and it stays open.
 | L-99 | 2026-10-05 | The printed remedy was run: `node scripts/check-baseline.mjs <tool> --emit` for tsc, eslint, knip, madge → each `emit==baseline: true`. `lib/supabase/types.ts` and `brief/STATUS.md` (`README.md:20`: never hand-edited) are named by no text as hand-editable. |
 | L-103 | n/a: no test runner | `grep -n "vitest\|jest\|node --test\|mocha\|\"test\"" package.json` → none. `find . -name "*.test.*"` (outside node_modules) → none. |
 | L-104 | 2026-10-05 | `node .handoff/canon-lessons/scratch/d/l104.mjs` (the five payloads through `bash-gate.js`) → deny, deny, deny, deny, allow (the known-good). 5bbee43 held v9 ≥ v8, where the fix landed. 7de853b is v10. |
-| L-105 | n/a: no gate stamp | Restated 2026-10-11, after b3bf606 installed `.githooks` (pre-commit scoped by `check-scope`, pre-push the whole `npm run check`): `git grep -n -i "gate-ok\|stamp" -- .githooks scripts/check-scope.mjs` → none; its only `writeFileSync` calls are selftest scratch (`check-scope.mjs:362,364`). No writer, no consumer, and pre-push skips nothing on a prior pass. Was: `core.hooksPath` empty. |
-| L-108 | n/a: no validator has a canonical-input fast path | `.handoff/lesson-108/01-scout.md` at e04714d. `verifyItn`'s raw-or-parsed signature fallback (`lib/payfast/webhooks.ts:100-103`) is two complete checks, not a shortcut past one. The nearest kin, fixed: `lookupPrice` let a NaN dimension through both range comparisons, onto the largest grid point (ae0db64). The per-branch must-throw case has no home here: there is no test runner. |
-| L-109 | n/a: nothing accepts an existing value as proof | `.handoff/lesson-109/01-scout.md` at 94bacf6. `/cart/success` shows `sessionStorage` and never reads `?reference=` (`app/(public)/cart/success/page.tsx:11`). `getBlindlyOrderBy{Number,Id}` have no importer (`git grep` → only `lib/blinds/queries.ts`). 039 drops the anon order SELECT (apply pending, G-01). The reference in GA4, PayFast and logs authorises only behind the ITN signature, which holds only with a passphrase set (G-02). |
+| L-105 | n/a: no gate stamp | Restated 2026-10-11, after b3bf606 installed `.githooks` (pre-commit scoped by `check-scope`, pre-push the whole `npm run check`): `git grep -n -i "gate-ok\|stamp" -- .githooks scripts/check-scope.mjs` → none; its only `writeFileSync` calls are selftest scratch (`git grep -n writeFileSync 88d2101 -- scripts/check-scope.mjs` → lines 362, 364, 399, 405, 406, 409, 410, 416, all inside `--selftest`, into a `mkdtemp` dir). No writer, no consumer, and pre-push skips nothing on a prior pass. Was: `core.hooksPath` empty. |
+| L-108 | n/a: no validator has a canonical-input fast path | Read at 94bacf6 (scout artefact gitignored, not kept). `verifyItn`'s raw-or-parsed signature fallback was two complete checks, not a shortcut past one — but accepting either widened the accepted set (a signed body with a field appended failed raw and passed the rebuild; walk F7). Closed 2026-10-11: the raw body is the only accepted signature (`lib/payfast/webhooks.ts` `verifyItn`). The nearest kin, fixed: `lookupPrice` let a NaN dimension through both range comparisons, onto the largest grid point (ae0db64; that commit's message overstates it — such a size is priced but not "stored" and does not reach the supplier: the INTEGER order-item insert refuses it, as a 500 rather than a 400 — walk F3). The per-branch must-throw case has no home here: there is no test runner. |
+| L-109 | n/a: nothing accepts an existing value as proof | Read at 94bacf6 (scout artefact gitignored, not kept; each claim below reruns). `/cart/success` shows `sessionStorage` and never reads `?reference=` (`app/(public)/cart/success/page.tsx:11`). `getBlindlyOrderBy{Number,Id}` have no importer (`git grep` → only `lib/blinds/queries.ts`). 039 drops the anon order SELECT (apply pending, G-01). The reference in GA4, PayFast and logs authorises only behind the ITN signature, which holds only with a passphrase set (G-02). |
 | L-107 | 2026-10-05 | `scout.md:112,123` (spellings tried, `Not found`). `census.md:107` (known positive). `grounder.md:127`. `walker.md:134`. Installed a91b802. |
 
 Measured 2026-10-06 at 661c87a/824c8ec: every ledger entry read whole, each answer measured in this tree; 68 answered (52 dated, 16 n/a). Added 2026-10-11 at ae0db64: L-108 and L-109, both n/a, so 70 (52 dated, 18 n/a); L-105 restated for the githooks. Probes named `scratch/…` lived under the gitignored `.handoff/canon-lessons/` and are not kept; every other command reruns from a clean checkout.
