@@ -10,7 +10,7 @@
     "prepare": "git config core.hooksPath .githooks || true",
     "check": "node scripts/check-install-platform.mjs && node scripts/check-scope.mjs --selftest && node scripts/check-scope.mjs --wired && npm run check:hooks && npm run check:agents && npm run check:brief && npm run check:claude-md && npm run check:actions && npm run test && npm run check:types && npm run check:lint && npm run check:deadcode && npm run check:cycles",
     "check:push": "npm run check && npm run build",
-    "test": "node --import tsx --test \"tests/*.test.ts\"",
+    "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc --noEmit",
     "check:deadcode": "node scripts/check-baseline.mjs knip",
     "check:cycles": "node scripts/check-baseline.mjs madge",
