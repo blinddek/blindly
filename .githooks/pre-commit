@@ -1,0 +1,11 @@
+#!/bin/sh
+# .githooks/pre-commit — the commit gate: what the staged diff can affect (scripts/check-scope.mjs).
+#
+# @kit githook-pre-commit v1 — tracked, no config region. Everything it decides (the chain, the
+# scope map, the default-branch guard) is in check-scope.mjs's KIT:CONFIG region, so this file is
+# the same bytes in every project. Wired by `"prepare": "git config core.hooksPath .githooks || true"`;
+# `node scripts/check-scope.mjs --wired` fails when it is not.
+#
+# --no-verify skips this, and the push gate runs the whole chain anyway: scoping is a speed choice
+# for one local commit, never a coverage choice for what reaches origin.
+exec node scripts/check-scope.mjs --commit

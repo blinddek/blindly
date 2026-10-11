@@ -1,0 +1,10 @@
+#!/bin/sh
+# .githooks/pre-push — the push gate: the WHOLE chain, never scoped (scripts/check-scope.mjs --push).
+#
+# @kit githook-pre-push v1 — tracked, no config region. The command is KIT:CONFIG scope's `PUSH`.
+# It is the rung that makes a scoped commit gate safe: whatever a commit's scope skipped runs here,
+# before anything reaches origin. A commit that passed scoped and fails here is a scope-map defect.
+#
+# git writes the refs being pushed to stdin; the chain does not read them, so drain them first.
+cat > /dev/null
+exec node scripts/check-scope.mjs --push
