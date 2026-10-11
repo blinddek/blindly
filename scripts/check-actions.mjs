@@ -133,6 +133,24 @@ function aliasesOf(e) {
   return [...new Set(out)];
 }
 
+/** The function literals in an expression that are not inside another one: `(async () => …)`, `… as T`, `c ? a : b`. */
+function fnLits(e) {
+  const out = [];
+  const visit = (n) => {
+    if (ts.isTypeNode(n)) return;
+    if (isFnLike(n)) { out.push(n); return; }
+    ts.forEachChild(n, visit);
+  };
+  visit(e);
+  return out;
+}
+
+/** Every name a declaration binds: `f`, `{ f, g: h }`, `[f, ...g]`. */
+function boundNames(name) {
+  if (ts.isIdentifier(name)) return [name.text];
+  return name.elements.flatMap((el) => (ts.isOmittedExpression(el) ? [] : boundNames(el.name)));
+}
+
 function shape(sf) {
   const aliases = new Map();
   const fns = new Map();
@@ -140,6 +158,31 @@ function shape(sf) {
   const stars = [];
   const imports = new Map();
   const values = new Map();
+  /**
+   * `name` is bound to `init`. A function, or a wrapped one (`wrap(async () => …)`), is its body.
+   * Anything else is every function it could evaluate to (walk round 5 F2): the names in it, and each
+   * function literal in it under a synthetic name, `f#0`, so `(async () => …)`, `… as any` and
+   * `c ? async () => … : async () => …` are each judged as the export. A destructured or reassigned
+   * name takes every candidate of its initialiser: over-inclusive, never silent.
+   */
+  const bind = (name, init, exported) => {
+    const fn = ts.isArrowFunction(init) || ts.isFunctionExpression(init)
+      ? init
+      : ts.isCallExpression(init) ? [...init.arguments].reverse().find((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a)) : undefined;
+    if (fn && !fns.has(name)) fns.set(name, fn.body);
+    else {
+      const lits = (fn ? [fn] : fnLits(init)).map((l) => {
+        const id = `${name}#${fns.size}`;
+        fns.set(id, l.body);
+        return id;
+      });
+      const a = [...aliasesOf(init), ...lits];
+      if (a.length) aliases.set(name, [...(aliases.get(name) ?? []), ...a]);
+      if (!fn) values.set(name, init); // a module-level value, e.g. `const sb = createAdminClient()`
+      if (!a.length) return;
+    }
+    if (exported) exports.set(name, name);
+  };
   for (const st of sf.statements) {
     if (ts.isImportDeclaration(st) && ts.isStringLiteral(st.moduleSpecifier) && st.importClause && !st.importClause.isTypeOnly) {
       const spec = st.moduleSpecifier.text;
@@ -157,23 +200,13 @@ function shape(sf) {
     } else if (ts.isVariableStatement(st)) {
       const exported = hasMod(st, ts.SyntaxKind.ExportKeyword);
       for (const d of st.declarationList.declarations) {
-        const init = d.initializer;
-        if (!init || !ts.isIdentifier(d.name)) continue;
-        // `const f = async () => …`, or a wrapped one, `const f = wrap(async () => …)`: the function
-        // argument is the body that runs.
-        const fn = ts.isArrowFunction(init) || ts.isFunctionExpression(init)
-          ? init
-          : ts.isCallExpression(init) ? [...init.arguments].reverse().find((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a)) : undefined;
-        if (fn) {
-          fns.set(d.name.text, fn.body);
-          if (exported) exports.set(d.name.text, d.name.text);
-        } else {
-          // `const f = g` in any spelling: f IS g, a local function or an import (resolved below).
-          const a = aliasesOf(init);
-          if (a.length) { aliases.set(d.name.text, a); if (exported) exports.set(d.name.text, d.name.text); }
-          values.set(d.name.text, init); // a module-level value, e.g. `const sb = createAdminClient()`
-        }
+        if (!d.initializer) continue;
+        for (const name of boundNames(d.name)) bind(name, d.initializer, exported);
       }
+    } else if (ts.isExpressionStatement(st) && ts.isBinaryExpression(st.expression)
+      && st.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(st.expression.left)) {
+      // `let f; f = w; export { f }`: a later assignment is one more thing f could be.
+      bind(st.expression.left.text, st.expression.right, false);
     } else if (ts.isExportDeclaration(st) && !st.isTypeOnly) {
       const spec = st.moduleSpecifier && ts.isStringLiteral(st.moduleSpecifier) ? st.moduleSpecifier.text : null;
       if (!st.exportClause) { if (spec) stars.push(spec); continue; }
@@ -186,13 +219,7 @@ function shape(sf) {
     } else if (ts.isExportAssignment(st) && !st.isExportEquals) {
       const e = st.expression;
       if (ts.isIdentifier(e)) exports.set("default", e.text);
-      else {
-        const fn = ts.isArrowFunction(e) || ts.isFunctionExpression(e)
-          ? e
-          : ts.isCallExpression(e) ? [...e.arguments].reverse().find((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a)) : undefined;
-        if (fn) { fns.set("default", fn.body); exports.set("default", "default"); }
-        else { const a = aliasesOf(e); if (a.length) { aliases.set("default", a); exports.set("default", "default"); } }
-      }
+      else bind("default", e, true);
     }
   }
   // An alias takes its target's body, or its target's import, so every rule below sees through it.
@@ -631,6 +658,17 @@ function selftest() {
   ok(n(`async function p() { return 1; }\nexport const f = true ? p : p;`) === 0, "KNOWN-GOOD: a conditional of pure functions passes");
   ok(n(`export async function f() { for (const x of [1]) { try { await ensureAdmin(); } catch { break; return; } } createAdminClient(); }`) === 1, "PLANTED: a catch that BREAKS before its return fails");
   ok(n(`export async function f(x) { for (const y of [1]) { try { await ensureAdmin(); } catch { if (x) continue; return; } } createAdminClient(); }`) === 1, "PLANTED: a catch that may CONTINUE fails");
+  // Walk round 5 F2 (2026-10-11).
+  ok(n(`export const f = (async () => { createAdminClient(); });`) === 1, "PLANTED: a PARENTHESISED arrow export fails");
+  ok(n(`export const f = (async () => { createAdminClient(); }) as any;`) === 1, "PLANTED: an arrow export `as any` fails");
+  ok(n(`export const f = true ? async () => 1 : async () => { createAdminClient(); };`) === 1, "PLANTED: a conditional of inline arrows fails — each is judged");
+  ok(n(`export default (async () => { createAdminClient(); });`) === 1, "PLANTED: a parenthesised default arrow fails");
+  ok(n(w + `export const { f } = { f: w };`) === 1, "PLANTED: a DESTRUCTURED export `{ f } = { f: w }` fails");
+  ok(n(w + `export const [f] = [w];`) === 1, "PLANTED: a destructured export `[f] = [w]` fails");
+  ok(n(w + `let f;\nf = w;\nexport { f };`) === 1, "PLANTED: `let f; f = w; export { f }` fails");
+  ok(n(w + `let f = async () => 1;\nf = w;\nexport { f };`) === 1, "PLANTED: a pure export REASSIGNED to w fails");
+  ok(n(`export const f = (async () => { await ensureAdmin(); createAdminClient(); });`) === 0, "KNOWN-GOOD: a parenthesised GUARDED arrow passes");
+  ok(n(`async function p() { return 1; }\nexport const { f } = { f: p };`) === 0, "KNOWN-GOOD: a destructured pure export passes");
   const files = { "lib/blinds/x.ts": `import { a } from "./actions";`, "lib/y.ts": `import { a } from "@/lib/blinds/actions";`, "lib/z.ts": `const m = await import("../lib/blinds/actions");`, "lib/w.ts": `import { a } from "./blinds/actions-old";` };
   const users = importersOf("lib/blinds/actions.ts", Object.keys(files), (f) => files[f], (f) => f);
   ok(users.includes("lib/blinds/x.ts"), "PLANTED: a SIBLING relative import of a dead module is seen (F5)");

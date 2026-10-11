@@ -26,27 +26,72 @@ import ts from "typescript";
 
 /**
  * The file asks for `only`, in any spelling the parser can see: `.only`, `["only"]`, an `only` option
- * (`only: true`, `"only": true`, shorthand `{ only }`), or a computed member of test/it/describe/suite
- * (`test[k]`), which could be either. Comments and strings are not code, so "digits only: no
- * fractions" in a comment is not refused (walk g12-g13 F5). NOT COVERED: an option object built
- * elsewhere and spread in.
+ * (`only: true`, `"only": true`, `["only"]: true`, shorthand `{ only }`), a destructured one
+ * (`const { only } = test`), a computed object key that is not a literal, or a computed member of a
+ * runner (`test[k]`), which could be either. The runners are test/it/describe/suite and every local
+ * name bound by an import from node:test, so `import { test as t }` makes `t[k]` one too (walk round 5
+ * F3). Comments and strings are not code, so "digits only: no fractions" in a comment is not refused
+ * (walk g12-g13 F5). NOT COVERED: an option object built elsewhere and spread in.
  */
 function namesOnly(file, src) {
   const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const runners = new Set(["test", "it", "describe", "suite"]);
-  const isOnly = (name) => name && (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) && name.text === "only";
+  for (const st of sf.statements) {
+    if (!ts.isImportDeclaration(st) || !ts.isStringLiteral(st.moduleSpecifier) || !/^(node:)?test$/.test(st.moduleSpecifier.text)) continue;
+    const c = st.importClause;
+    if (c?.name) runners.add(c.name.text);
+    if (c?.namedBindings && ts.isNamespaceImport(c.namedBindings)) runners.add(c.namedBindings.name.text);
+    if (c?.namedBindings && ts.isNamedImports(c.namedBindings)) for (const el of c.namedBindings.elements) runners.add(el.name.text);
+  }
+  const isRunner = (e) => (ts.isIdentifier(e) && runners.has(e.text)) || (ts.isPropertyAccessExpression(e) && isRunner(e.expression));
+  const isOnly = (name) => {
+    if (!name) return false;
+    if (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) return name.text === "only";
+    if (ts.isComputedPropertyName(name)) {
+      const e = name.expression;
+      return ts.isStringLiteralLike(e) ? e.text === "only" : !ts.isNumericLiteral(e);
+    }
+    return false;
+  };
   let hit = false;
   const visit = (n) => {
     if (hit) return;
     if (ts.isPropertyAccessExpression(n) && n.name.text === "only") hit = true;
     else if (ts.isElementAccessExpression(n)) {
       const a = n.argumentExpression;
-      if (ts.isStringLiteralLike(a) ? a.text === "only" : ts.isIdentifier(n.expression) && runners.has(n.expression.text)) hit = true;
+      if (ts.isStringLiteralLike(a) ? a.text === "only" : isRunner(n.expression)) hit = true;
     } else if ((ts.isPropertyAssignment(n) || ts.isShorthandPropertyAssignment(n)) && isOnly(n.name)) hit = true;
+    else if (ts.isBindingElement(n) && ts.isObjectBindingPattern(n.parent) && isOnly(n.propertyName ?? n.name)) hit = true;
     ts.forEachChild(n, visit);
   };
   visit(sf);
   return hit;
+}
+
+/** Probes, both directions: `node scripts/run-tests.mjs --selftest`. */
+if (process.argv.includes("--selftest")) {
+  const imp = `import { test } from "node:test";\n`;
+  const cases = [
+    [imp + `test.only("a", () => {});`, true, "`.only`"],
+    [imp + `test["only"]("a", () => {});`, true, "`[\"only\"]`"],
+    [imp + `test("a", { only: true }, () => {});`, true, "an `only` option"],
+    [imp + `test("a", { ["only"]: true }, () => {});`, true, "a computed `[\"only\"]` key"],
+    [imp + `const k = "on" + "ly";\ntest("a", { [k]: true }, () => {});`, true, "a computed non-literal key"],
+    [imp + `const { only } = test;\nonly("a", () => {});`, true, "a destructured `only`"],
+    [imp + `const { only: o } = test;\no("a", () => {});`, true, "a destructured, renamed `only`"],
+    [`import { test as t } from "node:test";\nconst k = "only";\nt[k]("a", () => {});`, true, "an aliased runner's computed member"],
+    [`import * as nt from "node:test";\nconst k = "only";\nnt.test[k]("a", () => {});`, true, "a namespace runner's computed member"],
+    [imp + `// digits only: no fractions\ntest("a", () => { const xs = [1]; xs[0]; });`, false, "a comment and an array index"],
+    [imp + `test("a", () => { const { total } = { total: 1 }; const m = { [0]: 1 }; });`, false, "an ordinary destructure and a numeric key"],
+  ];
+  let failed = 0;
+  for (const [src, want, what] of cases) {
+    const got = namesOnly("probe.test.ts", src);
+    if (got !== want) failed++;
+    console.log(`  ${got === want ? "✓" : "✗"} ${want ? "PLANTED" : "KNOWN-GOOD"}: ${what} ${want ? "is refused" : "passes"}`);
+  }
+  console.log(failed ? `\n❌ ${failed} probe(s) wrong` : "\n✅ run-tests probes green");
+  process.exit(failed ? 1 : 0);
 }
 
 const files = readdirSync("tests").filter((f) => f.endsWith(".test.ts")).sort().map((f) => `tests/${f}`);
