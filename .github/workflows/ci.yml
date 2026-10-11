@@ -1,0 +1,43 @@
+# .github/workflows/ci.yml — runs the SAME gate the git hooks run: `npm run check`, whole.
+#
+# Ported from life-therapy's (2026-10-11). The hooks run on one machine and `--no-verify` skips
+# them; this runs on every push to main and every PR, so a red gate is seen even when the push
+# went through.
+#
+# WHAT THIS JOB DELIBERATELY DOES NOT DO:
+#   - no `next build`. Vercel builds every push to main, and that is the authoritative build signal.
+#   - no database and no secrets. The one Supabase project is production; nothing here talks to it.
+#
+# `npm ci` runs `prepare`, which sets `core.hooksPath`, so `check-scope --wired` finds the wiring it
+# asserts in a fresh checkout.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  check:
+    name: npm run check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run the gate
+        run: npm run check

@@ -57,7 +57,9 @@ const TESTDATA = ["**/__tests__/**", "**/__fixtures__/**", "**/*.{test,spec}.*",
 
 /* KIT:CONFIG scope — yours. Every value here is the project's; canon's defaults are the empty ones. */
 const CHAIN = "check" // the package.json script both rungs run; push runs it whole
-const PUSH = "npm run check" // the pre-push command; life-therapy's is `npm run check:push`
+// The pre-push command. It adds `next build`: next.config.ts sets ignoreBuildErrors, and only the build
+// walks the client bundle graph — life-therapy deployed red for three weeks on an error only it saw.
+const PUSH = "npm run check:push"
 // true only where the default branch takes commits through PRs alone (5-ARCS §9): it refuses a commit
 // on the default branch. A repo that commits straight to its default branch keeps it false.
 const BRANCH_GUARD = false
