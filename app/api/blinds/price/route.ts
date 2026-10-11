@@ -7,8 +7,16 @@ import type { MountType } from "@/types/blinds";
  * Returns customer-facing price (no supplier cost exposed).
  */
 export async function POST(req: NextRequest) {
+  let body;
   try {
-    const body = await req.json();
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Request body must be JSON" }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Request body must be a JSON object" }, { status: 400 });
+  }
+  try {
     const { blind_range_id, width_mm, drop_mm, mount_type } = body;
 
     if (!blind_range_id || !width_mm || !drop_mm || !mount_type) {
