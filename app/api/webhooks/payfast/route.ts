@@ -134,7 +134,7 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string, amoun
   const { data: order, error: lookupError } = await supabase
     .from("blindly_orders")
     .select(`
-      id, payment_status, customer_name, customer_email, customer_phone,
+      id, payment_status, order_status, customer_name, customer_email, customer_phone,
       order_number, total_cents, subtotal_cents, vat_cents,
       discount_cents, installation_fee_cents, delivery_fee_cents,
       delivery_type, delivery_address
@@ -195,6 +195,25 @@ async function handleBlindlyOrderPayment(supabase: any, reference: string, amoun
   }
 
   console.log("[payfast-itn] Blindly order paid:", order.order_number);
+
+  // A payment on an order already cancelled (a failed checkout, or the daily cron's 24-hour expiry)
+  // is accepted and sent to the supplier like any other (brief/DECISIONS.md, 2026-10-11) — but the
+  // admin is told, since the customer may have been told the order lapsed.
+  if (order.order_status === "cancelled" || order.payment_status === "failed") {
+    console.warn("[payfast-itn] Late payment on a cancelled order:", order.order_number);
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (adminEmail) {
+      try {
+        await sendRawEmail({
+          to: adminEmail,
+          subject: `Late payment on cancelled order ${order.order_number}`,
+          html: `<p>PayFast reported a payment of ${formatPrice(paidCents)} for order ${order.order_number}, which had been cancelled (status ${order.order_status}, payment ${order.payment_status}).</p><p>The payment was accepted, the order is now paid and confirmed, and the supplier order is being sent as usual. Check with the customer if they were told the order lapsed.</p>`,
+        });
+      } catch (err) {
+        console.error("[payfast-itn] Failed to send late-payment notice:", err);
+      }
+    }
+  }
 
   // Auto-generate invoice
   try {

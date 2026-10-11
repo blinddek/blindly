@@ -1,22 +1,25 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, sendRawEmail } from "@/lib/email";
 import { isEnabled } from "@/config/features";
 import { siteConfig } from "@/config/site";
 import { processCampaigns } from "@/lib/campaign-process";
 import { processDripEmails } from "@/lib/drip-emails";
+import { envProblems } from "@/lib/env";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
 // ─── Main handler ────────────────────────────────────────
 
 export async function GET(request: Request) {
-  // Auth: Vercel sends Authorization header for cron jobs
-  if (CRON_SECRET) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  // Auth: Vercel sends Authorization header for cron jobs. Fail closed: without a secret this route
+  // would let any GET expire orders and send the admin mail.
+  if (!CRON_SECRET) {
+    console.error("[cron] CRON_SECRET is not set — refusing to run");
+    return NextResponse.json({ error: "Cron not configured" }, { status: 503 });
+  }
+  if (request.headers.get("authorization") !== `Bearer ${CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabase = createAdminClient();
@@ -24,6 +27,8 @@ export async function GET(request: Request) {
   const tasks: Record<string, TaskResult> = {};
 
   // Run all tasks sequentially, each independently try/caught
+  tasks.env = await runTask("env", () => envReport());
+  tasks.blindsExpiry = await runTask("blinds_expiry", () => expireUnpaidBlindsOrders(supabase));
   tasks.reminders = await runTask("reminders", () => bookingReminders(supabase));
   tasks.cleanup = await runTask("cleanup", () => staleContactCleanup(supabase));
   tasks.orders = await runTask("orders", () => orderAutoComplete(supabase));
@@ -78,6 +83,42 @@ async function runTask(
       durationMs: Date.now() - start,
     };
   }
+}
+
+// ─── Task: Environment report ────────────────────────────
+
+async function envReport() {
+  const problems = envProblems();
+  if (problems.length > 0) {
+    console.error("[cron] environment problems:", problems);
+    if (process.env.ADMIN_EMAIL) {
+      await sendRawEmail({
+        to: process.env.ADMIN_EMAIL,
+        subject: `${siteConfig.name}: ${problems.length} environment problem(s)`,
+        html: `<p>The daily check found:</p><ul>${problems.map((p) => `<li>${p}</li>`).join("")}</ul>`,
+      });
+    }
+  }
+  return { summary: { problems } };
+}
+
+// ─── Task: Expire unpaid blinds orders ───────────────────
+
+// A checkout that never paid would stay "new"/"pending" forever. After 24 hours it is cancelled the
+// way a failed checkout is; a payment that still arrives is accepted by the ITN, sent to the
+// supplier, and flagged to the admin as late (brief/DECISIONS.md, 2026-10-11).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function expireUnpaidBlindsOrders(supabase: any) {
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("blindly_orders")
+    .update({ order_status: "cancelled", payment_status: "failed" })
+    .eq("payment_status", "pending")
+    .eq("order_status", "new")
+    .lt("created_at", dayAgo)
+    .select("id");
+  if (error) throw new Error(`expiry failed: ${error.message}`);
+  return { summary: { expired: data?.length ?? 0 } };
 }
 
 // ─── Task: Booking reminders ─────────────────────────────
