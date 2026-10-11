@@ -1,4 +1,4 @@
-import { lookupPrice, getApplicableExtras, getMotorOptions } from "@/lib/pricing";
+import { lookupPrice, PriceInputError, getApplicableExtras, getMotorOptions } from "@/lib/pricing";
 import { getInstallationPricing, getVolumeDiscounts, getCourierPricing } from "@/lib/pricing-rules";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { roadDistanceKm } from "@/lib/distance";
@@ -56,6 +56,14 @@ function text(v: unknown, field: string, max: number, required: boolean): string
   return s;
 }
 
+// blind_ranges.id is a UUID; anything else would fail the range query as a 500 instead of a 400.
+function uuid(v: unknown, field: string): string {
+  if (typeof v !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) {
+    throw new CheckoutInputError(`${field} is not valid`);
+  }
+  return v;
+}
+
 function oneOf<T extends string>(v: unknown, field: string, allowed: readonly T[]): T {
   if (typeof v !== "string" || !allowed.includes(v as T)) throw new CheckoutInputError(`${field} is not valid`);
   return v as T;
@@ -80,7 +88,7 @@ export function parseCheckoutBody(raw: unknown): CheckoutInput {
     const extras = it.selected_extras ?? [];
     if (!Array.isArray(extras) || extras.length > MAX_EXTRAS) throw new CheckoutInputError(`${n}: accessories are not valid`);
     return {
-      blind_range_id: text(it.blind_range_id, `${n}: range`, 64, true),
+      blind_range_id: uuid(it.blind_range_id, `${n}: range`),
       colour: text(it.colour, `${n}: colour`, 100, true),
       mount_type: oneOf(it.mount_type, `${n}: mount type`, ["inside", "outside"] as const),
       width_mm: wholeMm(it.width_mm, `${n}: width`),
@@ -188,9 +196,10 @@ export async function priceCheckout(input: CheckoutInput): Promise<PricedCheckou
       })
     );
   } catch (err) {
-    if (err instanceof CheckoutInputError) throw err;
     // lookupPrice refuses an out-of-range size or a range with no prices: the customer's to fix.
-    throw new CheckoutInputError(err instanceof Error ? err.message : "Price lookup failed");
+    // Anything else (a failed read) is ours, and propagates as a 500 rather than a 400.
+    if (err instanceof PriceInputError) throw new CheckoutInputError(err.message);
+    throw err;
   }
 
   const lines: TotalsLine[] = items.map(({ item, price, extrasExVatCents }) => ({

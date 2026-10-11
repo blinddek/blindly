@@ -36,13 +36,15 @@ export async function getMotorOptions(
     requiredTubeSize = nearestMech?.[0]?.tube_size ?? null;
   }
 
-  // Fetch all active motor options
-  const { data: motors } = await supabase
+  // Fetch all active motor options. Checkout prices motors from this list, so a failed read throws
+  // rather than pricing at 0.
+  const { data: motors, error: motorsError } = await supabase
     .from("motorisation_options")
     .select("*")
     .eq("is_active", true)
     .order("display_order");
 
+  if (motorsError) throw new Error(`motor read failed: ${motorsError.message}`);
   if (!motors) return [];
 
   const results: MotorOptionWithPrice[] = [];
@@ -62,10 +64,8 @@ export async function getMotorOptions(
 
   for (const motor of motors) {
     const motorTubeMm = motor.tube_size_mm ?? 0;
-    const compatible = motorTubeMm <= requiredTubeMm;
-
     // Look up width-based price
-    const { data: priceRow } = await supabase
+    const { data: priceRow, error: priceError } = await supabase
       .from("motorisation_prices")
       .select("price_cents")
       .eq("motor_id", motor.id)
@@ -73,18 +73,24 @@ export async function getMotorOptions(
       .order("width_cm")
       .limit(1);
 
-    const priceCents = priceRow?.[0]?.price_cents ?? 0;
+    if (priceError) throw new Error(`motor price read failed: ${priceError.message}`);
+    // No price point at or above this width: the motor is not sold at this size, rather than at R0.
+    const priceCents: number | null = priceRow?.[0]?.price_cents ?? null;
+    const tubeOk = motorTubeMm <= requiredTubeMm;
+    const compatible = tubeOk && priceCents !== null;
 
     results.push({
       id: motor.id,
       brand: motor.brand,
       model: motor.model,
       is_rechargeable: motor.is_rechargeable,
-      price_cents: priceCents,
+      price_cents: priceCents ?? 0,
       compatible,
       incompatible_reason: compatible
         ? undefined
-        : `Requires ${motorTubeMm}mm tube, but this blind needs ${requiredTubeSize} (${requiredTubeMm}mm)`,
+        : !tubeOk
+          ? `Requires ${motorTubeMm}mm tube, but this blind needs ${requiredTubeSize} (${requiredTubeMm}mm)`
+          : "Not available at this width",
     });
   }
 

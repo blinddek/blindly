@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { lookupPrice } from "@/lib/pricing";
+import { lookupPrice, PriceInputError } from "@/lib/pricing";
 import type { MountType } from "@/types/blinds";
 
 /**
@@ -41,8 +41,12 @@ export async function POST(req: NextRequest) {
       total_with_vat_cents: result.total_with_vat_cents,
     });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to calculate price";
-    return NextResponse.json({ error: message }, { status: 400 });
+    // A size outside the grid is the customer's to fix; a failed read is ours, and its message stays
+    // in the logs.
+    if (err instanceof PriceInputError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    console.error("[blinds/price] lookup failed:", err);
+    return NextResponse.json({ error: "Failed to calculate price" }, { status: 500 });
   }
 }

@@ -8,32 +8,28 @@ import {
   type CourierPricing,
 } from "@/types/pricing-rules";
 
-export async function getInstallationPricing(): Promise<InstallationPricing> {
+// Checkout prices from these rules, so a failed read throws (the request answers 500) instead of
+// pricing with the defaults; the quote and the checkout would otherwise disagree on a database blip.
+// No row (PGRST116) is the deliberate "never configured" case and still uses the default.
+async function readRule<T>(sectionKey: string, fallback: T): Promise<T> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("site_content")
     .select("content")
-    .eq("section_key", "installation_pricing")
+    .eq("section_key", sectionKey)
     .single();
-  return (data?.content as InstallationPricing) ?? DEFAULT_INSTALLATION_PRICING;
+  if (error && error.code !== "PGRST116") throw new Error(`${sectionKey} read failed: ${error.message}`);
+  return (data?.content as T) ?? fallback;
 }
 
-export async function getVolumeDiscounts(): Promise<VolumeDiscounts> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("site_content")
-    .select("content")
-    .eq("section_key", "volume_discounts")
-    .single();
-  return (data?.content as VolumeDiscounts) ?? DEFAULT_VOLUME_DISCOUNTS;
+export function getInstallationPricing(): Promise<InstallationPricing> {
+  return readRule("installation_pricing", DEFAULT_INSTALLATION_PRICING);
 }
 
-export async function getCourierPricing(): Promise<CourierPricing> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("site_content")
-    .select("content")
-    .eq("section_key", "courier_pricing")
-    .single();
-  return (data?.content as CourierPricing) ?? DEFAULT_COURIER_PRICING;
+export function getVolumeDiscounts(): Promise<VolumeDiscounts> {
+  return readRule("volume_discounts", DEFAULT_VOLUME_DISCOUNTS);
+}
+
+export function getCourierPricing(): Promise<CourierPricing> {
+  return readRule("courier_pricing", DEFAULT_COURIER_PRICING);
 }

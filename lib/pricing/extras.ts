@@ -11,30 +11,34 @@ export async function getApplicableExtras(
 ): Promise<ExtraWithPrice[]> {
   const supabase = await createClient();
 
-  // Get the range's type and category for filtering
-  const { data: range } = await supabase
+  // Checkout prices from this list (lib/blinds/checkout-pricing.ts), so a failed read throws rather
+  // than offering fewer extras or a price of 0. "No row" (PGRST116) is a genuinely unknown range.
+  const { data: range, error: rangeError } = await supabase
     .from("blind_ranges")
     .select("blind_type_id")
     .eq("id", blindRangeId)
     .single();
 
+  if (rangeError && rangeError.code !== "PGRST116") throw new Error(`range read failed: ${rangeError.message}`);
   if (!range) return [];
 
-  const { data: type } = await supabase
+  const { data: type, error: typeError } = await supabase
     .from("blind_types")
     .select("id, category_id")
     .eq("id", range.blind_type_id)
     .single();
 
+  if (typeError && typeError.code !== "PGRST116") throw new Error(`type read failed: ${typeError.message}`);
   if (!type) return [];
 
   // Fetch all active extras
-  const { data: allExtras } = await supabase
+  const { data: allExtras, error: extrasError } = await supabase
     .from("blind_extras")
     .select("*")
     .eq("is_active", true)
     .order("display_order");
 
+  if (extrasError) throw new Error(`extras read failed: ${extrasError.message}`);
   if (!allExtras) return [];
 
   const results: ExtraWithPrice[] = [];
@@ -65,6 +69,9 @@ export async function getApplicableExtras(
 
     // Resolve price
     const priceCents = await getExtraPrice(extra.id, extra.pricing_type, extra.fixed_price_cents, widthCm);
+    // An extra with no price (a width-based extra with no price points, or an unknown pricing type)
+    // is not offered — it would otherwise sell at R0.
+    if (priceCents === null) continue;
 
     results.push({
       id: extra.id,
@@ -89,7 +96,7 @@ async function getExtraPrice(
   fixedPriceCents: number | null,
   widthCm: number,
   quantity = 1
-): Promise<number> {
+): Promise<number | null> {
   switch (pricingType) {
     case "fixed":
       return fixedPriceCents ?? 0;
@@ -100,7 +107,7 @@ async function getExtraPrice(
     case "width_based": {
       const supabase = await createClient();
       // Find nearest width >= customer width
-      const { data: pricePoints } = await supabase
+      const { data: pricePoints, error: pointsError } = await supabase
         .from("extra_price_points")
         .select("width_cm, price_cents")
         .eq("extra_id", extraId)
@@ -108,22 +115,24 @@ async function getExtraPrice(
         .order("width_cm")
         .limit(1);
 
+      if (pointsError) throw new Error(`extra price read failed: ${pointsError.message}`);
       if (pricePoints && pricePoints.length > 0) {
         return pricePoints[0].price_cents;
       }
 
       // If no width >= customer width, use the largest available
-      const { data: maxPoint } = await supabase
+      const { data: maxPoint, error: maxError } = await supabase
         .from("extra_price_points")
         .select("price_cents")
         .eq("extra_id", extraId)
         .order("width_cm", { ascending: false })
         .limit(1);
 
-      return maxPoint?.[0]?.price_cents ?? 0;
+      if (maxError) throw new Error(`extra price read failed: ${maxError.message}`);
+      return maxPoint?.[0]?.price_cents ?? null;
     }
 
     default:
-      return 0;
+      return null;
   }
 }

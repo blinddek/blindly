@@ -2,6 +2,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveMarkup } from "./markup";
 import type { PriceLookupInput, PriceLookupResult } from "@/types/blinds";
 
+/** A refusal the customer can fix (a size outside the grid, a range with no prices) — not a fault. */
+export class PriceInputError extends Error {}
+
 /**
  * Core price lookup: configuration → full price breakdown.
  *
@@ -19,7 +22,7 @@ export async function lookupPrice(
   // fails the INTEGER order-item insert as a 500. Refuse both here, as a 400 at either route.
   for (const [name, mm] of [["Width", input.width_mm], ["Drop", input.drop_mm]] as const) {
     if (typeof mm !== "number" || !Number.isInteger(mm) || mm <= 0) {
-      throw new Error(`${name} must be a positive whole number of millimetres`);
+      throw new PriceInputError(`${name} must be a positive whole number of millimetres`);
     }
   }
 
@@ -29,7 +32,7 @@ export async function lookupPrice(
   const dropCm = input.drop_mm / 10;
 
   // Fetch available grid points for this range
-  const [{ data: widthRows }, { data: dropRows }] = await Promise.all([
+  const [{ data: widthRows, error: widthError }, { data: dropRows, error: dropError }] = await Promise.all([
     supabase
       .from("price_matrices")
       .select("width_cm")
@@ -42,6 +45,10 @@ export async function lookupPrice(
       .order("drop_cm"),
   ]);
 
+  // A failed read is a fault, not "no prices for this range".
+  const readError = widthError ?? dropError;
+  if (readError) throw new Error(`price grid read failed: ${readError.message}`);
+
   // Deduplicate
   const availableWidths = [
     ...new Set((widthRows ?? []).map((r) => Number(r.width_cm))),
@@ -51,7 +58,7 @@ export async function lookupPrice(
   ].sort((a, b) => a - b);
 
   if (availableWidths.length === 0 || availableDrops.length === 0) {
-    throw new Error("No price data available for this range");
+    throw new PriceInputError("No price data available for this range");
   }
 
   // Find matched grid point based on mount type
@@ -69,18 +76,18 @@ export async function lookupPrice(
   const maxD = availableDrops.at(-1)!;
 
   if (widthCm < minW || widthCm > maxW) {
-    throw new Error(
+    throw new PriceInputError(
       `Width ${input.width_mm}mm is outside available range (${minW * 10}mm – ${maxW * 10}mm)`
     );
   }
   if (dropCm < minD || dropCm > maxD) {
-    throw new Error(
+    throw new PriceInputError(
       `Drop ${input.drop_mm}mm is outside available range (${minD * 10}mm – ${maxD * 10}mm)`
     );
   }
 
   // Lookup supplier price
-  const { data: priceRow } = await supabase
+  const { data: priceRow, error: priceError } = await supabase
     .from("price_matrices")
     .select("supplier_price_cents")
     .eq("blind_range_id", input.blind_range_id)
@@ -88,8 +95,9 @@ export async function lookupPrice(
     .eq("drop_cm", matchedDrop)
     .single();
 
+  if (priceError && priceError.code !== "PGRST116") throw new Error(`price read failed: ${priceError.message}`);
   if (!priceRow) {
-    throw new Error(
+    throw new PriceInputError(
       `No price found for ${matchedWidth}cm × ${matchedDrop}cm in this range`
     );
   }
