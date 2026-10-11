@@ -17,12 +17,13 @@ names what was measured and how.
   *source: package.json, vercel.json, git branch -a, 2026-10-05*
 - **No tests, no CI, no test runner** at adoption. `next.config.ts` sets `ignoreBuildErrors: true`, so
   type errors do not stop a deploy. — *source: grounder survey, 2026-10-05*
-- **Since 2026-10-11: a `node:test` tier (`npm run test`, 19 tests, no database) and CI running
+- **Since 2026-10-11: a `node:test` tier (`npm run test`, no database) and CI running
   `npm run check`; pre-push also runs `next build`.** — *source: 1ba2e26, 2e41994*
 - **The tsx install (1ba2e26) also moved the lockfile: 41 packages changed, 30 added (tsx, esbuild
-  and its platform builds, fsevents, @humanfs/types), 2 removed (svix, uuid).** The one runtime change
-  is **resend 6.9.2 → 6.32.1**; the rest are build and dev tooling (babel, browserslist, shadcn,
-  @modelcontextprotocol/sdk and its hono/express deps). Kept by the operator's decision, 2026-10-11;
+  and its platform builds, fsevents, @humanfs/types), 2 removed (svix, uuid).** The runtime changes
+  are **resend 6.9.2 → 6.32.1** (with its deps postal-mime and standardwebhooks; svix and uuid gone)
+  and **ws 8.19 → 8.22** (under `@supabase/realtime-js`); the rest are build and dev tooling (babel,
+  browserslist, shadcn, @modelcontextprotocol/sdk and its hono/express deps). Kept by the operator's decision, 2026-10-11;
   gate and `next build` green on it. — *source: `git show 7a00736:package-lock.json` vs `1ba2e26`, top-level `packages` compared*
 - **The tier-0 tools were red at adoption: tsc 9 errors, eslint 11 errors (9 files), knip 201 findings
   (21 unused files, 144 unused exports, 33 unused types, 3 deps), madge 7 cycles.** Recorded as the

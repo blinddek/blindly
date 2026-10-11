@@ -10,8 +10,8 @@
 |---|---|---|
 | B-1 | pass | 6 spine files present |
 | B-2 | pass | 35 documents, all indexed |
-| B-3 | pass | 9 open gates, all complete |
-| B-4 | pass | 13 rows, under the 40-row sweep trigger |
+| B-3 | pass | 7 open gates, all complete |
+| B-4 | pass | 15 rows, under the 40-row sweep trigger |
 | B-5 | skipped | no unresolved markers |
 | B-6 | pass | current |
 | B-7 | pass | 34 numbered documents, no collisions · 1 name(s) B-7 CANNOT READ and did not check: build/INDEX.md — teach it their shape in the `names` config region |
@@ -24,9 +24,9 @@
 | File | Size | Last commit |
 |---|---|---|
 | `CURRENT.md` | 1.5 KB | 2026-10-05 |
-| `DECISIONS.md` | 4.5 KB | 2026-10-11 |
-| `EVIDENCE.md` | 8.2 KB | 2026-10-11 |
-| `GATES.md` | 4.6 KB | 2026-10-11 |
+| `DECISIONS.md` | 5.3 KB | 2026-10-11 |
+| `EVIDENCE.md` | 8.3 KB | 2026-10-11 |
+| `GATES.md` | 4.3 KB | 2026-10-11 |
 | `README.md` | 1.6 KB | 2026-10-05 |
 | `STATUS.md` | 0.1 KB | 2026-10-11 |
 | `build\00-BUILD_INDEX.md` | 59.6 KB | 2026-10-05 |
@@ -82,6 +82,4 @@
 | G-06 | Stéan | 2026-10-05 | 6 d |
 | G-07 | Stéan | 2026-10-05 | 6 d |
 | G-11 | Stéan | 2026-10-11 | 0 d |
-| G-12 | Stéan | 2026-10-11 | 0 d |
-| G-13 | Stéan | 2026-10-11 | 0 d |
 | G-09 | Stéan | 2026-10-05 | 6 d |
