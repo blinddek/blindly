@@ -19,9 +19,10 @@
  * not inside a nested function, and before the first call that reaches the service key. A
  * same-module wrapper of either counts as the same kind of guard.
  *
- * NOT COVERED: a guard inside a branch (`if (x) await ensureAdmin()`) counts as a guard; the service
- * key reached through a value rather than a call (`const f = createAdminClient; f()`), a class
- * method, or a package outside the tree. Those shapes do not occur here (2026-10-11).
+ * NOT COVERED: a guard inside a branch (`if (x) await ensureAdmin()`) counts as a guard; a
+ * requireAdmin() result read but not acted on (only logged) counts as read; the service key reached
+ * through a value rather than a call (`const f = createAdminClient; f()`), a class method, or a
+ * package outside the tree. Those shapes do not occur here (2026-10-11).
  *
  * Ported from life-therapy's `server-action-auth` (scripts/architecture-audit.mjs at 1c0a14f), with
  * its parser rather than regexes (canon L-35, L-49): a comment or a string naming a guard is not a
@@ -99,6 +100,7 @@ function shape(sf) {
   const exports = new Map();
   const stars = [];
   const imports = new Map();
+  const values = new Map();
   for (const st of sf.statements) {
     if (ts.isImportDeclaration(st) && ts.isStringLiteral(st.moduleSpecifier) && st.importClause && !st.importClause.isTypeOnly) {
       const spec = st.moduleSpecifier.text;
@@ -117,9 +119,17 @@ function shape(sf) {
       const exported = hasMod(st, ts.SyntaxKind.ExportKeyword);
       for (const d of st.declarationList.declarations) {
         const init = d.initializer;
-        if (init && ts.isIdentifier(d.name) && (ts.isArrowFunction(init) || ts.isFunctionExpression(init))) {
-          fns.set(d.name.text, init.body);
+        if (!init || !ts.isIdentifier(d.name)) continue;
+        // `const f = async () => …`, or a wrapped one, `const f = wrap(async () => …)`: the function
+        // argument is the body that runs.
+        const fn = ts.isArrowFunction(init) || ts.isFunctionExpression(init)
+          ? init
+          : ts.isCallExpression(init) ? [...init.arguments].reverse().find((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a)) : undefined;
+        if (fn) {
+          fns.set(d.name.text, fn.body);
           if (exported) exports.set(d.name.text, d.name.text);
+        } else {
+          values.set(d.name.text, init); // a module-level value, e.g. `const sb = createAdminClient()`
         }
       }
     } else if (ts.isExportDeclaration(st) && !st.isTypeOnly) {
@@ -137,7 +147,7 @@ function shape(sf) {
       else if (ts.isArrowFunction(e) || ts.isFunctionExpression(e)) { fns.set("default", e.body); exports.set("default", "default"); }
     }
   }
-  return { fns, exports, stars, imports };
+  return { fns, exports, stars, imports, values };
 }
 
 /** Every call key in `node`, nested functions included, in source order: [{ key, pos, call }]. */
@@ -148,6 +158,17 @@ function callsIn(node) {
     ts.forEachChild(n, visit);
   };
   visit(node);
+  return out;
+}
+
+/** Positions of references to any of `names` in `node` (a module-level value that holds the key). */
+function refsIn(node, names) {
+  const out = [];
+  const visit = (n) => {
+    if (ts.isIdentifier(n) && names.has(n.text)) out.push(n.getStart());
+    ts.forEachChild(n, visit);
+  };
+  if (names.size) visit(node);
   return out;
 }
 
@@ -163,12 +184,19 @@ function ownCalls(node) {
   return out;
 }
 
-/** `node` calls one of `names` somewhere not inside a `try` block or a nested function. */
+/** The call's promise is awaited or returned — an un-awaited async guard rejects too late to stop anything. */
+function awaited(call) {
+  let p = call.parent;
+  while (p && ts.isParenthesizedExpression(p)) p = p.parent;
+  return Boolean(p && (ts.isAwaitExpression(p) || ts.isReturnStatement(p)));
+}
+
+/** `node` awaits one of `names` somewhere not inside a `try` block or a nested function. */
 function callsOutsideTry(node, names) {
   let found = false;
   const visit = (n, inTry) => {
     if (found || (n !== node && isFnLike(n))) return;
-    if (ts.isCallExpression(n) && names.has(calleeKey(n)) && !inTry) found = true;
+    if (ts.isCallExpression(n) && names.has(calleeKey(n)) && awaited(n) && !inTry) found = true;
     if (ts.isTryStatement(n)) {
       visit(n.tryBlock, true);
       if (n.catchClause) visit(n.catchClause, inTry);
@@ -248,17 +276,20 @@ function context(load) {
     const seed = (key) => {
       const [head, member] = key.split(".");
       const imp = m.imports.get(head);
-      if (member) return Boolean(imp && imp.imported === "*" && member === SERVICE);
+      if (member) return Boolean(imp && imp.imported === "*" && (member === SERVICE || importReaches(m.path, { spec: imp.spec, imported: member })));
       return key === SERVICE || Boolean(imp && importReaches(m.path, imp));
     };
-    const reaches = new Set([...m.fns.keys()].filter((n) => callsOf.get(n).some((c) => seed(c.key))));
+    // A module-level value built by a reaching call (`const sb = createAdminClient()`) holds the key;
+    // a function that names it reaches it.
+    const heldBy = new Set([...m.values].filter(([, init]) => callsIn(init).some((c) => seed(c.key))).map(([n]) => n));
+    const reaches = new Set([...m.fns.keys()].filter((n) => callsOf.get(n).some((c) => seed(c.key)) || refsIn(m.fns.get(n), heldBy).length));
     for (let grew = true; grew; ) {
       grew = false;
       for (const n of m.fns.keys()) {
         if (!reaches.has(n) && callsOf.get(n).some((c) => reaches.has(c.key))) { reaches.add(n); grew = true; }
       }
     }
-    return { reaches, seed };
+    return { reaches, seed, heldBy };
   };
 
   const exportsReaching = (m) => {
@@ -277,7 +308,7 @@ function context(load) {
     return out;
   };
 
-  return { shapeOf, localReach };
+  return { shapeOf, localReach, importReaches, exportsReaching };
 }
 
 /** Findings for one module's source: an export that reaches the service key before checking its caller. */
@@ -286,30 +317,45 @@ export function auditModule(path, src, publicList = PUBLIC, load = diskLoader) {
   if (!isActionModule(sf)) return [];
   const ctx = context((p) => (p === path ? { path, src } : load(p)));
   const m = ctx.shapeOf(path);
-  const { reaches, seed } = ctx.localReach(m);
+  const { reaches, seed, heldBy } = ctx.localReach(m);
   const reachKey = (key) => reaches.has(key) || seed(key);
 
-  // A same-module wrapper is a guard too: throwing if it calls a throwing guard outside any `try`
-  // (the throw escapes), returning if it calls a guard at all (lib/storage.ts `adminOrError`).
-  const throwing = new Set(THROWING);
-  const returning = new Set(RETURNING);
+  // The guards are the imported ones: a module that defines its own `ensureAdmin` has a wrapper (judged
+  // below like any other), not the guard.
+  const imported = (names) => new Set([...names].filter((g) => !m.fns.has(g)));
+  // A same-module wrapper is a guard too: throwing if it awaits a throwing guard outside any `try`
+  // (the throw escapes), returning if it awaits one inside a try or reads a returning guard's result
+  // (lib/storage.ts `adminOrError`).
+  const throwing = imported(THROWING);
+  const returning = imported(RETURNING);
   for (let grew = true; grew; ) {
     grew = false;
     for (const [name, body] of m.fns) {
       if (throwing.has(name) || returning.has(name)) continue;
       if (callsOutsideTry(body, throwing)) { throwing.add(name); grew = true; }
-      else if (ownCalls(body).some((c) => throwing.has(c.key) || returning.has(c.key))) { returning.add(name); grew = true; }
+      else if (ownCalls(body).some((c) => (throwing.has(c.key) && awaited(c.call)) || (returning.has(c.key) && resultRead(c.call, body)))) { returning.add(name); grew = true; }
     }
   }
 
   const out = [];
+  for (const spec of m.stars) {
+    const stem = resolveSpec(path, spec);
+    const t = stem && ctx.shapeOf(stem);
+    for (const n of t ? ctx.exportsReaching(t) : []) out.push(`${path} → ${n}: export * from "${spec}" re-exports a function that reaches ${SERVICE} — wrap it here with a guard`);
+  }
   for (const [exportName, target] of m.exports) {
-    if (typeof target !== "string") continue; // a re-export from another module is that module's action
+    if (publicList[`${path} → ${exportName}`]) continue;
+    // A re-export out of a "use server" module is an action of this module too, with no body here to
+    // hold a guard: `export { f } from`, or an imported `f` exported again.
+    const reExport = typeof target !== "string" ? target : !m.fns.has(target) && m.imports.get(target);
+    if (reExport) {
+      if (ctx.importReaches(path, reExport)) out.push(`${path} → ${exportName}: re-exports a function that reaches ${SERVICE} — wrap it here with a guard`);
+      continue;
+    }
     const body = m.fns.get(target);
     if (!body || !reaches.has(target)) continue;
-    if (publicList[`${path} → ${exportName}`]) continue;
-    const firstReach = Math.min(...callsIn(body).filter((c) => reachKey(c.key)).map((c) => c.pos));
-    const guard = ownCalls(body).find((c) => throwing.has(c.key) || (returning.has(c.key) && resultRead(c.call, body)));
+    const firstReach = Math.min(...callsIn(body).filter((c) => reachKey(c.key)).map((c) => c.pos), ...refsIn(body, heldBy));
+    const guard = ownCalls(body).find((c) => (throwing.has(c.key) && awaited(c.call)) || (returning.has(c.key) && resultRead(c.call, body)));
     if (guard && guard.pos < firstReach) continue;
     const why = guard ? `checks its caller only after it first reaches ${SERVICE}` : `reaches ${SERVICE} with no ${GUARD} call that guards it`;
     out.push(`${path} → ${exportName}: ${why} — guard it first, or list it in PUBLIC with the reason it is public`);
@@ -333,15 +379,28 @@ function walk(dir, out = []) {
 
 const rel = (p) => relative(ROOT, p).split(sep).join("/");
 
-/** Files whose source imports `modulePath` (by its `@/` alias or a relative path ending in it). */
-function importersOf(modulePath, files) {
-  const stem = modulePath.replace(/\.tsx?$/, "");
-  const alias = `@/${stem}`;
-  const tail = stem.split("/").slice(-2).join("/");
+/** Files that import `modulePath` — every static import, re-export and `import()` resolved, so a
+ *  sibling's `"./actions"` counts as much as `"@/lib/blinds/actions"`. */
+function importersOf(modulePath, files, read = (f) => readFileSync(f, "utf8"), relOf = rel) {
+  const stem = modulePath.replace(/\.tsx?$/, "").replace(/\/index$/, "");
+  const hits = (from, spec) => {
+    const r = resolveSpec(from, spec);
+    return r != null && r.replace(/\.tsx?$/, "").replace(/\/index$/, "") === stem;
+  };
   return files.filter((f) => {
-    if (rel(f) === modulePath) return false;
-    const src = readFileSync(f, "utf8");
-    return src.includes(`"${alias}"`) || src.includes(`'${alias}'`) || new RegExp(`from ["'][./]+[^"']*${tail}["']`).test(src);
+    const from = relOf(f);
+    if (from === modulePath) return false;
+    const sf = parse(from, read(f));
+    let found = false;
+    const visit = (n) => {
+      if (found) return;
+      const spec = (ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) && n.moduleSpecifier && ts.isStringLiteral(n.moduleSpecifier) ? n.moduleSpecifier.text
+        : ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.ImportKeyword && n.arguments[0] && ts.isStringLiteral(n.arguments[0]) ? n.arguments[0].text : null;
+      if (spec && hits(from, spec)) found = true;
+      ts.forEachChild(n, visit);
+    };
+    visit(sf);
+    return found;
   });
 }
 
@@ -379,7 +438,7 @@ function audit() {
 function selftest() {
   let failed = 0;
   const ok = (cond, label) => { if (!cond) failed++; console.log(`  ${cond ? "✓" : "✗"} ${label}`); };
-  const m = (body) => `"use server";\nimport { createAdminClient } from "@/lib/supabase/admin";\nimport { ensureAdmin } from "@/lib/admin/auth";\n${body}`;
+  const m = (body) => `"use server";\nimport { createAdminClient } from "@/lib/supabase/admin";\nimport { ensureAdmin, requireAdmin } from "@/lib/admin/auth";\n${body}`;
   // An in-memory tree for cross-module probes: lib/helper.ts reaches the key, lib/pure.ts does not,
   // lib/barrel.ts re-exports the helper both ways.
   const tree = {
@@ -428,6 +487,25 @@ function selftest() {
   ok(n(`async function f() { createAdminClient(); }\nexport default f;`) === 1, "PLANTED: `export default f` fails");
   ok(n(`export async function f() { await ensureAdmin(); await Promise.all([1].map(async () => createAdminClient())); }`) === 0, "KNOWN-GOOD: the key inside a closure, after the guard, passes");
   ok(n(`export async function f() { await Promise.all([1].map(async () => createAdminClient())); }`) === 1, "PLANTED: the key inside a closure with no guard fails");
+
+  // Walk round 2 F4/F5 (2026-10-11): shapes the widened version still passed.
+  ok(n(`export async function f() { ensureAdmin(); createAdminClient(); }`) === 1, "PLANTED: an UN-AWAITED ensureAdmin() fails — its rejection lands after the write");
+  ok(n(`async function g() { await ensureAdmin(); }\nexport async function f() { g(); createAdminClient(); }`) === 1, "PLANTED: an un-awaited throwing wrapper fails");
+  ok(raw(`"use server";\nexport { decrement } from "@/lib/helper";`) === 1, "PLANTED: `export { f } from` out of a use-server module fails");
+  ok(raw(`"use server";\nexport * from "@/lib/helper";`) === 1, "PLANTED: `export * from` a reaching module fails");
+  ok(raw(`"use server";\nimport { decrement } from "@/lib/helper";\nexport { decrement };`) === 1, "PLANTED: an imported helper exported again fails");
+  ok(raw(`"use server";\nexport { format } from "@/lib/pure";`) === 0, "KNOWN-GOOD: re-exporting a function that never reaches the key passes");
+  ok(raw(`"use server";\nimport * as H from "@/lib/helper";\nexport async function f() { H.decrement(); }`) === 1, "PLANTED: a reaching helper through a NAMESPACE import fails");
+  ok(n(`const sb = createAdminClient();\nexport async function f() { await sb.from("t").delete(); }`) === 1, "PLANTED: a MODULE-LEVEL service client used by an export fails");
+  ok(n(`const sb = createAdminClient();\nexport async function f() { await ensureAdmin(); await sb.from("t").delete(); }`) === 0, "KNOWN-GOOD: the module-level client behind ensureAdmin() passes");
+  ok(n(`const wrap = (fn) => fn;\nexport const f = wrap(async () => { createAdminClient(); });`) === 1, "PLANTED: a WRAPPED export (`export const f = wrap(async () => …)`) fails");
+  ok(n(`async function g() { await requireAdmin(); return null; }\nexport async function f() { const d = await g(); if (d) return; createAdminClient(); }`) === 1, "PLANTED: a returning wrapper that discards requireAdmin()'s result is no guard");
+  ok(raw(`"use server";\nasync function ensureAdmin() {}\nexport async function f() { await ensureAdmin(); createAdminClient(); }`) === 1, "PLANTED: a LOCAL function named ensureAdmin that checks nothing is no guard");
+  const files = { "lib/blinds/x.ts": `import { a } from "./actions";`, "lib/y.ts": `import { a } from "@/lib/blinds/actions";`, "lib/z.ts": `const m = await import("../lib/blinds/actions");`, "lib/w.ts": `import { a } from "./blinds/actions-old";` };
+  const users = importersOf("lib/blinds/actions.ts", Object.keys(files), (f) => files[f], (f) => f);
+  ok(users.includes("lib/blinds/x.ts"), "PLANTED: a SIBLING relative import of a dead module is seen (F5)");
+  ok(users.includes("lib/y.ts") && users.includes("lib/z.ts"), "PLANTED: the alias import and a dynamic import() are seen");
+  ok(!users.includes("lib/w.ts"), "KNOWN-GOOD: a module whose name merely starts the same is not an importer");
 
   console.log(failed ? `\n❌ ${failed} probe(s) wrong` : "\n✅ check-actions probes green — planted violations fail, known-good cases pass");
   process.exit(failed ? 1 : 0);
