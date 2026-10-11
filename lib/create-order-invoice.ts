@@ -4,6 +4,7 @@
  */
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getVatPercent } from "@/lib/pricing/vat";
 
 interface OrderData {
   id: string;
@@ -108,7 +109,9 @@ export async function createInvoiceFromOrder(
   }
 
   const subtotal = order.subtotal_cents + order.delivery_fee_cents + order.installation_fee_cents;
-  const vatRate = subtotal > 0 ? order.vat_cents / subtotal : 0.15;
+  // The rate the order was charged at (G-13). vat_cents / subtotal understated it whenever there was a
+  // fee: delivery and installation are VAT-inclusive and add nothing to vat_cents (walk F3).
+  const vatRate = (await getVatPercent()) / 100;
 
   const now = new Date();
 

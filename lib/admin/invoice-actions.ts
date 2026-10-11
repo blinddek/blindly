@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureAdmin } from "@/lib/admin/auth";
+import { getVatPercent } from "@/lib/pricing/vat";
 import { revalidatePath } from "next/cache";
 
 interface LineItem {
@@ -100,7 +101,7 @@ export async function createInvoice(data: {
 
   const invoiceNumber = await getNextInvoiceNumber();
   const subtotal = data.line_items.reduce((sum, item) => sum + item.total_cents, 0);
-  const vatRate = data.vat_rate ?? 0.15;
+  const vatRate = data.vat_rate ?? (await getVatPercent()) / 100; // G-13: the one rate
   const vatAmount = Math.round(subtotal * vatRate);
   const total = subtotal + vatAmount;
 

@@ -147,7 +147,7 @@ export function StepBlindQuote({
               </div>
             ))}
             <div className="flex justify-between px-4 py-2 text-sm">
-              <span className="text-muted-foreground">VAT (15%)</span>
+              <span className="text-muted-foreground">VAT</span>
               <span className="tabular-nums">{formatRand(quote.vat_cents + extrasVatCents)}</span>
             </div>
             <div className="flex justify-between bg-primary/5 px-4 py-3">

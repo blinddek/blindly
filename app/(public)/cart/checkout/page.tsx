@@ -725,7 +725,7 @@ export default function BlindCheckoutPage() {
                   <span>{formatRand(serverQuote.totals.subtotalCents)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">VAT (15%)</span>
+                  <span className="text-muted-foreground">VAT</span>
                   <span>{formatRand(serverQuote.totals.vatCents)}</span>
                 </div>
                 {serverQuote.totals.discountRate > 0 && (
@@ -760,7 +760,7 @@ export default function BlindCheckoutPage() {
                   <span>{formatRand(subtotalCents)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">VAT (15%)</span>
+                  <span className="text-muted-foreground">VAT</span>
                   <span>{formatRand(vatCents)}</span>
                 </div>
                 {discountRate > 0 && (

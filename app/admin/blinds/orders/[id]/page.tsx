@@ -244,7 +244,7 @@ export default async function OrderDetailPage({
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">VAT (15%)</span>
+                <span className="text-muted-foreground">VAT</span>
                 <span>{formatRand(order.vat_cents)}</span>
               </div>
               <div className="flex justify-between border-t pt-2 font-semibold text-base">

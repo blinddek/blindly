@@ -142,7 +142,7 @@ export default function BlindlyOrderConfirmation({
                 <td style={summaryValue}>{fmt(subtotalCents)}</td>
               </tr>
               <tr>
-                <td style={summaryLabel}>VAT (15%)</td>
+                <td style={summaryLabel}>VAT</td>
                 <td style={summaryValue}>{fmt(vatCents)}</td>
               </tr>
               {discountCents > 0 && (

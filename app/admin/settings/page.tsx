@@ -40,7 +40,7 @@ import {
   Pencil,
   Receipt,
 } from "lucide-react";
-import { updateShopSetting } from "@/lib/shop/actions";
+import { updateVatPercent } from "@/lib/pricing/vat-actions";
 
 const L = (en = "", af = ""): LocalizedString => ({ en, af });
 
@@ -263,10 +263,10 @@ function FinancePanel() {
   useEffect(() => {
     async function load() {
       const supabase = createClient();
-      const { data } = await supabase.from("shop_settings").select("key, value").eq("key", "tax_rate_percent");
-      if (data && data.length > 0) {
-        setVatRate(Number(data[0].value) || 15);
-      }
+      // site_settings.vat_percent is the one VAT rate the blinds shop charges (G-13); shop_settings'
+      // tax_rate_percent belongs to the template shop, which is off here.
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "vat_percent").maybeSingle();
+      if (data) setVatRate(Number(data.value));
       setLoading(false);
     }
     load();
@@ -275,7 +275,8 @@ function FinancePanel() {
   async function handleSave() {
     setSaving(true);
     try {
-      await updateShopSetting("tax_rate_percent", vatRate);
+      const res = await updateVatPercent(vatRate);
+      if (res.error) throw new Error(res.error);
       toast.success("Finance settings saved.");
     } catch {
       toast.error("Failed to save.");
@@ -290,7 +291,7 @@ function FinancePanel() {
       <Card>
         <CardHeader>
           <CardTitle>VAT Configuration</CardTitle>
-          <CardDescription>Value-added tax applied to all orders.</CardDescription>
+          <CardDescription>The VAT rate every blind, extra and order total is charged at.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-1.5">

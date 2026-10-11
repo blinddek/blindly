@@ -187,7 +187,7 @@ export default function CartPage() {
                   <span>{formatRand(subtotalCents)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">VAT (15%)</span>
+                  <span className="text-muted-foreground">VAT</span>
                   <span>{formatRand(vatCents)}</span>
                 </div>
 

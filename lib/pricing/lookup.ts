@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveMarkup } from "./markup";
 import type { PriceLookupInput, PriceLookupResult } from "@/types/blinds";
 import { PriceInputError, readOrThrow } from "./errors";
+import { getVatPercent } from "./vat";
 
 /**
  * Core price lookup: configuration → full price breakdown.
@@ -109,21 +110,8 @@ export async function lookupPrice(
   const markupCents = Math.round(supplierPriceCents * (markup_percent / 100));
   const customerPriceCents = supplierPriceCents + markupCents;
 
-  // Get VAT rate from settings
-  const vatSetting = readOrThrow("vat_percent", await supabase
-    .from("site_settings")
-    .select("value")
-    .eq("key", "vat_percent")
-    .single());
-
-  // The one VAT rate (G-13, Stéan 2026-10-11: the database is the source). It is returned with the
-  // price, so the order's extras are taxed at the same rate as their blind. No row, or one that is not
-  // a rate (site_settings.value is TEXT NOT NULL DEFAULT '', migration 027, and Number('') is 0), is
-  // a failure, not a default.
-  const vatPercent = vatSetting ? Number(vatSetting.value) : NaN;
-  if (!vatSetting || String(vatSetting.value).trim() === "" || !Number.isFinite(vatPercent) || vatPercent < 0 || vatPercent > 100) {
-    throw new Error(`vat_percent setting is missing or not a rate: ${JSON.stringify(vatSetting?.value ?? null)}`);
-  }
+  // The one VAT rate (G-13); returned with the price so the order's extras are taxed at it too.
+  const vatPercent = await getVatPercent();
   const vatCents = Math.round(customerPriceCents * (vatPercent / 100));
 
   return {
