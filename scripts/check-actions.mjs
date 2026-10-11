@@ -12,17 +12,21 @@
  * (`@/…` or relative, re-exports and `export *` included) that reaches it; an aliased import
  * (`import { createAdminClient as admin }`); a namespace import (`A.createAdminClient()`). A closure
  * inside the export that reaches it counts.
- * "Exports" are every form: `export function`, `export const f = () =>`, `export { f, g as h }`,
- * `export default f`, and an anonymous `export default async function`.
+ * "Exports" are every form: `export function`, `export const f = () =>`, `export const f = g` (an
+ * alias, the lib/auth/actions.ts shape), `export const f = wrap(async () => …)`, `export { f, g as h }`,
+ * `export default f`, `export default wrap(…)`, and an anonymous `export default async function`.
  * "Checks its caller" is a call of `ensureAdmin()` (throws), or of `requireAdmin()` whose result is
  * read — returned, tested, or assigned to a name the body reads again — in the export's own body,
- * not inside a nested function, and before the first call that reaches the service key. A
+ * not inside a nested function, and before the first call that reaches the service key. The guard
+ * is the one imported from lib/admin/auth (aliases followed); a same-named function from anywhere
+ * else is not. A guard inside a `try` counts only when its `catch` exits (returns or throws). A
  * same-module wrapper of either counts as the same kind of guard.
  *
  * NOT COVERED: a guard inside a branch (`if (x) await ensureAdmin()`) counts as a guard; a
  * requireAdmin() result read but not acted on (only logged) counts as read; the service key reached
  * through a value rather than a call (`const f = createAdminClient; f()`), a class method, or a
- * package outside the tree. Those shapes do not occur here (2026-10-11).
+ * package outside the tree; a catch that exits only on some paths counts as exiting. None of these
+ * was found in the tree on 2026-10-11 (walk round 3 checked the aliases it had missed).
  *
  * Ported from life-therapy's `server-action-auth` (scripts/architecture-audit.mjs at 1c0a14f), with
  * its parser rather than regexes (canon L-35, L-49): a comment or a string naming a guard is not a
@@ -54,6 +58,8 @@ const PUBLIC = {
   "lib/contact/actions.ts → submitContactForm": "the public contact form: a stranger writes one enquiry",
   "lib/auth/password-reset.ts → requestPasswordReset": "public by design: anyone may ask for a reset link; it writes only a token hash and emails the account's own address",
   "lib/auth/password-reset.ts → resetPassword": "public by design: the emailed token IS the credential — looked up by SHA-256 hash, single use, expiring",
+  "lib/auth/actions.ts → resetPassword": "public by design: an alias of password-reset.ts requestPasswordReset (above)",
+  "lib/auth/actions.ts → resetPasswordWithToken": "public by design: an alias of password-reset.ts resetPassword (above) — the emailed token is the credential",
   "lib/newsletter/actions.ts → subscribeNewsletter": "public by design: a stranger subscribes their own email",
   "lib/booking/actions.ts → createBooking": "public by design: a stranger books a session (booking is off in config/site.ts)",
   // Session-guarded, not admin: each derives the caller from auth.getUser() and writes only that user's rows.
@@ -128,6 +134,9 @@ function shape(sf) {
         if (fn) {
           fns.set(d.name.text, fn.body);
           if (exported) exports.set(d.name.text, d.name.text);
+        } else if (ts.isIdentifier(init)) {
+          // `export const f = g`: the export IS g, a local function or an import.
+          if (exported) exports.set(d.name.text, init.text);
         } else {
           values.set(d.name.text, init); // a module-level value, e.g. `const sb = createAdminClient()`
         }
@@ -144,7 +153,12 @@ function shape(sf) {
     } else if (ts.isExportAssignment(st) && !st.isExportEquals) {
       const e = st.expression;
       if (ts.isIdentifier(e)) exports.set("default", e.text);
-      else if (ts.isArrowFunction(e) || ts.isFunctionExpression(e)) { fns.set("default", e.body); exports.set("default", "default"); }
+      else {
+        const fn = ts.isArrowFunction(e) || ts.isFunctionExpression(e)
+          ? e
+          : ts.isCallExpression(e) ? [...e.arguments].reverse().find((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a)) : undefined;
+        if (fn) { fns.set("default", fn.body); exports.set("default", "default"); }
+      }
     }
   }
   return { fns, exports, stars, imports, values };
@@ -207,6 +221,18 @@ function callsOutsideTry(node, names) {
   };
   visit(node, false);
   return found;
+}
+
+/** A throw from `call` leaves `body`: no enclosing `try` (within body) has a `catch` that falls through. */
+function throwEscapes(call, body) {
+  for (let n = call; n && n !== body; n = n.parent) {
+    const t = n.parent;
+    if (t && ts.isTryStatement(t) && t.tryBlock === n && t.catchClause) {
+      const exits = t.catchClause.block.statements.some((st) => ts.isReturnStatement(st) || ts.isThrowStatement(st));
+      if (!exits) return false;
+    }
+  }
+  return true;
 }
 
 /** The result of `call` is read: returned, tested, passed on, or bound to a name `body` reads again. */
@@ -320,9 +346,8 @@ export function auditModule(path, src, publicList = PUBLIC, load = diskLoader) {
   const { reaches, seed, heldBy } = ctx.localReach(m);
   const reachKey = (key) => reaches.has(key) || seed(key);
 
-  // The guards are the imported ones: a module that defines its own `ensureAdmin` has a wrapper (judged
-  // below like any other), not the guard.
-  const imported = (names) => new Set([...names].filter((g) => !m.fns.has(g)));
+  // The guard is the one lib/admin/auth exports, under whatever local name it is imported as.
+  const imported = (names) => new Set([...m.imports].filter(([, i]) => names.has(i.imported) && resolveSpec(path, i.spec) === "lib/admin/auth").map(([local]) => local));
   // A same-module wrapper is a guard too: throwing if it awaits a throwing guard outside any `try`
   // (the throw escapes), returning if it awaits one inside a try or reads a returning guard's result
   // (lib/storage.ts `adminOrError`).
@@ -355,7 +380,7 @@ export function auditModule(path, src, publicList = PUBLIC, load = diskLoader) {
     const body = m.fns.get(target);
     if (!body || !reaches.has(target)) continue;
     const firstReach = Math.min(...callsIn(body).filter((c) => reachKey(c.key)).map((c) => c.pos), ...refsIn(body, heldBy));
-    const guard = ownCalls(body).find((c) => (throwing.has(c.key) && awaited(c.call)) || (returning.has(c.key) && resultRead(c.call, body)));
+    const guard = ownCalls(body).find((c) => (throwing.has(c.key) && awaited(c.call) && throwEscapes(c.call, body)) || (returning.has(c.key) && resultRead(c.call, body)));
     if (guard && guard.pos < firstReach) continue;
     const why = guard ? `checks its caller only after it first reaches ${SERVICE}` : `reaches ${SERVICE} with no ${GUARD} call that guards it`;
     out.push(`${path} → ${exportName}: ${why} — guard it first, or list it in PUBLIC with the reason it is public`);
@@ -501,6 +526,17 @@ function selftest() {
   ok(n(`const wrap = (fn) => fn;\nexport const f = wrap(async () => { createAdminClient(); });`) === 1, "PLANTED: a WRAPPED export (`export const f = wrap(async () => …)`) fails");
   ok(n(`async function g() { await requireAdmin(); return null; }\nexport async function f() { const d = await g(); if (d) return; createAdminClient(); }`) === 1, "PLANTED: a returning wrapper that discards requireAdmin()'s result is no guard");
   ok(raw(`"use server";\nasync function ensureAdmin() {}\nexport async function f() { await ensureAdmin(); createAdminClient(); }`) === 1, "PLANTED: a LOCAL function named ensureAdmin that checks nothing is no guard");
+  // Walk round 3 F1–F3 (2026-10-11).
+  ok(n(`async function w() { createAdminClient(); }\nexport const f = w;`) === 1, "PLANTED: an exported ALIAS of a local function (`export const f = w`) fails");
+  ok(raw(`"use server";\nimport { decrement } from "@/lib/helper";\nexport const f = decrement;`) === 1, "PLANTED: an exported alias of an imported reaching helper fails");
+  ok(raw(`"use server";\nimport { format } from "@/lib/pure";\nexport const f = format;`) === 0, "KNOWN-GOOD: an exported alias of a pure helper passes");
+  ok(n(`const wrap = (fn) => fn;\nexport default wrap(async () => { createAdminClient(); });`) === 1, "PLANTED: `export default wrap(async () => …)` fails");
+  ok(n(`export async function f() { try { await ensureAdmin(); } catch {} createAdminClient(); }`) === 1, "PLANTED: a guard whose throw is SWALLOWED by try/catch fails");
+  ok(n(`export async function f() { try { await ensureAdmin(); } catch { return null; } createAdminClient(); }`) === 0, "KNOWN-GOOD: a guard in a try whose catch returns passes (getAdminNotificationPrefs)");
+  ok(n(`export async function f() { try { await ensureAdmin(); } finally { } createAdminClient(); }`) === 0, "KNOWN-GOOD: a guard in try/finally (no catch) passes — the throw escapes");
+  ok(raw(`"use server";\nimport { createAdminClient } from "@/lib/supabase/admin";\nimport { ensureAdmin } from "@/lib/noop";\nexport async function f() { await ensureAdmin(); createAdminClient(); }`) === 1, "PLANTED: ensureAdmin imported from ANOTHER module is no guard");
+  ok(raw(`"use server";\nimport { createAdminClient } from "@/lib/supabase/admin";\nconst ensureAdmin = Promise.resolve.bind(Promise);\nexport async function f() { await ensureAdmin(); createAdminClient(); }`) === 1, "PLANTED: a module-level VALUE named ensureAdmin is no guard");
+  ok(raw(`"use server";\nimport { createAdminClient } from "@/lib/supabase/admin";\nimport { ensureAdmin as gate } from "../lib/admin/auth";\nexport async function f() { await gate(); createAdminClient(); }`.replace("../lib", "./lib")) === 0, "KNOWN-GOOD: the real guard, ALIASED and by relative path, passes");
   const files = { "lib/blinds/x.ts": `import { a } from "./actions";`, "lib/y.ts": `import { a } from "@/lib/blinds/actions";`, "lib/z.ts": `const m = await import("../lib/blinds/actions");`, "lib/w.ts": `import { a } from "./blinds/actions-old";` };
   const users = importersOf("lib/blinds/actions.ts", Object.keys(files), (f) => files[f], (f) => f);
   ok(users.includes("lib/blinds/x.ts"), "PLANTED: a SIBLING relative import of a dead module is seen (F5)");
