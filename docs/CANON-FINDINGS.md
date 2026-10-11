@@ -33,17 +33,6 @@ SMALLEST   the narrowest fix, and what it must not break
 FIX
 ```
 
-### CF-13 · canon-inbox treats `echo git push` as a push
-OBSERVED   A PostToolUse Bash event for `echo git push` asks canon and relays its line, as a real push
-           does. Severity is nil: the hook is non-blocking, and the cost is one extra notice. v4 and
-           v5 both do it. Canon's probe covers a commit message naming a push, but not a bare `echo`.
-COMMAND    .handoff/walk-kit-v18/01-walker.md note 1 (`scratch/inbox-run.mjs`, v4 and v5 against a
-           fake canon, so the result does not depend on the live inbox's contents)
-WHY IT IS  This is the detector in canon's own hook. bash-gate already has a PROSE set (`echo`,
-CANON'S    `printf`, `grep`…) for exactly this.
-SMALLEST   Skip a segment whose command word is prose, as bash-gate's PROSE set does. Probe: `echo git
-FIX        push` is silent; `git push origin main` speaks.
-
 ---
 
 ## 2 · Lesson answers
@@ -211,3 +200,4 @@ A pointer, not a restatement — the canon entry is the record.
 | CF-10 | v14 reads a quoted path as one word only when the word and token counts differ, and a quoted space cancels the difference | §1 finding | d5ec268 |
 | CF-11 | canon-inbox v3's push detector misses a push through the quoted Git path | §1 finding | 597b37e |
 | CF-12 | canon-inbox v4's word splitter honours quotes but not backslash escapes | §1 finding | baba8d8 |
+| CF-13 | canon-inbox treats `echo git push` as a push | §1 finding | 972decc |
