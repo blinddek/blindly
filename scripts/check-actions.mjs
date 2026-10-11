@@ -179,7 +179,7 @@ function shape(sf) {
       const a = [...aliasesOf(init), ...lits];
       if (a.length) aliases.set(name, [...(aliases.get(name) ?? []), ...a]);
       if (!fn) values.set(name, init); // a module-level value, e.g. `const sb = createAdminClient()`
-      if (!a.length) return;
+      // An export bound to nothing readable is still an export: the audit fails it (L-52).
     }
     if (exported) exports.set(name, name);
   };
@@ -472,7 +472,10 @@ export function auditModule(path, src, publicList = PUBLIC, load = diskLoader) {
       continue;
     }
     const body = m.fns.get(target);
-    if (!body || !(reaches.has(target) || callsIn(body).some((c) => reachKey(c.key)) || refsIn(body, heldBy).length)) continue;
+    // L-52: a shape this check cannot resolve to a function or an import FAILS rather than passes.
+    // Next allows only async functions out of a "use server" module, so nothing legitimate lands here.
+    if (!body) { out.push(`${path} → ${exportName}: cannot be resolved to a function in this module — export an async function`); break; }
+    if (!(reaches.has(target) || callsIn(body).some((c) => reachKey(c.key)) || refsIn(body, heldBy).length)) continue;
     const firstReach = Math.min(...callsIn(body).filter((c) => reachKey(c.key)).map((c) => c.pos), ...refsIn(body, heldBy));
     const reachesIn = (node) => callsIn(node).some((c) => reachKey(c.key)) || refsIn(node, heldBy).length > 0;
     const guard = ownCalls(body).find((c) => (throwing.has(c.key) && awaited(c.call) && throwEscapes(c.call, body, reachesIn)) || (returning.has(c.key) && resultRead(c.call, body)));
@@ -669,6 +672,16 @@ function selftest() {
   ok(n(w + `let f = async () => 1;\nf = w;\nexport { f };`) === 1, "PLANTED: a pure export REASSIGNED to w fails");
   ok(n(`export const f = (async () => { await ensureAdmin(); createAdminClient(); });`) === 0, "KNOWN-GOOD: a parenthesised GUARDED arrow passes");
   ok(n(`async function p() { return 1; }\nexport const { f } = { f: p };`) === 0, "KNOWN-GOOD: a destructured pure export passes");
+  // L-52 (canon 45260d9): what the check cannot read fails.
+  ok(n(`const o = {};
+const k = "a";
+export const f = o[k];`) === 1, "PLANTED: an export bound to `o[k]` cannot be resolved — fails");
+  ok(n(`export const f = (await import("./x")).g;`) === 1, "PLANTED: an export bound to an awaited dynamic import fails");
+  ok(n(`export const f = 5;`) === 1, "PLANTED: a non-function export fails");
+  ok(n(`const v = 1;
+export default v;`) === 1, "PLANTED: a default export of a local VALUE fails");
+  ok(n(`export async function f() { return 1; }
+export type T = string;`) === 0, "KNOWN-GOOD: a pure async function beside a type export passes");
   const files = { "lib/blinds/x.ts": `import { a } from "./actions";`, "lib/y.ts": `import { a } from "@/lib/blinds/actions";`, "lib/z.ts": `const m = await import("../lib/blinds/actions");`, "lib/w.ts": `import { a } from "./blinds/actions-old";` };
   const users = importersOf("lib/blinds/actions.ts", Object.keys(files), (f) => files[f], (f) => f);
   ok(users.includes("lib/blinds/x.ts"), "PLANTED: a SIBLING relative import of a dead module is seen (F5)");
