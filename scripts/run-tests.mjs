@@ -12,6 +12,10 @@
  * alone, in-process (`--experimental-test-isolation=none`, Node 22), and must report at least one test of its own, finish
  * its TAP summary, and skip nothing.
  *
+ * In-process, `.only` is honoured without `--test-only` and the tests it drops are not reported at
+ * all (walk round 4 F1), so a file that names `only` is refused before it runs; a `todo` does not
+ * test, so a file with one fails too.
+ *
  *   node scripts/run-tests.mjs            run tests/*.test.ts
  */
 import { spawnSync } from "node:child_process";
@@ -25,6 +29,10 @@ const bad = [];
 let total = 0;
 
 for (const [i, file] of files.entries()) {
+  if (/\.only\b|\bonly\s*:/.test(readFileSync(file, "utf8"))) {
+    bad.push(`${file}: names \`only\` — in-process it silently drops the file's other tests`);
+    continue;
+  }
   const tap = join(dir, `${i}.tap`);
   const r = spawnSync(
     process.execPath,
@@ -47,6 +55,7 @@ for (const [i, file] of files.entries()) {
     report && !/^# duration_ms/m.test(report) && "TAP has no summary (the process ended early)",
     tests <= 0 && "no tests",
     count("skipped") > 0 && `${count("skipped")} skipped`,
+    count("todo") > 0 && `${count("todo")} todo`,
     notOk.length > 0 && `${notOk.length} \`not ok\`: ${notOk.join(" | ")}`,
   ].filter(Boolean);
   if (why.length) bad.push(`${file}: ${why.join("; ")}`);
