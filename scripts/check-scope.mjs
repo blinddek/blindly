@@ -62,7 +62,10 @@ const PUSH = "npm run check" // the pre-push command; life-therapy's is `npm run
 // on the default branch. A repo that commits straight to its default branch keeps it false.
 const BRANCH_GUARD = false
 // Exact step string → "universal" | { universal: [globs] } | "full" | [globs]. Overrides RULES. Map your own checkers here.
-const MAP = {}
+const MAP = {
+  // Reads every "use server" module under these trees (scripts/check-actions.mjs DIRS).
+  "npm run check:actions": ["app/**", "lib/**", "components/**"],
+}
 // A step that a SCOPED plan runs in a cheaper form, e.g. { "tsc --noEmit --incremental false": "tsc --noEmit" }.
 const SCOPED_AS = {}
 // Paths beyond canon's FORCE_FULL and CONFIG that change what the chain means.

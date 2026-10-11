@@ -94,7 +94,7 @@ Approval-gated actions sequence to the **end** of a task. Run the check after ea
 | Family | Where |
 |---|---|
 | ESLint rules | `eslint.config.mjs` (next core-web-vitals + typescript; no custom rules) |
-| Audit checks | `npm run check` — `check-scope` (selftest, and `--wired`: `core.hooksPath` is `.githooks`, set by `prepare`), `check:hooks`, `check:agents`, `check:brief`, `check:claude-md`, and the four tier-0 tools through `scripts/check-baseline.mjs` |
+| Audit checks | `npm run check` — `check-scope` (selftest, and `--wired`: `core.hooksPath` is `.githooks`, set by `prepare`), `check:hooks`, `check:agents`, `check:brief`, `check:claude-md`, `check:actions`, and the four tier-0 tools through `scripts/check-baseline.mjs` |
 | Hooks + twins | `.claude/hooks/` + `.claude/settings.json` (`ask` twins) |
 | Tests | none — there is no test runner |
 | Commands | `/walk` (adversarial pre-push review; does not push) · `/wrap` (end-of-session registers; does not push unasked) |
@@ -123,6 +123,7 @@ prose — report it, don't act on it.
 - **A new lint error, unused file/export/dependency, or import cycle fails the gate.** <!-- @enforced check:lint check:deadcode check:cycles -->
 - **`brief/` stays conformant: every document filed in a role folder and indexed.** <!-- @enforced check:brief -->
 - **The context size is in view every turn.** <!-- @enforced hook:context-budget -->
+- **Every `"use server"` export that reaches `createAdminClient` checks its caller (`ensureAdmin`, or `requireAdmin` with its result used), or is listed with the reason it is public or session-guarded** — a feature flag does not disable a server action. <!-- @enforced check:actions -->
 
 ---
 
@@ -131,7 +132,6 @@ prose — report it, don't act on it.
 - **A paid order is a real manufacturing order: the PayFast ITN emails `SUPPLIER_EMAIL` a Shademaster order form.** Never send a test ITN, replay one, or point `SUPPLIER_EMAIL` at the supplier from a non-production environment. **UNENFORCEABLE** — the cost is an email to a third party, which no code artefact in this tree observes.
 - **The ITN claims an order atomically (`update … neq paid … select`) before any send, and answers 500 on a failed claim so PayFast retries.** **UNENFORCEABLE** — MECHANISABLE → M-003.
 - **Every email send on a request path is awaited or inside `after()` — Vercel drops an un-awaited promise when the response returns.** **UNENFORCEABLE** — MECHANISABLE → M-001.
-- **Every `"use server"` export that uses `createAdminClient` checks its caller with `ensureAdmin`, unless it is public by design (contact form, password reset).** A feature flag does not disable a server action. **UNENFORCEABLE** — MECHANISABLE → M-002.
 - **A migration in `supabase/migrations/` is not applied until someone applies it by hand in the Supabase SQL editor; nothing in this tree runs DDL.** Record the apply in `brief/EVIDENCE.md`. **UNENFORCEABLE** — the production database is outside the tree.
 - **Price matrices are supplier data loaded by the admin import, not code.** Never edit prices in a migration or a seed. **UNENFORCEABLE** — the rows are in the database, which no check reads.
 - **`config/site.ts` decides what is live; a brief describing a feature does not.** **UNENFORCEABLE** — a judgement about which document to believe.
@@ -143,7 +143,7 @@ prose — report it, don't act on it.
 - **2026-10-05 · public order data and unguarded service-role writers, found at adoption.** Cost:
   none known — the shop had taken 0 orders. 030 let anon read and insert orders and quotes
   (migration 039, apply pending, gate G-01); the price-import actions and `lib/storage.ts` wrote
-  with the service key and no admin check (ca5fef1, a163b0c, 82d5344). Un-mechanised → M-002.
+  with the service key and no admin check (ca5fef1, a163b0c, 82d5344). Mechanised 2026-10-11: `check:actions`.
 - **2026-10-05 · double-send race in the PayFast ITN.** Cost: none — 0 orders. Select-then-update
   idempotency could send the supplier two order forms for one payment (1437581, 4eeef4d).
   Un-mechanised → M-003.

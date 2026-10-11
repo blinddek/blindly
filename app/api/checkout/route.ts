@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProductsByIds, getShopSettings } from "@/lib/shop/queries";
-import { validateAndDecrementStock } from "@/lib/shop/actions";
+import { validateAndDecrementStock } from "@/lib/shop/stock";
 import {
   buildPayFastForm,
   generateReference,

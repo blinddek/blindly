@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "prepare": "git config core.hooksPath .githooks || true",
-    "check": "node scripts/check-install-platform.mjs && node scripts/check-scope.mjs --selftest && node scripts/check-scope.mjs --wired && npm run check:hooks && npm run check:agents && npm run check:brief && npm run check:claude-md && npm run check:types && npm run check:lint && npm run check:deadcode && npm run check:cycles",
+    "check": "node scripts/check-install-platform.mjs && node scripts/check-scope.mjs --selftest && node scripts/check-scope.mjs --wired && npm run check:hooks && npm run check:agents && npm run check:brief && npm run check:claude-md && npm run check:actions && npm run check:types && npm run check:lint && npm run check:deadcode && npm run check:cycles",
     "typecheck": "tsc --noEmit",
     "check:deadcode": "node scripts/check-baseline.mjs knip",
     "check:cycles": "node scripts/check-baseline.mjs madge",
@@ -17,7 +17,8 @@
     "check:agents": "node scripts/check-commands.mjs --selftest && node scripts/check-commands.mjs && node scripts/check-handoff-contract.mjs --selftest && node scripts/check-handoff-contract.mjs && node scripts/agent-distribution.mjs --selftest",
     "check:hooks": "node scripts/check-hook-registration.mjs && node .claude/hooks/bash-gate.probe.mjs && node .claude/hooks/canon-inbox.probe.mjs && node .claude/hooks/agent-write-scope.probe.mjs && node .claude/hooks/agent-brief-gate.probe.mjs && node scripts/check-context-budget.mjs",
     "check:types": "node scripts/check-baseline.mjs --selftest && node scripts/check-baseline.mjs tsc",
-    "check:lint": "node scripts/check-baseline.mjs eslint"
+    "check:lint": "node scripts/check-baseline.mjs eslint",
+    "check:actions": "node scripts/check-actions.mjs --selftest && node scripts/check-actions.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

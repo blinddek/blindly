@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { ensureAdmin } from "@/lib/admin/auth";
@@ -116,12 +117,24 @@ export async function createBooking(data: {
   return booking;
 }
 
+// ---------- Customer: the caller must BE the user they name ----------
+
+// The portal passes its user's id, but a server action is a public endpoint: the id is whatever the
+// caller sends. Both customer actions below write with the service key, so the session decides who the
+// caller is and a mismatched id is refused (CLAUDE.md §9 gotcha 4; check-actions PUBLIC entries).
+async function sessionIs(userId: string): Promise<boolean> {
+  const { data: { user } } = await (await createClient()).auth.getUser();
+  return Boolean(user && user.id === userId);
+}
+
 // ---------- Customer: Cancel Own Booking ----------
 
 export async function cancelBookingByCustomer(
   bookingId: string,
   userId: string
 ): Promise<{ error?: string }> {
+  if (!(await sessionIs(userId))) return { error: "Booking not found." };
+
   const supabase = createAdminClient();
 
   // Verify the booking belongs to this user and is cancellable
@@ -166,6 +179,8 @@ export async function updateClientNotes(
   userId: string,
   notes: string
 ): Promise<{ error?: string }> {
+  if (!(await sessionIs(userId))) return { error: "Booking not found." };
+
   const supabase = createAdminClient();
 
   const { data: booking } = await supabase

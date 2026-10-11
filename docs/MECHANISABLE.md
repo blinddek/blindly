@@ -23,16 +23,6 @@ Entry grammar:
   appears as a bare statement (not `await`ed, not returned, not inside an `after(` callback).
   Planted violation: `git show 2a962c8^:lib/contact/actions.ts` must fail it.
 
-### M-002 · Every `"use server"` export that uses `createAdminClient` checks the caller
-- **Rung:** check · **Blast:** an anonymous service-role write; the price-import actions and
-  `lib/storage.ts` shipped one each (fixed 2026-10-05)
-- **Would assert:** each exported function in a `"use server"` file that reaches
-  `createAdminClient` calls `ensureAdmin`/`requireAdmin`/`getUser`, or is listed in an allowlist
-  with its reason (contact form, password reset, newsletter signup, booking create are public by
-  design). Planted violation: `82d5344^:lib/storage.ts`. Known open sites at entry:
-  `lib/booking/actions.ts` `cancelBookingByCustomer`, `updateClientNotes` (client-supplied
-  `userId`; booking off) and `lib/shop/actions.ts` `validateAndDecrementStock` (shop off).
-
 ### M-003 · The ITN claims an order atomically before any send, and answers 500 on a failed claim
 - **Rung:** check · **Blast:** two supplier order forms for one payment (a duplicate manufactured
   blind), or a paid order that never reaches the supplier
@@ -44,3 +34,4 @@ Entry grammar:
 
 | id | Closed | Mechanism |
 |---|---|---|
+| M-002 | 2026-10-11 | `scripts/check-actions.mjs` (`check:actions`): AST walk of every `"use server"` module; an export reaching `createAdminClient` (directly or via a same-module helper) must call `ensureAdmin`, or `requireAdmin`/a local wrapper with its result used, or sit in `PUBLIC` with a reason. Selftest plants the `82d5344^:lib/storage.ts` shape. The three open sites at entry were fixed: booking customer actions check the session, stock moved to `lib/shop/stock.ts`. Ported from life-therapy `server-action-auth`. |
