@@ -19,6 +19,7 @@ import {
   getLastCronRuns,
 } from "@/lib/admin/queries";
 import { envProblems } from "@/lib/env";
+import { ensureAdmin } from "@/lib/admin/auth";
 import { isEnabled } from "@/config/features";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -171,7 +172,10 @@ export default async function AdminDashboard() {
 
   // Names only, never values. The daily cron mails the same list, but it cannot mail the one problem
   // that stops it (CRON_SECRET unset), so the dashboard shows it too.
-  const problems = envProblems();
+  // Shown only after the role check here, not only the layout's: the list says, for instance, whether
+  // ITN signatures are checked without a passphrase (walk round 2 F9).
+  const isAdmin = await ensureAdmin().then(() => true, () => false);
+  const problems = isAdmin ? envProblems() : [];
 
   return (
     <div className="space-y-8">
