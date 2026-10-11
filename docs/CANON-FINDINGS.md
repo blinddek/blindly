@@ -109,6 +109,21 @@ SMALLEST   The kit's tier-0 install step (or check-tier0) requires `.handoff/**`
 FIX        the same way it requires `scripts/*.mjs` as a knip entry. blindly added it locally
            (eslint.config.mjs, 2026-10-11).
 
+### CF-19 · the template lets a user write the role every admin check trusts
+OBSERVED   The Yoros template's 002_auth.sql gives `user_profiles` an UPDATE policy of
+           `id = auth.uid()` with no column restriction (its comment says "non-role fields"), an
+           INSERT policy taking any role for one's own id, and a `handle_new_user` that copies
+           `role` from `raw_user_meta_data`. `ensureAdmin`, the admin layout, and blindly's proxy
+           rule all trust that column, so any signed-in user can PATCH themselves to admin.
+COMMAND    sed -n 33,38p supabase/migrations/002_auth.sql; grep -n raw_user_meta_data
+           supabase/migrations/002_auth.sql → `coalesce(new.raw_user_meta_data ->> 'role', 'customer')`
+WHY IT IS  Every project built on the template carries the same migration (nortiercupboards among
+CANON'S    them), and the kit's admin-guard check (blindly's check:actions, ported from life-therapy)
+           proves a guard is CALLED, not that what it reads is trustworthy.
+SMALLEST   The template ships blindly's 041 (a trigger refusing a role change or a non-customer
+FIX        insert from `authenticated`/`anon`, and `handle_new_user` writing 'customer'); the estate
+           checks each template project's live policies (`pg_policies`, `pg_trigger`).
+
 ---
 
 ## 2 · Lesson answers

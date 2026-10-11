@@ -31,6 +31,8 @@ names what was measured and how.
 
 ## The production database
 
+- **`user_profiles` holds 2 rows, both `admin`, on the operator's own domains (yoros.co.za, nortier.co.za); no customer has an account.** — *source: db-inspector, `.handoff/admin-roles/01-db-inspector.md`, 2026-10-11*
+- **As migrated (002), a signed-in user can write their own `user_profiles.role`, and signup copies `role` from user metadata.** Migration 041 closes both; not applied as of 2026-10-11 (G-14). — *source: `supabase/migrations/002_auth.sql` policies and `handle_new_user`; walk g12-g13 F1*
 - **`site_settings.vat_percent` is `15`; none of the 6 `site_settings` rows holds an empty value.** The
   blind's VAT reads it, and since 2026-10-11 refuses a value that is not a rate. — *source: db-inspector, `.handoff/vat-setting/01-db-inspector.md`, 2026-10-11*
 - **One Supabase project, `duhxsnetntkzzgxenccw`, is the only database `.env.local` names; no staging
