@@ -14,6 +14,14 @@ import type { PriceLookupInput, PriceLookupResult } from "@/types/blinds";
 export async function lookupPrice(
   input: PriceLookupInput
 ): Promise<PriceLookupResult> {
+  // The checkout body is unvalidated JSON: a string dimension divides to NaN, and NaN passes both
+  // range comparisons below and matches the largest grid point — a priced order with no real size.
+  for (const [name, mm] of [["Width", input.width_mm], ["Drop", input.drop_mm]] as const) {
+    if (typeof mm !== "number" || !Number.isFinite(mm) || mm <= 0) {
+      throw new Error(`${name} must be a positive number of millimetres`);
+    }
+  }
+
   const supabase = createAdminClient();
 
   const widthCm = input.width_mm / 10;
