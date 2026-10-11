@@ -124,6 +124,19 @@ SMALLEST   The template ships blindly's 041 (a trigger refusing a role change or
 FIX        insert from `authenticated`/`anon`, and `handle_new_user` writing 'customer'); the estate
            checks each template project's live policies (`pg_policies`, `pg_trigger`).
 
+### CF-20 · an AST gate holds only the spellings it has met, and every walk meets another
+OBSERVED   Five walks of blindly's check:actions (ported from life-therapy's admin-guard check) and
+           run-tests' `.only` refusal each found a spelling the gate passed: `export const f = w as
+           any`, `c ? g : h`, `(async () => …)`, `export const { f } = { f: w }`, `let f; f = w`;
+           `{ ["only"]: true }`, `const { only } = test`, `import { test as t }; t[k]`. None had a
+           live instance; each is now a planted probe (check-actions 89, run-tests 11).
+COMMAND    node scripts/check-actions.mjs --selftest; node scripts/run-tests.mjs --selftest
+WHY IT IS  The kit's guard check enumerates syntax, so every adopter carries the same holes, and
+CANON'S    canon's copy has none of the probes above.
+SMALLEST   Canon's admin-guard check takes these probes; its header states that it judges an export
+FIX        by every name its binding could hold and fails a shape it cannot read, rather than
+           listing the shapes it can.
+
 ---
 
 ## 2 · Lesson answers
