@@ -25,7 +25,7 @@
 |---|---|---|
 | `CURRENT.md` | 1.5 KB | 2026-10-05 |
 | `DECISIONS.md` | 4.5 KB | 2026-10-11 |
-| `EVIDENCE.md` | 7.4 KB | 2026-10-05 |
+| `EVIDENCE.md` | 7.9 KB | 2026-10-11 |
 | `GATES.md` | 3.7 KB | 2026-10-11 |
 | `README.md` | 1.6 KB | 2026-10-05 |
 | `STATUS.md` | 0.1 KB | 2026-10-11 |
