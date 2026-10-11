@@ -23,6 +23,9 @@ const eslintConfig = defineConfig([
     // Temp/scratch folders
     "temp_folder_*/**",
     "todo/**",
+    // Agent artefacts and their probes (gitignored): the handoff contract puts planted violations
+    // in .handoff/<task>/scratch, and linting them failed the operator's gate (walk round 4 F5).
+    ".handoff/**",
   ]),
 ]);
 
