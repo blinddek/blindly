@@ -12,6 +12,9 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Request body must be JSON" }, { status: 400 });
   }
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Request body must be a JSON object" }, { status: 400 });
+  }
   try {
     const { width_cm, drop_cm } = body;
 
