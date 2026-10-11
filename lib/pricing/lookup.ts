@@ -1,9 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveMarkup } from "./markup";
 import type { PriceLookupInput, PriceLookupResult } from "@/types/blinds";
-
-/** A refusal the customer can fix (a size outside the grid, a range with no prices) — not a fault. */
-export class PriceInputError extends Error {}
+import { PriceInputError, readOrThrow } from "./errors";
 
 /**
  * Core price lookup: configuration → full price breakdown.
@@ -112,11 +110,11 @@ export async function lookupPrice(
   const customerPriceCents = supplierPriceCents + markupCents;
 
   // Get VAT rate from settings
-  const { data: vatSetting } = await supabase
+  const vatSetting = readOrThrow("vat_percent", await supabase
     .from("site_settings")
     .select("value")
     .eq("key", "vat_percent")
-    .single();
+    .single());
 
   const vatPercent = vatSetting ? Number(vatSetting.value) : 15;
   const vatCents = Math.round(customerPriceCents * (vatPercent / 100));

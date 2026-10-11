@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ extras });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to fetch extras";
-    return NextResponse.json({ error: message }, { status: 400 });
+    // A failed read is ours: a 500 without the database's message, which stays in the logs.
+    console.error("[blinds/extras] failed:", err);
+    return NextResponse.json({ error: "Could not load extras. Please try again." }, { status: 500 });
   }
 }

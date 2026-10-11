@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ motors });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to fetch motor options";
-    return NextResponse.json({ error: message }, { status: 400 });
+    // A failed read is ours: a 500 without the database's message, which stays in the logs.
+    console.error("[blinds/motor] failed:", err);
+    return NextResponse.json({ error: "Could not load motor options. Please try again." }, { status: 500 });
   }
 }

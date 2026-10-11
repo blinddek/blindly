@@ -99,10 +99,10 @@ async function getExtraPrice(
 ): Promise<number | null> {
   switch (pricingType) {
     case "fixed":
-      return fixedPriceCents ?? 0;
+      return fixedPriceCents;
 
     case "per_unit":
-      return (fixedPriceCents ?? 0) * quantity;
+      return fixedPriceCents == null ? null : fixedPriceCents * quantity;
 
     case "width_based": {
       const supabase = await createClient();
