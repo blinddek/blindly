@@ -33,6 +33,38 @@ SMALLEST   the narrowest fix, and what it must not break
 FIX
 ```
 
+### CF-14 · a githook row can land without its exec bit, and `check-scope --wired` reports it wired
+OBSERVED   blindly's hand copy of rows githook-pre-commit and githook-pre-push landed as mode 100644
+           (canon's are 100755); `--wired` said wired, and on Windows git ran them anyway, so nothing
+           saw it. On macOS or Linux git skips a non-executable hook with a hint: no commit gate, no
+           push gate, and `--wired` still green. Fixed here with `git update-index --chmod=+x`.
+COMMAND    git ls-tree 03ab2d4 kit/project-kit/githooks/   → 100755 pre-commit, 100755 pre-push
+           git ls-files -s .githooks (before the fix)       → 100644 … pre-commit, 100644 … pre-push
+           grep -c chmod E:/dev/dev-standards/tools/apply-kit.mjs → 0
+           node scripts/check-scope.mjs --wired             → .githooks/pre-commit and pre-push are wired
+WHY IT IS  the copy was mine, but the two instruments that should catch it are canon's: apply-kit
+CANON'S    writes bytes with writeFileSync and carries no mode, so `--write` lands the same 100644;
+           `wiring()` reads only content, and `--selftest` chmods its own scratch copies to 0755.
+           Portable: any project on a Windows checkout commits the mode it was given.
+SMALLEST   `wiring()` also fails a hook whose index mode (`git ls-files -s`) is not 100755 — the
+FIX        index, not the filesystem, since Windows has no exec bit; apply-kit sets 0755 on a githook
+           row. Must not break a project keeping its own hooks reached through `npm run` (life-therapy
+           CF-11): those are still files git must execute, so the same mode check applies.
+
+### CF-15 · canon-inbox v6's prose skip silences a push inside an unquoted `$( )`
+OBSERVED   v6 (blindly CF-13) treats a segment whose command word only prints text as running
+           nothing; its splitter does not open a segment at `$(`, so `echo $( git push origin main )`
+           — which does push — is now silent, where v5 spoke. The hook decides nothing: the cost is a
+           missing post-push notice.
+COMMAND    node .handoff/commit-gates/scratch/pushes.mjs <v5 copy>              → "echo $( git push origin main )" -> true
+           node .handoff/commit-gates/scratch/pushes.mjs .claude/hooks/canon-inbox.js → … -> false
+           (the quoted, backtick and `<( )` spellings are false in both versions)
+WHY IT IS  canon-inbox's `segments` is canon's bytes; bash-gate's splitter already opens a segment at
+CANON'S    `$(`, backticks and `<(`, so the two hooks disagree about what a command runs.
+SMALLEST   canon-inbox's `segments` opens a segment at `$(`, a backtick and `<(` as bash-gate's does,
+FIX        so the prose skip applies to the outer word only; probe all four spellings as pushes.
+           Must keep CF-13's cases (`echo git push` and its prose kin) silent.
+
 ---
 
 ## 2 · Lesson answers
