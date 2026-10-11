@@ -96,9 +96,14 @@ export function verifyItn(
   const passphrase = process.env.PAYFAST_PASSPHRASE || "";
   const isSandbox = process.env.PAYFAST_SANDBOX === "true";
 
-  // 1. Verify signature
-  const rawOk = Boolean(data.signature) && verifyRawSignature(rawBody, data.signature, passphrase);
-  if (!rawOk && !verifySignature(data, passphrase)) {
+  // 1. Verify signature — against the raw body only. Accepting the parsed rebuild as well widened the
+  //    accepted set: a genuine signed body with a field appended failed the raw check and passed the
+  //    rebuild (walk F7, 2026-10-11). An ITN only the rebuild would pass is refused and logged, so a
+  //    real PayFast encoding this misses shows up in the logs (gate G-07 proves it in sandbox).
+  if (!data.signature || !verifyRawSignature(rawBody, data.signature, passphrase)) {
+    if (data.signature && verifySignature(data, passphrase)) {
+      console.error("[payfast-itn] signature matched only the parsed rebuild, not the raw body — refused");
+    }
     return { valid: false, error: "Invalid signature" };
   }
 
