@@ -1,124 +1,44 @@
 import { NextResponse } from "next/server";
-import { lookupPrice, getApplicableExtras, getMotorOptions } from "@/lib/pricing";
 import { buildPayFastForm, generateReference } from "@/lib/payfast/client";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getInstallationPricing, getVolumeDiscounts } from "@/lib/pricing-rules";
-import {
-  getDiscountRate,
-  calcDiscountCents,
-  calcInstallationCents,
-  calcTransportCents,
-} from "@/types/pricing-rules";
+import { parseCheckoutBody, priceCheckout, CheckoutInputError, type PricedCheckout } from "@/lib/blinds/checkout-pricing";
+import { lineIncVatCents } from "@/lib/blinds/order-totals";
 import { siteConfig } from "@/config/site";
-import type { MountType, SelectedExtra } from "@/types/blinds";
-
-interface CheckoutItem {
-  blind_range_id: string;
-  colour: string;
-  mount_type: MountType;
-  width_mm: number;
-  drop_mm: number;
-  control_side: "left" | "right";
-  matched_width_cm: number;
-  matched_drop_cm: number;
-  location_label?: string;
-  selected_extras?: SelectedExtra[];
-}
-
-interface CheckoutBody {
-  items: CheckoutItem[];
-  customer: {
-    name: string;
-    email: string;
-    phone: string;
-  };
-  delivery_address: {
-    street: string;
-    city: string;
-    province: string;
-    postal_code: string;
-  };
-  delivery_type: "self_install" | "professional_install";
-  distance_km?: number | null;
-  customer_notes?: string;
-}
 
 export async function POST(request: Request) {
-  let body: CheckoutBody;
+  let raw: unknown;
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { items, delivery_address, delivery_type, distance_km, customer_notes } = body;
-  const customer = {
-    name: body.customer?.name?.trim() ?? "",
-    email: body.customer?.email?.trim().toLowerCase() ?? "",
-    phone: body.customer?.phone?.trim() ?? "",
-  };
+  // Every amount below is the server's: parse the body, then price it from the database and the
+  // address (lib/blinds/checkout-pricing.ts). The page shows the same computation via /api/blinds/quote.
+  let input: ReturnType<typeof parseCheckoutBody>;
+  let priced: PricedCheckout;
+  try {
+    input = parseCheckoutBody(raw);
+    priced = await priceCheckout(input);
+  } catch (err) {
+    if (err instanceof CheckoutInputError) return NextResponse.json({ error: err.message }, { status: err.status });
+    console.error("[blinds/checkout] pricing failed:", err);
+    return NextResponse.json({ error: "Could not price your order. Please try again." }, { status: 500 });
+  }
+  const { items: pricedItems, totals, distanceKm } = priced;
 
-  if (!items?.length || !customer.email || !customer.name || !customer.phone) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  // The customer pays what they were shown, or is shown the new amount first.
+  if (input.expected_total_cents == null) {
+    return NextResponse.json({ error: "Please refresh the page and review your order total." }, { status: 400 });
+  }
+  if (input.expected_total_cents !== totals.totalCents) {
+    return NextResponse.json(
+      { error: "Your order total has changed. Please review the new total before paying.", totals, distance_km: distanceKm },
+      { status: 409 }
+    );
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) {
-    return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
-  }
-
-  // Re-validate prices server-side for every item
-  const pricedItems = await Promise.all(
-    items.map(async (item) => {
-      const price = await lookupPrice({
-        blind_range_id: item.blind_range_id,
-        width_mm: item.width_mm,
-        drop_mm: item.drop_mm,
-        mount_type: item.mount_type,
-      });
-      return { item: { ...item, selected_extras: await repriceExtras(item) }, price };
-    })
-  ).catch((err: unknown) => {
-    const message = err instanceof Error ? err.message : "Price lookup failed";
-    return { error: message };
-  });
-
-  if ("error" in pricedItems) {
-    return NextResponse.json({ error: pricedItems.error }, { status: 400 });
-  }
-
-  // Blind totals (cents)
-  const subtotalCents = pricedItems.reduce((s, { price }) => s + price.customer_price_cents, 0);
-  const vatCents = pricedItems.reduce((s, { price }) => s + price.vat_cents, 0);
-  const blindsGrandTotal = pricedItems.reduce((s, { price }) => s + price.total_with_vat_cents, 0);
-
-  // Extras totals — prices are ex-VAT, apply 15%
-  const extrasTotalExVat = pricedItems.reduce((s, { item }) =>
-    s + (item.selected_extras ?? []).reduce((es, e) => es + e.price_cents, 0), 0);
-  const extrasVat = Math.round(extrasTotalExVat * 0.15);
-  const extrasTotalIncVat = extrasTotalExVat + extrasVat;
-
-  // Load pricing rules server-side
-  const [installRules, discountRules] = await Promise.all([
-    getInstallationPricing(),
-    getVolumeDiscounts(),
-  ]);
-
-  // Volume discount (applied to VAT-inclusive blind total)
-  const discountRate = getDiscountRate(blindsGrandTotal, discountRules);
-  const discountCents = calcDiscountCents(blindsGrandTotal, discountRate);
-
-  // Installation & transport (professional install only)
-  let installationFeeCents = 0;
-  let deliveryFeeCents = 0;
-  if (delivery_type === "professional_install") {
-    installationFeeCents = calcInstallationCents(items.length, installRules);
-    if (distance_km != null && distance_km > 0) {
-      deliveryFeeCents = calcTransportCents(distance_km, installRules);
-    }
-  }
-
-  const totalCents = blindsGrandTotal + extrasTotalIncVat - discountCents + installationFeeCents + deliveryFeeCents;
-
+  const { customer, delivery_address, delivery_type, customer_notes } = input;
   const supabase = createAdminClient();
   const reference = generateReference(crypto.randomUUID());
 
@@ -132,15 +52,15 @@ export async function POST(request: Request) {
       customer_phone: customer.phone,
       delivery_address,
       delivery_type,
-      customer_notes: customer_notes ?? null,
-      subtotal_cents: subtotalCents,
-      vat_cents: vatCents,
-      discount_rate: discountRate,
-      discount_cents: discountCents,
-      installation_fee_cents: installationFeeCents,
-      delivery_fee_cents: deliveryFeeCents,
-      distance_km: distance_km ?? null,
-      total_cents: totalCents,
+      customer_notes,
+      subtotal_cents: totals.subtotalCents,
+      vat_cents: totals.vatCents,
+      discount_rate: totals.discountRate,
+      discount_cents: totals.discountCents,
+      installation_fee_cents: totals.installationFeeCents,
+      delivery_fee_cents: totals.deliveryFeeCents,
+      distance_km: distanceKm,
+      total_cents: totals.totalCents,
       payment_reference: reference,
       payment_status: "pending",
       order_status: "new",
@@ -154,10 +74,10 @@ export async function POST(request: Request) {
   }
 
   // Insert order items
-  const orderItems = pricedItems.map(({ item, price }, idx) => ({
+  const orderItems = pricedItems.map(({ item, price, selected_extras, extrasExVatCents }, idx) => ({
     order_id: order.id,
     blind_range_id: item.blind_range_id,
-    location_label: item.location_label ?? null,
+    location_label: item.location_label,
     mount_type: item.mount_type,
     quantity: 1,
     width_mm: item.width_mm,
@@ -169,10 +89,9 @@ export async function POST(request: Request) {
     supplier_price_cents: price.supplier_price_cents,
     markup_percent: price.markup_percent,
     markup_cents: price.markup_cents,
-    extras_cents: (item.selected_extras ?? []).reduce((s, e) => s + e.price_cents, 0),
-    selected_extras: item.selected_extras ?? [],
-    line_total_cents: price.total_with_vat_cents +
-      (item.selected_extras ?? []).reduce((s, e) => s + e.price_cents + Math.round(e.price_cents * 0.15), 0),
+    extras_cents: extrasExVatCents,
+    selected_extras,
+    line_total_cents: lineIncVatCents({ blindIncVatCents: price.total_with_vat_cents, extrasExVatCents }),
     display_order: idx,
   }));
 
@@ -198,7 +117,7 @@ export async function POST(request: Request) {
     const lastName = nameParts.slice(1).join(" ") || undefined;
 
     const formData = buildPayFastForm({
-      amount: totalCents,
+      amount: totals.totalCents,
       item_name: `Blindly Order ${reference}`,
       email: customer.email,
       name_first: firstName,
@@ -224,33 +143,4 @@ export async function POST(request: Request) {
       .eq("id", order.id);
     return NextResponse.json({ error: "Payment initialization failed" }, { status: 500 });
   }
-}
-
-/**
- * Replace each selected extra's client-sent price with the server's price for this blind, using the
- * same width/drop the configurator's accessories step priced it at. Extras and motors share the
- * list (a motor is stored as an extra keyed by its motor id). An id the server does not offer for this
- * blind is refused rather than charged at whatever the browser said.
- */
-async function repriceExtras(item: CheckoutItem): Promise<SelectedExtra[]> {
-  const selected = item.selected_extras ?? [];
-  if (!selected.length) return [];
-  const widthCm = Math.ceil(item.width_mm / 10);
-  const dropCm = Math.ceil(item.drop_mm / 10);
-  const [extras, motors] = await Promise.all([
-    getApplicableExtras(item.blind_range_id, widthCm),
-    getMotorOptions(widthCm, dropCm),
-  ]);
-  // Name as well as price: the name is printed on the supplier's order form.
-  const offered = new Map<string, { name: string; price_cents: number }>([
-    ...extras.map((e) => [e.id, { name: e.name, price_cents: e.price_cents }] as const),
-    ...motors
-      .filter((m) => m.compatible)
-      .map((m) => [m.id, { name: `${m.brand} ${m.model}`.trim(), price_cents: m.price_cents }] as const),
-  ]);
-  return selected.map((e) => {
-    const server = offered.get(e.extra_id);
-    if (!server) throw new Error("An accessory in your cart is not available for this blind");
-    return { extra_id: e.extra_id, ...server };
-  });
 }

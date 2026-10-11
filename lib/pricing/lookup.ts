@@ -14,11 +14,12 @@ import type { PriceLookupInput, PriceLookupResult } from "@/types/blinds";
 export async function lookupPrice(
   input: PriceLookupInput
 ): Promise<PriceLookupResult> {
-  // The checkout body is unvalidated JSON: a string dimension divides to NaN, and NaN passes both
-  // range comparisons below and matches the largest grid point — a priced order with no real size.
+  // The request bodies are unvalidated JSON. A non-numeric dimension divides to NaN, which passes
+  // both range comparisons below and prices at the largest grid point; a fractional one prices but
+  // fails the INTEGER order-item insert as a 500. Refuse both here, as a 400 at either route.
   for (const [name, mm] of [["Width", input.width_mm], ["Drop", input.drop_mm]] as const) {
-    if (typeof mm !== "number" || !Number.isFinite(mm) || mm <= 0) {
-      throw new Error(`${name} must be a positive number of millimetres`);
+    if (typeof mm !== "number" || !Number.isInteger(mm) || mm <= 0) {
+      throw new Error(`${name} must be a positive whole number of millimetres`);
     }
   }
 

@@ -24,6 +24,7 @@ import {
   type VolumeDiscounts,
   type CourierPricing,
 } from "@/types/pricing-rules";
+import type { OrderTotals } from "@/lib/blinds/order-totals";
 
 function formatRand(cents: number): string {
   return `R${(cents / 100).toLocaleString("en-ZA", {
@@ -375,6 +376,51 @@ export default function BlindCheckoutPage() {
     try { localStorage.setItem("blindly_checkout", JSON.stringify(form)); } catch { /* ignore */ }
   }, [form]);
 
+  // What the server prices. No amount, fee, distance or category is sent: the server derives each.
+  const priceBody = {
+    items: items.map((item) => ({
+      blind_range_id: item.blind_range_id,
+      colour: item.colour,
+      mount_type: item.mount_type,
+      width_mm: item.width_mm,
+      drop_mm: item.drop_mm,
+      control_side: item.control_side,
+      location_label: item.location_label ?? "",
+      selected_extras: (item.selected_extras ?? []).map((e) => ({ extra_id: e.extra_id })),
+    })),
+    customer: { name: form.name, email: form.email, phone: form.phone },
+    delivery_address: {
+      street: form.address_line_1,
+      city: form.city,
+      province: form.province,
+      postal_code: form.postal_code,
+    },
+    delivery_type: form.delivery_type,
+  };
+  const quoteKey = JSON.stringify(priceBody);
+
+  // On the last step the summary and the Pay button show the SERVER's total (/api/blinds/quote), and
+  // checkout refuses if what it would charge differs from it. Earlier steps show a local estimate.
+  const [quote, setQuote] = useState<{ key: string; totals: OrderTotals; distance_km: number | null } | null>(null);
+  const [quoting, setQuoting] = useState(false);
+  const onLastStep = step === STEPS.length;
+  useEffect(() => {
+    if (!hydrated || !onLastStep || items.length === 0) return;
+    let live = true;
+    setQuoting(true);
+    fetch("/api/blinds/quote", { method: "POST", headers: { "Content-Type": "application/json" }, body: quoteKey })
+      .then(async (r) => ({ ok: r.ok, d: await r.json() }))
+      .then(({ ok, d }) => {
+        if (!live) return;
+        if (ok) setQuote({ key: quoteKey, totals: d.totals, distance_km: d.distance_km ?? null });
+        else setError(d.error ?? "Could not price your order. Please try again.");
+      })
+      .catch(() => { if (live) setError("Could not price your order. Please try again."); })
+      .finally(() => { if (live) setQuoting(false); });
+    return () => { live = false; };
+  }, [hydrated, onLastStep, items.length, quoteKey]);
+  const serverQuote = onLastStep && quote?.key === quoteKey ? quote : null;
+
   if (!hydrated) return null;
   if (items.length === 0) {
     router.replace("/cart");
@@ -420,21 +466,16 @@ export default function BlindCheckoutPage() {
 
   // ── Distance calculation ────────────────────────────────────────────────────
 
-  async function calcDistance(coords?: { lat: number; lng: number }) {
-    const hasCoords =
-      coords ??
-      (form.address_lat && form.address_lng
-        ? { lat: Number.parseFloat(form.address_lat), lng: Number.parseFloat(form.address_lng) }
-        : null);
-
-    // Manual entry fallback: geocode from text fields
-    if (!hasCoords && (!form.address_line_1 || !form.city)) return;
+  // Always the address TEXT, never the autocomplete's coordinates: checkout charges the distance it
+  // geocodes from the same text (lib/distance.ts), so coordinates could show a different number.
+  // `addr` is passed when the form state has not caught up yet (an address just selected).
+  async function calcDistance(addr?: { street: string; city: string; province: string; postal_code: string }) {
+    const a = addr ?? { street: form.address_line_1, city: form.city, province: form.province, postal_code: form.postal_code };
+    if (!a.street || !a.city) return;
 
     setCalcingDistance(true);
     try {
-      const body = hasCoords
-        ? { lat: hasCoords.lat, lng: hasCoords.lng }
-        : { address: form.address_line_1, city: form.city, province: form.province, postal_code: form.postal_code };
+      const body = { address: a.street, city: a.city, province: a.province, postal_code: a.postal_code };
 
       const res = await fetch("/api/distance", {
         method: "POST",
@@ -465,7 +506,7 @@ export default function BlindCheckoutPage() {
       distance_km: "", // reset when address changes
     }));
     if (form.delivery_type === "professional_install") {
-      calcDistance({ lat: result.lat, lng: result.lng });
+      calcDistance(result);
     }
   }
 
@@ -509,38 +550,22 @@ export default function BlindCheckoutPage() {
   // ── Submission ──────────────────────────────────────────────────────────────
 
   async function handleSubmit() {
+    if (!serverQuote) return;
     setSubmitting(true);
     setError(null);
     try {
       const res = await fetch("/api/blinds/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            blind_range_id: item.blind_range_id,
-            colour: item.colour,
-            mount_type: item.mount_type,
-            width_mm: item.width_mm,
-            drop_mm: item.drop_mm,
-            control_side: item.control_side,
-            matched_width_cm: item.matched_width_cm,
-            matched_drop_cm: item.matched_drop_cm,
-            location_label: item.location_label ?? "",
-            selected_extras: item.selected_extras ?? [],
-          })),
-          customer: { name: form.name, email: form.email, phone: form.phone },
-          delivery_address: {
-            street: form.address_line_1,
-            city: form.city,
-            province: form.province,
-            postal_code: form.postal_code,
-          },
-          delivery_type: form.delivery_type,
-          distance_km: distanceKm || null,
-          customer_notes: form.notes,
-        }),
+        body: JSON.stringify({ ...priceBody, customer_notes: form.notes, expected_total_cents: serverQuote.totals.totalCents }),
       });
       const data = await res.json();
+      if (res.status === 409 && data.totals) {
+        // The server's price moved since the quote: show the new one and let the customer pay that.
+        setQuote({ key: quoteKey, totals: data.totals, distance_km: data.distance_km ?? null });
+        setError(data.error);
+        return;
+      }
       if (!res.ok || data.error) {
         setError(data.error ?? "Checkout failed. Please try again.");
         return;
@@ -611,12 +636,7 @@ export default function BlindCheckoutPage() {
         packageDimsCm={packageDimsCm}
         onDeliveryTypeChange={(v) => {
           set("delivery_type", v);
-          if (v === "professional_install" && !distanceCalculated) {
-            const coords = form.address_lat && form.address_lng
-              ? { lat: Number.parseFloat(form.address_lat), lng: Number.parseFloat(form.address_lng) }
-              : undefined;
-            calcDistance(coords);
-          }
+          if (v === "professional_install" && !distanceCalculated) calcDistance();
         }}
         onSwitchToSelfInstall={() => set("delivery_type", "self_install")}
       />
@@ -662,14 +682,14 @@ export default function BlindCheckoutPage() {
             </Button>
 
             {isLastStep ? (
-              <Button onClick={handleSubmit} disabled={submitting} size="lg">
-                {submitting ? (
+              <Button onClick={handleSubmit} disabled={submitting || !serverQuote} size="lg">
+                {submitting || quoting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Processing…
+                    {submitting ? "Processing…" : "Confirming price…"}
                   </>
                 ) : (
-                  `Pay ${formatRand(orderTotalCents)}`
+                  serverQuote ? `Pay ${formatRand(serverQuote.totals.totalCents)}` : "Pay"
                 )}
               </Button>
             ) : (
@@ -698,6 +718,42 @@ export default function BlindCheckoutPage() {
                 ))}
               </ul>
 
+              {serverQuote ? (
+              <div className="space-y-1.5 border-t pt-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>{formatRand(serverQuote.totals.subtotalCents)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">VAT (15%)</span>
+                  <span>{formatRand(serverQuote.totals.vatCents)}</span>
+                </div>
+                {serverQuote.totals.discountRate > 0 && (
+                  <div className="flex justify-between text-primary font-medium">
+                    <span>Volume discount ({(serverQuote.totals.discountRate * 100).toFixed(1)}%)</span>
+                    <span>−{formatRand(serverQuote.totals.discountCents)}</span>
+                  </div>
+                )}
+                {serverQuote.totals.installationFeeCents > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Installation</span>
+                    <span>{formatRand(serverQuote.totals.installationFeeCents)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {isProfessional
+                      ? `Transport${serverQuote.distance_km == null ? "" : ` (${serverQuote.distance_km} km)`}`
+                      : "Courier delivery"}
+                  </span>
+                  <span>{serverQuote.totals.deliveryFeeCents > 0 ? formatRand(serverQuote.totals.deliveryFeeCents) : "Free"}</span>
+                </div>
+                <div className="flex justify-between font-bold border-t pt-2">
+                  <span>Total</span>
+                  <span className="text-primary">{formatRand(serverQuote.totals.totalCents)}</span>
+                </div>
+              </div>
+              ) : (
               <div className="space-y-1.5 border-t pt-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
@@ -722,10 +778,11 @@ export default function BlindCheckoutPage() {
                   />
                 )}
                 <div className="flex justify-between font-bold border-t pt-2">
-                  <span>Total</span>
+                  <span>Estimated total</span>
                   <span className="text-primary">{formatRand(orderTotalCents)}</span>
                 </div>
               </div>
+              )}
 
               {step >= 2 && form.address_line_1 && (
                 <div className="mt-3 rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground space-y-0.5">

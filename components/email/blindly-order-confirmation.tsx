@@ -159,7 +159,7 @@ export default function BlindlyOrderConfirmation({
               )}
               {deliveryFeeCents > 0 && (
                 <tr>
-                  <td style={summaryLabel}>Transport fee</td>
+                  <td style={summaryLabel}>Delivery</td>
                   <td style={summaryValue}>{fmt(deliveryFeeCents)}</td>
                 </tr>
               )}
