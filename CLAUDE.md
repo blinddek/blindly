@@ -75,7 +75,7 @@ template features are off in `config/site.ts` but still in the tree (`brief/EVID
 | Gate | Command |
 |---|---|
 | Before every commit | the `pre-commit` hook runs `check-scope.mjs --commit`: the steps of `check` the staged diff selects, the whole chain when it touches the gate, config or an unknown path |
-| Before every push | the `pre-push` hook runs `npm run check` whole; then `/walk` on the range |
+| Before every push | the `pre-push` hook runs `npm run check:push` — `npm run check` whole, then `next build`; then `/walk` on the range. CI (`.github/workflows/ci.yml`) runs `npm run check` on every push to `main` |
 | Before every deploy | a deploy IS a push to `main` — the push gate is the deploy gate |
 
 **Push policy: `main` only; announce intent, then push.** `bash-gate` asks on every push to `main`.
@@ -96,7 +96,7 @@ Approval-gated actions sequence to the **end** of a task. Run the check after ea
 | ESLint rules | `eslint.config.mjs` (next core-web-vitals + typescript; no custom rules) |
 | Audit checks | `npm run check` — `check-scope` (selftest, and `--wired`: `core.hooksPath` is `.githooks`, set by `prepare`), `check:hooks`, `check:agents`, `check:brief`, `check:claude-md`, `check:actions`, and the four tier-0 tools through `scripts/check-baseline.mjs` |
 | Hooks + twins | `.claude/hooks/` + `.claude/settings.json` (`ask` twins) |
-| Tests | none — there is no test runner |
+| Tests | `npm run test` (in `check`) — `node:test` through `tsx`, `tests/*.test.ts`: order totals, checkout parsing, the price-size guard, the ITN signature. No database: a test that needs one does not belong here yet |
 | Commands | `/walk` (adversarial pre-push review; does not push) · `/wrap` (end-of-session registers; does not push unasked) |
 | Rule files | none |
 
@@ -214,7 +214,8 @@ with `git ls-tree HEAD <path>` (dd7bc0e claimed one that only 94bacf6 landed). *
   passphrase (gate G-02).
 - `SUPPLIER_EMAIL` unset → a paid order silently does not reach the supplier. `RESEND_FROM` /
   `ADMIN_EMAIL` unset → mail from `noreply@example.com`, admin copies to `admin@example.com`.
-- `CRON_SECRET` unset → `/api/cron/daily` is open to any GET.
+- `CRON_SECRET` unset → `/api/cron/daily` refuses to run (503): no order expiry, no env report. The
+  admin dashboard lists every missing variable (`lib/env.ts`).
 - `SUPABASE_DB` in the secrets channel is a direct connection string; nothing in the repo reads it.
 
 **Naming:** kebab-case files; `lib/<domain>/{actions,queries}.ts`; public pages are a server
@@ -225,5 +226,6 @@ with `git ls-tree HEAD <path>` (dd7bc0e claimed one that only 94bacf6 landed). *
 2. `scripts/setup-db.sh` lists migrations 001–025 only; 026 onward were applied by an unrecorded
    route, and there is no migration-tracking table.
 3. `lib/blinds/actions.ts` has 13 unguarded writes and is imported nowhere; do not import it.
-4. The booking and portal server actions (`updateClientNotes`, `cancelBookingByCustomer`) trust a
-   client-supplied `userId` with the service key. Booking is off here; fix before turning it on.
+4. The booking and portal server actions (`updateClientNotes`, `cancelBookingByCustomer`) take a
+   client-supplied `userId`; since da92855 each checks the session is that user before the service
+   key acts. Booking is off here.
