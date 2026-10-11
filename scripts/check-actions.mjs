@@ -13,14 +13,18 @@
  * (`import { createAdminClient as admin }`); a namespace import (`A.createAdminClient()`). A closure
  * inside the export that reaches it counts.
  * "Exports" are every form: `export function`, `export const f = () =>`, `export const f = g` (an
- * alias, the lib/auth/actions.ts shape), `export const f = wrap(async () => …)`, `export { f, g as h }`,
- * `export default f`, `export default wrap(…)`, and an anonymous `export default async function`.
+ * alias, the lib/auth/actions.ts shape) and its spellings (`g as T`, `(g)`, `g!`, `g.bind(x)`,
+ * `wrap(g)`), `export const f = wrap(async () => …)`, `export { f, g as h }` (through a local alias
+ * too), `export default f`, `export default wrap(…)`, and an anonymous `export default async function`.
  * "Checks its caller" is a call of `ensureAdmin()` (throws), or of `requireAdmin()` whose result is
  * read — returned, tested, or assigned to a name the body reads again — in the export's own body,
  * not inside a nested function, and before the first call that reaches the service key. The guard
  * is the one imported from lib/admin/auth (aliases followed); a same-named function from anywhere
- * else is not. A guard inside a `try` counts only when its `catch` exits (returns or throws). A
- * same-module wrapper of either counts as the same kind of guard.
+ * else is not. A guard inside a `try` counts only when the try has no `finally` (which runs on the
+ * throw) and its `catch` ends in a return or throw and does not itself reach the key. That fails
+ * closed on some correct shapes (a catch ending in `redirect()`, an if/else that returns on both
+ * branches, a guard imported through a barrel); none is in the tree. A same-module wrapper of either
+ * counts as the same kind of guard.
  *
  * NOT COVERED: a guard inside a branch (`if (x) await ensureAdmin()`) counts as a guard; a
  * requireAdmin() result read but not acted on (only logged) counts as read; the service key reached
@@ -101,7 +105,20 @@ function calleeKey(call) {
  *   stars    module specifiers of `export * from`
  *   imports  local name → { spec, imported }   (imported "*" for a namespace import)
  */
+/** The function an expression names, in any spelling: `g`, `g as T`, `(g)`, `g!`, `g.bind(x)`,
+ *  `wrap(g)` (its last argument that names one). Null for anything else. */
+function aliasOf(e) {
+  while (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isNonNullExpression(e) || ts.isTypeAssertionExpression(e)) e = e.expression;
+  if (ts.isIdentifier(e)) return e.text;
+  if (ts.isCallExpression(e)) {
+    if (ts.isPropertyAccessExpression(e.expression) && e.expression.name.text === "bind") return aliasOf(e.expression.expression);
+    for (const a of [...e.arguments].reverse()) { const n = aliasOf(a); if (n) return n; }
+  }
+  return null;
+}
+
 function shape(sf) {
+  const aliases = new Map();
   const fns = new Map();
   const exports = new Map();
   const stars = [];
@@ -134,10 +151,10 @@ function shape(sf) {
         if (fn) {
           fns.set(d.name.text, fn.body);
           if (exported) exports.set(d.name.text, d.name.text);
-        } else if (ts.isIdentifier(init)) {
-          // `export const f = g`: the export IS g, a local function or an import.
-          if (exported) exports.set(d.name.text, init.text);
         } else {
+          // `const f = g` in any spelling: f IS g, a local function or an import (resolved below).
+          const a = aliasOf(init);
+          if (a) { aliases.set(d.name.text, a); if (exported) exports.set(d.name.text, d.name.text); }
           values.set(d.name.text, init); // a module-level value, e.g. `const sb = createAdminClient()`
         }
       }
@@ -158,7 +175,17 @@ function shape(sf) {
           ? e
           : ts.isCallExpression(e) ? [...e.arguments].reverse().find((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a)) : undefined;
         if (fn) { fns.set("default", fn.body); exports.set("default", "default"); }
+        else { const a = aliasOf(e); if (a) { aliases.set("default", a); exports.set("default", "default"); } }
       }
+    }
+  }
+  // An alias takes its target's body, or its target's import, so every rule below sees through it.
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const [a, t] of aliases) {
+      if (fns.has(a) || imports.has(a)) continue;
+      if (fns.has(t)) { fns.set(a, fns.get(t)); grew = true; }
+      else if (imports.has(t)) { imports.set(a, imports.get(t)); grew = true; }
     }
   }
   return { fns, exports, stars, imports, values };
@@ -223,13 +250,18 @@ function callsOutsideTry(node, names) {
   return found;
 }
 
-/** A throw from `call` leaves `body`: no enclosing `try` (within body) has a `catch` that falls through. */
-function throwEscapes(call, body) {
+/**
+ * A throw from `call` stops `body` before the key: every enclosing `try` (within body) has no
+ * `finally` (it runs on the throw), and a `catch` that ends in a return or throw and does not itself
+ * reach the key (`reachesIn`).
+ */
+function throwEscapes(call, body, reachesIn) {
   for (let n = call; n && n !== body; n = n.parent) {
     const t = n.parent;
-    if (t && ts.isTryStatement(t) && t.tryBlock === n && t.catchClause) {
-      const exits = t.catchClause.block.statements.some((st) => ts.isReturnStatement(st) || ts.isThrowStatement(st));
-      if (!exits) return false;
+    if (t && ts.isTryStatement(t) && t.tryBlock === n) {
+      if (t.finallyBlock) return false;
+      const last = t.catchClause?.block.statements.at(-1);
+      if (t.catchClause && (!last || !(ts.isReturnStatement(last) || ts.isThrowStatement(last)) || reachesIn(t.catchClause.block))) return false;
     }
   }
   return true;
@@ -380,7 +412,8 @@ export function auditModule(path, src, publicList = PUBLIC, load = diskLoader) {
     const body = m.fns.get(target);
     if (!body || !reaches.has(target)) continue;
     const firstReach = Math.min(...callsIn(body).filter((c) => reachKey(c.key)).map((c) => c.pos), ...refsIn(body, heldBy));
-    const guard = ownCalls(body).find((c) => (throwing.has(c.key) && awaited(c.call) && throwEscapes(c.call, body)) || (returning.has(c.key) && resultRead(c.call, body)));
+    const reachesIn = (node) => callsIn(node).some((c) => reachKey(c.key)) || refsIn(node, heldBy).length > 0;
+    const guard = ownCalls(body).find((c) => (throwing.has(c.key) && awaited(c.call) && throwEscapes(c.call, body, reachesIn)) || (returning.has(c.key) && resultRead(c.call, body)));
     if (guard && guard.pos < firstReach) continue;
     const why = guard ? `checks its caller only after it first reaches ${SERVICE}` : `reaches ${SERVICE} with no ${GUARD} call that guards it`;
     out.push(`${path} → ${exportName}: ${why} — guard it first, or list it in PUBLIC with the reason it is public`);
@@ -533,10 +566,24 @@ function selftest() {
   ok(n(`const wrap = (fn) => fn;\nexport default wrap(async () => { createAdminClient(); });`) === 1, "PLANTED: `export default wrap(async () => …)` fails");
   ok(n(`export async function f() { try { await ensureAdmin(); } catch {} createAdminClient(); }`) === 1, "PLANTED: a guard whose throw is SWALLOWED by try/catch fails");
   ok(n(`export async function f() { try { await ensureAdmin(); } catch { return null; } createAdminClient(); }`) === 0, "KNOWN-GOOD: a guard in a try whose catch returns passes (getAdminNotificationPrefs)");
-  ok(n(`export async function f() { try { await ensureAdmin(); } finally { } createAdminClient(); }`) === 0, "KNOWN-GOOD: a guard in try/finally (no catch) passes — the throw escapes");
+  ok(n(`export async function f() { try { await ensureAdmin(); } finally { createAdminClient(); } }`) === 1, "PLANTED: a FINALLY that reaches the key runs on the guard's throw — fails");
   ok(raw(`"use server";\nimport { createAdminClient } from "@/lib/supabase/admin";\nimport { ensureAdmin } from "@/lib/noop";\nexport async function f() { await ensureAdmin(); createAdminClient(); }`) === 1, "PLANTED: ensureAdmin imported from ANOTHER module is no guard");
   ok(raw(`"use server";\nimport { createAdminClient } from "@/lib/supabase/admin";\nconst ensureAdmin = Promise.resolve.bind(Promise);\nexport async function f() { await ensureAdmin(); createAdminClient(); }`) === 1, "PLANTED: a module-level VALUE named ensureAdmin is no guard");
   ok(raw(`"use server";\nimport { createAdminClient } from "@/lib/supabase/admin";\nimport { ensureAdmin as gate } from "../lib/admin/auth";\nexport async function f() { await gate(); createAdminClient(); }`.replace("../lib", "./lib")) === 0, "KNOWN-GOOD: the real guard, ALIASED and by relative path, passes");
+  // Walk round 4 F2/F3 (2026-10-11).
+  const w = `async function w() { createAdminClient(); }\nconst wrap = (fn) => fn;\n`;
+  ok(n(w + `export const f = w as any;`) === 1, "PLANTED: `export const f = w as any` fails");
+  ok(n(w + `export const f = (w);`) === 1, "PLANTED: `export const f = (w)` fails");
+  ok(n(w + `export const f = w!;`) === 1, "PLANTED: `export const f = w!` fails");
+  ok(n(w + `export const f = w.bind(null);`) === 1, "PLANTED: `export const f = w.bind(null)` fails");
+  ok(n(w + `export const f = wrap(w);`) === 1, "PLANTED: `export const f = wrap(w)` fails");
+  ok(n(w + `export default wrap(w);`) === 1, "PLANTED: `export default wrap(w)` fails");
+  ok(n(w + `const a = w;\nexport { a as f };`) === 1, "PLANTED: a local alias exported by list fails");
+  ok(raw(`"use server";\nimport { decrement } from "@/lib/helper";\nconst a = decrement;\nexport { a as f };`) === 1, "PLANTED: a local alias of an imported reaching helper, exported by list, fails");
+  ok(n(`async function w() { await ensureAdmin(); createAdminClient(); }\nexport const f = wrap2(w);\nfunction wrap2(fn) { return fn; }`) === 0, "KNOWN-GOOD: a wrapped alias of a GUARDED function passes");
+  ok(n(`export async function f() { try { await ensureAdmin(); } catch { return createAdminClient().from("t").select(); } }`) === 1, "PLANTED: a CATCH that returns through the key fails");
+  ok(n(`export async function f() { try { await ensureAdmin(); } catch { await createAdminClient().from("t").delete(); return; } }`) === 1, "PLANTED: a catch that writes with the key, then returns, fails");
+  ok(n(`export async function f() { for (const x of [1]) { try { await ensureAdmin(); } finally { continue; } } createAdminClient(); }`) === 1, "PLANTED: a finally that continues past the guard's throw fails");
   const files = { "lib/blinds/x.ts": `import { a } from "./actions";`, "lib/y.ts": `import { a } from "@/lib/blinds/actions";`, "lib/z.ts": `const m = await import("../lib/blinds/actions");`, "lib/w.ts": `import { a } from "./blinds/actions-old";` };
   const users = importersOf("lib/blinds/actions.ts", Object.keys(files), (f) => files[f], (f) => f);
   ok(users.includes("lib/blinds/x.ts"), "PLANTED: a SIBLING relative import of a dead module is seen (F5)");
