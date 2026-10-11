@@ -18,6 +18,7 @@ import {
   getRecentBlindlyOrders,
   getLastCronRuns,
 } from "@/lib/admin/queries";
+import { envProblems } from "@/lib/env";
 import { isEnabled } from "@/config/features";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -168,8 +169,25 @@ export default async function AdminDashboard() {
     return true;
   });
 
+  // Names only, never values. The daily cron mails the same list, but it cannot mail the one problem
+  // that stops it (CRON_SECRET unset), so the dashboard shows it too.
+  const problems = envProblems();
+
   return (
     <div className="space-y-8">
+      {problems.length > 0 && (
+        <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-700 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+          <p className="flex items-center gap-2 font-semibold">
+            <AlertCircle className="h-4 w-4" />
+            Configuration problems
+          </p>
+          <ul className="mt-2 list-disc pl-6 space-y-0.5">
+            {problems.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>

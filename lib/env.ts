@@ -1,4 +1,5 @@
-// What the live shop needs from its environment, checked by the daily cron and reported to the admin.
+// What the live shop needs from its environment: the daily cron mails the list to the admin, and the
+// admin dashboard shows it (the only place an unset CRON_SECRET can be reported — the cron refuses).
 // Each entry says what breaks without it — most of these fail silently (CLAUDE.md §9).
 
 const REQUIRED: Record<string, string> = {
