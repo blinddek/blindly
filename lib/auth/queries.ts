@@ -53,7 +53,9 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
           id: user.id,
           full_name: (meta.full_name as string) || "",
           phone: (meta.phone as string) || "",
-          role: (meta.role as string) || "customer",
+          // Never from user_metadata, which the user writes at signup (walk F1): a new profile is a
+          // customer, and only updateUserRole (service key, behind ensureAdmin) makes an admin.
+          role: "customer",
         })
         .select("*")
         .single();
