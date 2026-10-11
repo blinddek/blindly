@@ -105,16 +105,32 @@ function calleeKey(call) {
  *   stars    module specifiers of `export * from`
  *   imports  local name → { spec, imported }   (imported "*" for a namespace import)
  */
-/** The function an expression names, in any spelling: `g`, `g as T`, `(g)`, `g!`, `g.bind(x)`,
- *  `wrap(g)` (its last argument that names one). Null for anything else. */
-function aliasOf(e) {
-  while (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isNonNullExpression(e) || ts.isTypeAssertionExpression(e)) e = e.expression;
-  if (ts.isIdentifier(e)) return e.text;
-  if (ts.isCallExpression(e)) {
-    if (ts.isPropertyAccessExpression(e.expression) && e.expression.name.text === "bind") return aliasOf(e.expression.expression);
-    for (const a of [...e.arguments].reverse()) { const n = aliasOf(a); if (n) return n; }
-  }
-  return null;
+/**
+ * Every function an expression could evaluate to: each identifier in it that is not a callee, a
+ * property name or a type — `g`, `g as T`, `(g)`, `g!`, `g.bind(x)`, `wrap(g)`, `c ? g : h`,
+ * `g || h`, `(0, g)`, `[g][0]`, `({ g }).g` (walk g12-g13 F6). Over-inclusive on purpose: a name that
+ * is neither a local function nor an import resolves to nothing; one that is, is judged as the export.
+ */
+function aliasesOf(e) {
+  const out = [];
+  const visit = (n) => {
+    if (isFnLike(n) || ts.isTypeNode(n)) return;
+    if (ts.isCallExpression(n)) {
+      // `g.bind(x)` is g; any other callee is a wrapper, not the value.
+      const c = n.expression;
+      if (ts.isPropertyAccessExpression(c) && c.name.text === "bind") visit(c.expression);
+      else if (!ts.isIdentifier(c)) visit(c);
+      n.arguments.forEach(visit);
+      return;
+    }
+    if (ts.isPropertyAccessExpression(n)) { visit(n.expression); return; }
+    if (ts.isPropertyAssignment(n)) { visit(n.initializer); return; }
+    if (ts.isShorthandPropertyAssignment(n)) { out.push(n.name.text); return; }
+    if (ts.isIdentifier(n)) { out.push(n.text); return; }
+    ts.forEachChild(n, visit);
+  };
+  visit(e);
+  return [...new Set(out)];
 }
 
 function shape(sf) {
@@ -153,8 +169,8 @@ function shape(sf) {
           if (exported) exports.set(d.name.text, d.name.text);
         } else {
           // `const f = g` in any spelling: f IS g, a local function or an import (resolved below).
-          const a = aliasOf(init);
-          if (a) { aliases.set(d.name.text, a); if (exported) exports.set(d.name.text, d.name.text); }
+          const a = aliasesOf(init);
+          if (a.length) { aliases.set(d.name.text, a); if (exported) exports.set(d.name.text, d.name.text); }
           values.set(d.name.text, init); // a module-level value, e.g. `const sb = createAdminClient()`
         }
       }
@@ -175,20 +191,21 @@ function shape(sf) {
           ? e
           : ts.isCallExpression(e) ? [...e.arguments].reverse().find((a) => ts.isArrowFunction(a) || ts.isFunctionExpression(a)) : undefined;
         if (fn) { fns.set("default", fn.body); exports.set("default", "default"); }
-        else { const a = aliasOf(e); if (a) { aliases.set("default", a); exports.set("default", "default"); } }
+        else { const a = aliasesOf(e); if (a.length) { aliases.set("default", a); exports.set("default", "default"); } }
       }
     }
   }
   // An alias takes its target's body, or its target's import, so every rule below sees through it.
   for (let grew = true; grew; ) {
     grew = false;
-    for (const [a, t] of aliases) {
+    for (const [a, ts_] of aliases) {
       if (fns.has(a) || imports.has(a)) continue;
-      if (fns.has(t)) { fns.set(a, fns.get(t)); grew = true; }
-      else if (imports.has(t)) { imports.set(a, imports.get(t)); grew = true; }
+      const t = ts_.find((n) => n !== a && (fns.has(n) || imports.has(n)));
+      if (t && fns.has(t)) { fns.set(a, fns.get(t)); grew = true; }
+      else if (t) { imports.set(a, imports.get(t)); grew = true; }
     }
   }
-  return { fns, exports, stars, imports, values };
+  return { fns, exports, stars, imports, values, aliases };
 }
 
 /** Every call key in `node`, nested functions included, in source order: [{ key, pos, call }]. */
@@ -261,10 +278,22 @@ function throwEscapes(call, body, reachesIn) {
     if (t && ts.isTryStatement(t) && t.tryBlock === n) {
       if (t.finallyBlock) return false;
       const last = t.catchClause?.block.statements.at(-1);
-      if (t.catchClause && (!last || !(ts.isReturnStatement(last) || ts.isThrowStatement(last)) || reachesIn(t.catchClause.block))) return false;
+      if (t.catchClause && (!last || !(ts.isReturnStatement(last) || ts.isThrowStatement(last)) || reachesIn(t.catchClause.block) || jumpsIn(t.catchClause.block))) return false;
     }
   }
   return true;
+}
+
+/** `node` holds a break or continue (outside a nested function): a catch with one can leave without exiting. */
+function jumpsIn(node) {
+  let found = false;
+  const visit = (n) => {
+    if (found || (n !== node && isFnLike(n))) return;
+    if (ts.isBreakStatement(n) || ts.isContinueStatement(n)) found = true;
+    ts.forEachChild(n, visit);
+  };
+  visit(node);
+  return found;
 }
 
 /** The result of `call` is read: returned, tested, passed on, or bound to a name `body` reads again. */
@@ -400,23 +429,31 @@ export function auditModule(path, src, publicList = PUBLIC, load = diskLoader) {
     const t = stem && ctx.shapeOf(stem);
     for (const n of t ? ctx.exportsReaching(t) : []) out.push(`${path} → ${n}: export * from "${spec}" re-exports a function that reaches ${SERVICE} — wrap it here with a guard`);
   }
-  for (const [exportName, target] of m.exports) {
+  // An export that could be any of several functions (`c ? g : h`) is judged as each of them.
+  const targetsOf = (target) => {
+    const own = typeof target === "string" && m.aliases.get(target);
+    return own ? [target, ...own.filter((n) => n !== target && (m.fns.has(n) || m.imports.has(n)))] : [target];
+  };
+  for (const [exportName, exported] of m.exports) {
     if (publicList[`${path} → ${exportName}`]) continue;
+    for (const target of targetsOf(exported)) {
     // A re-export out of a "use server" module is an action of this module too, with no body here to
     // hold a guard: `export { f } from`, or an imported `f` exported again.
     const reExport = typeof target !== "string" ? target : !m.fns.has(target) && m.imports.get(target);
     if (reExport) {
-      if (ctx.importReaches(path, reExport)) out.push(`${path} → ${exportName}: re-exports a function that reaches ${SERVICE} — wrap it here with a guard`);
+      if (ctx.importReaches(path, reExport)) { out.push(`${path} → ${exportName}: re-exports a function that reaches ${SERVICE} — wrap it here with a guard`); break; }
       continue;
     }
     const body = m.fns.get(target);
-    if (!body || !reaches.has(target)) continue;
+    if (!body || !(reaches.has(target) || callsIn(body).some((c) => reachKey(c.key)) || refsIn(body, heldBy).length)) continue;
     const firstReach = Math.min(...callsIn(body).filter((c) => reachKey(c.key)).map((c) => c.pos), ...refsIn(body, heldBy));
     const reachesIn = (node) => callsIn(node).some((c) => reachKey(c.key)) || refsIn(node, heldBy).length > 0;
     const guard = ownCalls(body).find((c) => (throwing.has(c.key) && awaited(c.call) && throwEscapes(c.call, body, reachesIn)) || (returning.has(c.key) && resultRead(c.call, body)));
     if (guard && guard.pos < firstReach) continue;
     const why = guard ? `checks its caller only after it first reaches ${SERVICE}` : `reaches ${SERVICE} with no ${GUARD} call that guards it`;
     out.push(`${path} → ${exportName}: ${why} — guard it first, or list it in PUBLIC with the reason it is public`);
+    break;
+    }
   }
   return out;
 }
@@ -584,6 +621,16 @@ function selftest() {
   ok(n(`export async function f() { try { await ensureAdmin(); } catch { return createAdminClient().from("t").select(); } }`) === 1, "PLANTED: a CATCH that returns through the key fails");
   ok(n(`export async function f() { try { await ensureAdmin(); } catch { await createAdminClient().from("t").delete(); return; } }`) === 1, "PLANTED: a catch that writes with the key, then returns, fails");
   ok(n(`export async function f() { for (const x of [1]) { try { await ensureAdmin(); } finally { continue; } } createAdminClient(); }`) === 1, "PLANTED: a finally that continues past the guard's throw fails");
+  // Walk g12-g13 F6 (2026-10-11).
+  ok(n(w + `export const f = true ? w : w;`) === 1, "PLANTED: `c ? w : w` fails");
+  ok(n(w + `async function p() { return 1; }\nexport const f = Math.random() > 1 ? p : w;`) === 1, "PLANTED: `c ? pure : w` fails — each branch is judged");
+  ok(n(w + `export const f = w || w;`) === 1, "PLANTED: `w || w` fails");
+  ok(n(w + `export const f = (0, w);`) === 1, "PLANTED: `(0, w)` fails");
+  ok(n(w + `export const f = [w][0];`) === 1, "PLANTED: `[w][0]` fails");
+  ok(n(w + `export const f = ({ w }).w;`) === 1, "PLANTED: `({ w }).w` fails");
+  ok(n(`async function p() { return 1; }\nexport const f = true ? p : p;`) === 0, "KNOWN-GOOD: a conditional of pure functions passes");
+  ok(n(`export async function f() { for (const x of [1]) { try { await ensureAdmin(); } catch { break; return; } } createAdminClient(); }`) === 1, "PLANTED: a catch that BREAKS before its return fails");
+  ok(n(`export async function f(x) { for (const y of [1]) { try { await ensureAdmin(); } catch { if (x) continue; return; } } createAdminClient(); }`) === 1, "PLANTED: a catch that may CONTINUE fails");
   const files = { "lib/blinds/x.ts": `import { a } from "./actions";`, "lib/y.ts": `import { a } from "@/lib/blinds/actions";`, "lib/z.ts": `const m = await import("../lib/blinds/actions");`, "lib/w.ts": `import { a } from "./blinds/actions-old";` };
   const users = importersOf("lib/blinds/actions.ts", Object.keys(files), (f) => files[f], (f) => f);
   ok(users.includes("lib/blinds/x.ts"), "PLANTED: a SIBLING relative import of a dead module is seen (F5)");
