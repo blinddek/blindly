@@ -6,8 +6,13 @@ import { getMotorOptions } from "@/lib/pricing";
  * Returns motorisation options with compatibility info and prices.
  */
 export async function POST(req: NextRequest) {
+  let body;
   try {
-    const body = await req.json();
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Request body must be JSON" }, { status: 400 });
+  }
+  try {
     const { width_cm, drop_cm } = body;
 
     if (!width_cm || !drop_cm) {

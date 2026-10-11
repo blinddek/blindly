@@ -19,6 +19,7 @@ import {
   getLastCronRuns,
 } from "@/lib/admin/queries";
 import { envProblems } from "@/lib/env";
+import { redirect } from "next/navigation";
 import { ensureAdmin } from "@/lib/admin/auth";
 import { isEnabled } from "@/config/features";
 
@@ -152,6 +153,11 @@ function RevenueChart({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function AdminDashboard() {
+  // The role check here, not only in the layout: a layout's redirect does not stop this page's reads,
+  // and a request for this segment alone may not run the layout at all (walk round 3 F4). Everything
+  // below — orders, revenue, the env report — is read with the service key.
+  if (!(await ensureAdmin().then(() => true, () => false))) redirect("/portal");
+
   const year = new Date().getFullYear();
 
   const [shopStats, monthlyRevenue, topRanges, recentOrders, cronRuns] = await Promise.all([
@@ -172,10 +178,7 @@ export default async function AdminDashboard() {
 
   // Names only, never values. The daily cron mails the same list, but it cannot mail the one problem
   // that stops it (CRON_SECRET unset), so the dashboard shows it too.
-  // Shown only after the role check here, not only the layout's: the list says, for instance, whether
-  // ITN signatures are checked without a passphrase (walk round 2 F9).
-  const isAdmin = await ensureAdmin().then(() => true, () => false);
-  const problems = isAdmin ? envProblems() : [];
+  const problems = envProblems();
 
   return (
     <div className="space-y-8">

@@ -116,7 +116,12 @@ export async function lookupPrice(
     .eq("key", "vat_percent")
     .single());
 
+  // site_settings.value is TEXT NOT NULL DEFAULT '' (migration 027): Number('') is 0, so an empty or
+  // non-numeric value would price the blind at 0% VAT or NaN. A row that is there must hold a rate.
   const vatPercent = vatSetting ? Number(vatSetting.value) : 15;
+  if (vatSetting && (String(vatSetting.value).trim() === "" || !Number.isFinite(vatPercent) || vatPercent < 0 || vatPercent > 100)) {
+    throw new Error(`vat_percent setting is not a rate: "${vatSetting.value}"`);
+  }
   const vatCents = Math.round(customerPriceCents * (vatPercent / 100));
 
   return {

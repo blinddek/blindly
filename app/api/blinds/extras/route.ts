@@ -6,8 +6,13 @@ import { getApplicableExtras } from "@/lib/pricing";
  * Returns applicable extras with customer-facing prices.
  */
 export async function POST(req: NextRequest) {
+  let body;
   try {
-    const body = await req.json();
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Request body must be JSON" }, { status: 400 });
+  }
+  try {
     const { blind_range_id, width_cm } = body;
 
     if (!blind_range_id || !width_cm) {
@@ -15,6 +20,11 @@ export async function POST(req: NextRequest) {
         { error: "Missing required fields: blind_range_id, width_cm" },
         { status: 400 }
       );
+    }
+
+    // blind_range_id is a UUID; anything else would fail the read, and answer 500 for a client fault.
+    if (typeof blind_range_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(blind_range_id)) {
+      return NextResponse.json({ error: "blind_range_id is not valid" }, { status: 400 });
     }
 
     const extras = await getApplicableExtras(
