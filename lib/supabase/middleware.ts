@@ -97,6 +97,30 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // The one admin rule (G-12, Stéan 2026-10-11): every /admin request is refused here unless
+  // user_profiles.role is "admin" — the same row the admin layout and ensureAdmin() read, through the
+  // user's own session (RLS lets a user read their own profile), so the two cannot disagree and loop.
+  // Pages no longer rely on the layout's redirect, which does not stop a page's own reads. A failed
+  // read answers 503 rather than redirecting, so an outage cannot bounce an admin between /portal
+  // and /admin.
+  if (user && pathname.startsWith("/admin")) {
+    const { data: profile, error } = await supabase
+      .from("user_profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (error) {
+      console.error("[proxy] admin role read failed:", error.message);
+      return new NextResponse("Service temporarily unavailable", { status: 503 });
+    }
+    if (profile?.role !== "admin") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/portal";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Portal protection — only when customerAuth is enabled
   if (!user && pathname.startsWith("/portal")) {
     if (isEnabled("customerAuth")) {
@@ -111,10 +135,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Role-based routing is handled by layouts (not middleware)
-  // to avoid JWT/DB role disagreements causing redirect loops.
-  // See: app/portal/layout.tsx (redirects admins → /admin)
-  // See: app/admin/layout.tsx (redirects non-admins → /portal)
+  // /admin's role check is above (the database role, as the layouts read it). Sending admins from
+  // /portal to /admin stays in app/portal/layout.tsx.
 
   return supabaseResponse;
 }
