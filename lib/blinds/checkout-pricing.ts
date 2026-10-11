@@ -206,6 +206,7 @@ export async function priceCheckout(input: CheckoutInput): Promise<PricedCheckou
     blindExVatCents: price.customer_price_cents,
     blindVatCents: price.vat_cents,
     blindIncVatCents: price.total_with_vat_cents,
+    vatPercent: price.vat_percent,
     extrasExVatCents,
     category_id: categoryOf.get(item.blind_range_id)!,
     width_mm: item.width_mm,

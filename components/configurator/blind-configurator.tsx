@@ -71,6 +71,8 @@ export interface BlindPriceResult {
   customer_price_cents: number;
   matched_width_cm: number;
   matched_drop_cm: number;
+  /** The server's VAT rate (site_settings.vat_percent); extras are taxed at it too. */
+  vat_percent: number;
   vat_cents: number;
   total_with_vat_cents: number;
 }
@@ -208,7 +210,7 @@ export function BlindConfigurator({ prefill, startStep = 0 }: BlindConfiguratorP
     const range = ranges.find((r) => r.id === state.range_id);
 
     const extrasCents = selectedExtras.reduce((s, e) => s + e.price_cents, 0);
-    const extrasVatCents = Math.round(extrasCents * 0.15);
+    const extrasVatCents = Math.round(extrasCents * (quote.vat_percent / 100));
 
     addItem({
       id: crypto.randomUUID(),

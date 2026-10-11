@@ -116,11 +116,13 @@ export async function lookupPrice(
     .eq("key", "vat_percent")
     .single());
 
-  // site_settings.value is TEXT NOT NULL DEFAULT '' (migration 027): Number('') is 0, so an empty or
-  // non-numeric value would price the blind at 0% VAT or NaN. A row that is there must hold a rate.
-  const vatPercent = vatSetting ? Number(vatSetting.value) : 15;
-  if (vatSetting && (String(vatSetting.value).trim() === "" || !Number.isFinite(vatPercent) || vatPercent < 0 || vatPercent > 100)) {
-    throw new Error(`vat_percent setting is not a rate: "${vatSetting.value}"`);
+  // The one VAT rate (G-13, Stéan 2026-10-11: the database is the source). It is returned with the
+  // price, so the order's extras are taxed at the same rate as their blind. No row, or one that is not
+  // a rate (site_settings.value is TEXT NOT NULL DEFAULT '', migration 027, and Number('') is 0), is
+  // a failure, not a default.
+  const vatPercent = vatSetting ? Number(vatSetting.value) : NaN;
+  if (!vatSetting || String(vatSetting.value).trim() === "" || !Number.isFinite(vatPercent) || vatPercent < 0 || vatPercent > 100) {
+    throw new Error(`vat_percent setting is missing or not a rate: ${JSON.stringify(vatSetting?.value ?? null)}`);
   }
   const vatCents = Math.round(customerPriceCents * (vatPercent / 100));
 
@@ -131,6 +133,7 @@ export async function lookupPrice(
     customer_price_cents: customerPriceCents,
     matched_width_cm: matchedWidth,
     matched_drop_cm: matchedDrop,
+    vat_percent: vatPercent,
     vat_cents: vatCents,
     total_with_vat_cents: customerPriceCents + vatCents,
   };

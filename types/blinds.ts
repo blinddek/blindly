@@ -368,6 +368,8 @@ export interface PriceLookupResult {
   customer_price_cents: number;
   matched_width_cm: number;
   matched_drop_cm: number;
+  /** site_settings.vat_percent, the one VAT rate: extras are taxed at it too. */
+  vat_percent: number;
   vat_cents: number;
   total_with_vat_cents: number;
 }
@@ -377,6 +379,7 @@ export interface CustomerPriceResult {
   customer_price_cents: number;
   matched_width_cm: number;
   matched_drop_cm: number;
+  vat_percent: number;
   vat_cents: number;
   total_with_vat_cents: number;
 }

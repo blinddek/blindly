@@ -132,7 +132,7 @@ export function StepBlindQuote({
       {/* Price */}
       {(() => {
         const extrasCents = selectedExtras.reduce((s, e) => s + e.price_cents, 0);
-        const extrasVatCents = Math.round(extrasCents * 0.15);
+        const extrasVatCents = Math.round(extrasCents * (quote.vat_percent / 100));
         const grandTotal = quote.total_with_vat_cents + extrasCents + extrasVatCents;
         return (
           <div className="divide-y rounded-lg border">

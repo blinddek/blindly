@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       customer_price_cents: result.customer_price_cents,
       matched_width_cm: result.matched_width_cm,
       matched_drop_cm: result.matched_drop_cm,
+      vat_percent: result.vat_percent,
       vat_cents: result.vat_cents,
       total_with_vat_cents: result.total_with_vat_cents,
     });

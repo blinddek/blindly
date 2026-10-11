@@ -105,8 +105,10 @@ export function BlindCartProvider({ children }: Readonly<{ children: ReactNode }
 
   const totalItems = items.length;
   const subtotalCents = items.reduce((s, i) => s + (i.customer_price_cents ?? 0) + (i.extras_cents ?? 0), 0);
-  const vatCents = Math.round(subtotalCents * 0.15);
-  const grandTotalCents = subtotalCents + vatCents;
+  // Each item's VAT-inclusive total was priced at the server's rate (site_settings.vat_percent);
+  // the cart sums those rather than applying a rate of its own (G-13).
+  const grandTotalCents = items.reduce((s, i) => s + (i.total_with_vat_cents ?? 0), 0);
+  const vatCents = grandTotalCents - subtotalCents;
 
   const value = useMemo<BlindCartContextValue>(
     () => ({

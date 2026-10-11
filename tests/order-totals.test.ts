@@ -19,6 +19,7 @@ const line = (over: Partial<TotalsLine> = {}): TotalsLine => ({
   blindExVatCents: 100_000,
   blindVatCents: 15_000,
   blindIncVatCents: 115_000,
+  vatPercent: 15,
   extrasExVatCents: 10_000,
   category_id: "roller",
   width_mm: 1200,
@@ -28,6 +29,14 @@ const line = (over: Partial<TotalsLine> = {}): TotalsLine => ({
 
 test("a line's VAT-inclusive total adds the extras and their VAT", () => {
   assert.equal(lineIncVatCents(line()), 115_000 + 10_000 + 1_500);
+});
+
+test("extras pay the blind's VAT rate, not a fixed 15% (G-13: the database rate is the one source)", () => {
+  const at10 = line({ vatPercent: 10, blindVatCents: 10_000, blindIncVatCents: 110_000 });
+  assert.equal(lineIncVatCents(at10), 110_000 + 10_000 + 1_000);
+  const t = computeOrderTotals([at10], { type: "self_install", distanceKm: null }, rules);
+  assert.equal(t.vatCents, 11_000);
+  assert.equal(t.subtotalCents + t.vatCents, t.goodsIncVatCents);
 });
 
 test("subtotal and VAT include the extras, and sum to the goods total", () => {

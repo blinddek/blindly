@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     markup_cents: price.markup_cents,
     extras_cents: extrasExVatCents,
     selected_extras,
-    line_total_cents: lineIncVatCents({ blindIncVatCents: price.total_with_vat_cents, extrasExVatCents }),
+    line_total_cents: lineIncVatCents({ blindIncVatCents: price.total_with_vat_cents, extrasExVatCents, vatPercent: price.vat_percent }),
     display_order: idx,
   }));
 

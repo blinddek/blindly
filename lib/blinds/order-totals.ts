@@ -16,15 +16,17 @@ import {
  * output. Decisions it holds (brief/DECISIONS.md, 2026-10-11):
  *   · the volume discount applies to blinds AND extras, VAT-inclusive;
  *   · self-install pays the courier fee by weight; professional install pays labour + transport.
- * Fees are VAT-inclusive amounts, as the rules store them.
+ * Fees are VAT-inclusive amounts, as the rules store them. Extras are taxed at their blind's rate,
+ * which `lookupPrice` read from site_settings.vat_percent (G-13: the database is the one source).
  */
-const VAT_RATE = 0.15;
 
 export interface TotalsLine {
   /** Blind price ex VAT, its VAT and the sum, as `lookupPrice` returned them. */
   blindExVatCents: number;
   blindVatCents: number;
   blindIncVatCents: number;
+  /** The VAT rate the blind was priced at (`lookupPrice`'s vat_percent); its extras pay the same. */
+  vatPercent: number;
   /** Server-priced extras for this blind, ex VAT. */
   extrasExVatCents: number;
   /** For the courier weight: the blind's category and size. */
@@ -57,8 +59,12 @@ export interface OrderTotals {
 }
 
 /** VAT-inclusive line total for one blind and its extras — what the order item stores. */
-export function lineIncVatCents(line: Pick<TotalsLine, "blindIncVatCents" | "extrasExVatCents">): number {
-  return line.blindIncVatCents + line.extrasExVatCents + Math.round(line.extrasExVatCents * VAT_RATE);
+export function lineIncVatCents(line: Pick<TotalsLine, "blindIncVatCents" | "extrasExVatCents" | "vatPercent">): number {
+  return line.blindIncVatCents + line.extrasExVatCents + extrasVatCents(line);
+}
+
+function extrasVatCents(line: Pick<TotalsLine, "extrasExVatCents" | "vatPercent">): number {
+  return Math.round(line.extrasExVatCents * (line.vatPercent / 100));
 }
 
 export function computeOrderTotals(
@@ -70,7 +76,7 @@ export function computeOrderTotals(
   const subtotalCents = lines.reduce((s, l) => s + l.blindExVatCents, 0) + extrasExVat;
   const vatCents =
     lines.reduce((s, l) => s + l.blindVatCents, 0) +
-    lines.reduce((s, l) => s + Math.round(l.extrasExVatCents * VAT_RATE), 0);
+    lines.reduce((s, l) => s + extrasVatCents(l), 0);
   const goodsIncVatCents = lines.reduce((s, l) => s + lineIncVatCents(l), 0);
 
   const discountRate = getDiscountRate(goodsIncVatCents, rules.discounts);
