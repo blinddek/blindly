@@ -30,6 +30,8 @@ names what was measured and how.
 
 ## The production database
 
+- **`site_settings.vat_percent` is `15`; none of the 6 `site_settings` rows holds an empty value.** The
+  blind's VAT reads it, and since 2026-10-11 refuses a value that is not a rate. — *source: db-inspector, `.handoff/vat-setting/01-db-inspector.md`, 2026-10-11*
 - **One Supabase project, `duhxsnetntkzzgxenccw`, is the only database `.env.local` names; no staging
   project is known.** — *source: .env.local variable names, 2026-10-05*
 - **Production matches migrations 026–038:** all 20 blinds/pricing/order tables answer, and columns
