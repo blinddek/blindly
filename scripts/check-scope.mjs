@@ -67,6 +67,8 @@ const BRANCH_GUARD = false
 const MAP = {
   // Reads every "use server" module under these trees (scripts/check-actions.mjs DIRS).
   "npm run check:actions": ["app/**", "lib/**", "components/**"],
+  // node:test through tsx: the tests and every tree they import.
+  "npm run test": ["tests/**", "lib/**", "app/**", "types/**", "config/**"],
 }
 // A step that a SCOPED plan runs in a cheaper form, e.g. { "tsc --noEmit --incremental false": "tsc --noEmit" }.
 const SCOPED_AS = {}
