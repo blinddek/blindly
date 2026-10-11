@@ -186,7 +186,9 @@ Relay the block; open the artefact only at the section it names. Shared facts th
 **Verify before you tick** — a commit message proves attempt, not landing. **Citations verified,
 not plausible** — a zero-hit grep is the check. **Commit ≠ push**: one coherent revertable change
 per commit, committed with a pathspec when the operator has work in progress; here a push is also a
-deploy. **Ambiguous spec or spec-vs-code conflict:** flag and stop.
+deploy. A pathspec commit re-reads the working tree, and with `core.fileMode=false` (Windows) it
+drops a staged `git update-index --chmod=+x` — commit a mode change from the index, then check it
+with `git ls-tree HEAD <path>` (dd7bc0e claimed one that only 94bacf6 landed). **Ambiguous spec or spec-vs-code conflict:** flag and stop.
 
 ---
 
