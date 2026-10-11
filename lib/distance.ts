@@ -27,7 +27,30 @@ async function geocode(query: string): Promise<{ lat: number; lng: number } | nu
   return { lat: Number.parseFloat(data[0].lat), lng: Number.parseFloat(data[0].lon) };
 }
 
+// Successful address lookups, per server instance. The review step's quote and the checkout that
+// follows ask for the same address minutes apart; a warm instance answers the second from here
+// instead of spending Nominatim's 1 request/second again, and cannot geocode it differently (a
+// different distance would 409 the checkout). A cold instance simply asks again.
+const CACHE_MS = 6 * 60 * 60 * 1000;
+const CACHE_MAX = 500;
+const cache = new Map<string, { km: number; at: number }>();
+
 export async function roadDistanceKm(
+  to: AddressText | { lat: number; lng: number }
+): Promise<DistanceResult> {
+  if ("lat" in to) return computeRoadDistanceKm(to);
+  const key = [to.address, to.city, to.province, to.postal_code].map((s) => (s ?? "").trim().toLowerCase()).join("|");
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_MS) return { distance_km: hit.km };
+  const result = await computeRoadDistanceKm(to);
+  if ("distance_km" in result) {
+    if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value as string);
+    cache.set(key, { km: result.distance_km, at: Date.now() });
+  }
+  return result;
+}
+
+async function computeRoadDistanceKm(
   to: AddressText | { lat: number; lng: number }
 ): Promise<DistanceResult> {
   // ── 1. Business coordinates ───────────────────────────────────────────────
