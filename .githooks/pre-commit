@@ -1,11 +1,19 @@
 #!/bin/sh
 # .githooks/pre-commit — the commit gate: what the staged diff can affect (scripts/check-scope.mjs).
 #
-# @kit githook-pre-commit v1 — tracked, no config region. Everything it decides (the chain, the
+# @kit githook-pre-commit v2 — tracked, no config region. Everything it decides (the chain, the
 # scope map, the default-branch guard) is in check-scope.mjs's KIT:CONFIG region, so this file is
 # the same bytes in every project. Wired by `"prepare": "git config core.hooksPath .githooks || true"`;
 # `node scripts/check-scope.mjs --wired` fails when it is not.
 #
 # --no-verify skips this, and the push gate runs the whole chain anyway: scoping is a speed choice
 # for one local commit, never a coverage choice for what reaches origin.
-exec node scripts/check-scope.mjs --commit
+#
+# v2 (blindly CF-16, M-KIT-47): on success it records the tree it approved, in the git dir. git runs
+# this hook for a plain commit only: a merge runs pre-merge-commit, and a cherry-pick or a revert runs
+# neither. The optional `githook-prepare-commit-msg` row runs on every commit and gates any commit
+# whose tree no gate approved; this marker is how it knows a plain commit was gated already, so the
+# chain does not run twice. `set -e`: a failed gate never reaches the marker.
+set -e
+node scripts/check-scope.mjs --commit
+git write-tree > "$(git rev-parse --git-path gate-ok)"

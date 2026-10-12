@@ -2,7 +2,7 @@
 /**
  * scripts/check-context-budget.mjs — probes for the context-budget hook.
  *
- * @kit check-context-budget v2 — tracked. No config region: its cases are the hook's contract.
+ * @kit check-context-budget v3 — tracked. No config region: its cases are the hook's contract.
  *
  * Run: node scripts/check-context-budget.mjs
  *      node scripts/check-context-budget.mjs --hook <path> --settings <path>   (canon's gate, on the
@@ -14,6 +14,8 @@
  *
  * v2 (2026-10-08, life-therapy CF-9): the user's line must name pleks as where the compaction figure
  * was measured, and neither line may say "this repo" — false in every project but pleks.
+ *
+ * v3 (2026-10-11, pleks CF-25): the hook run through a linked directory must still answer.
  *
  * A reminder hook has several ways to be useless, and this repo has now shipped three of them:
  *   quiet when it should be     — a warning on every prompt is wallpaper and gets ignored
@@ -35,9 +37,9 @@
  * why the memory probe measures the process rather than the message.
  */
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, openSync, writeSync, closeSync } from "node:fs"
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, openSync, writeSync, closeSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { basename, dirname, join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
 const opt = (name, fallback) => {
@@ -346,6 +348,16 @@ const ok = (cond, label, detail = "") => {
   // No cwd at all — state is impossible, the snapshot must still work.
   const r2 = run(JSON.stringify({ hook_event_name: "UserPromptSubmit", transcript_path: transcript("nocwd", 600_000), prompt: "x" }))
   ok(/600k/.test(r2.sys ?? ""), "with no cwd the snapshot still measures — cumulative is the only casualty", JSON.stringify(r2))
+}
+
+// ── a linked install still runs ──────────────────────────────────────────────────────────────
+// The entry guard compared a realpathed import.meta.url with a raw argv[1], so through a symlinked
+// directory the hook printed nothing — silent, which is this hook's one invisible failure.
+{
+  const link = join(tmp, "linked")
+  symlinkSync(dirname(HOOK), link, "junction")
+  const r = spawnSync(process.execPath, [join(link, basename(HOOK))], { input: payload(transcript("linked", 600_000)), encoding: "utf8" })
+  ok(/600k/.test(r.stdout), "PLANTED: run through a linked directory, the hook still answers (pleks CF-25)", `exit ${r.status}, ${r.stdout.length} bytes`)
 }
 
 // ── the threshold and the autocompact window must stay coherent ──────────────────────────────

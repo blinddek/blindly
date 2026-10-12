@@ -1,7 +1,7 @@
 /**
  * .claude/hooks/canon-inbox.js — SessionStart, and after a push: one line from canon about this project, or nothing.
  *
- * @kit canon-inbox v7 — tracked OUTSIDE its `KIT:CONFIG` region. The region is yours; everything
+ * @kit canon-inbox v8 — tracked OUTSIDE its `KIT:CONFIG` region. The region is yours; everything
  * else is canon's, and `check-kit-drift.mjs` says so if it changes here.
  *
  * Register it TWICE, with the same command `node "$CLAUDE_PROJECT_DIR/.claude/hooks/canon-inbox.js"`:
@@ -42,6 +42,9 @@
  * v6 (2026-10-09, blindly CF-13): `echo git push` is text, not a push — see `pushes`.
  *
  * v7 (2026-10-11, blindly CF-15): but `echo $( git push )` runs the push — see `substitutions`.
+ *
+ * v8 (2026-10-11, pleks CF-26): an apostrophe inside double quotes is a letter, so
+ * `echo "it's $(git push)"` speaks — see `substitutions`.
  */
 // @event SessionStart
 // @matcher startup
@@ -146,18 +149,25 @@ const PROSE = new Set(["echo", "printf", "grep", "egrep", "fgrep", "rg", "ag", "
  * v7 (blindly CF-15): the commands inside `$( )`, `<( )`, `>( )` and backticks run, whatever the
  * outer command word is, so `echo $( git push )` pushes. v6's prose skip silenced it. Each body is
  * read as a command of its own; single quotes and a backslash keep the text literal, as bash does.
+ *
+ * v8 (pleks CF-26): inside double quotes a `'` is a letter, and outside single quotes a `"` opens
+ * or closes them. v7 toggled on every `'`, so `echo "it's $(git push)"` read as single-quoted.
  */
 function substitutions(command) {
   const out = [];
   const chars = [...command];
   let single = false;
+  let double = false;
   let i = 0;
   while (i < chars.length) {
     const ch = chars[i];
     if (!single && ch === "\\") {
       i += 2;
-    } else if (ch === "'") {
+    } else if (!double && ch === "'") {
       single = !single;
+      i += 1;
+    } else if (!single && ch === '"') {
+      double = !double;
       i += 1;
     } else if (!single && ch === "`") {
       let j = i + 1;

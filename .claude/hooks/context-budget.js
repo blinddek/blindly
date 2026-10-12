@@ -1,7 +1,7 @@
 /**
  * .claude/hooks/context-budget.js — UserPromptSubmit annotator that keeps the token budget in view.
  *
- * @kit context-budget v2 — tracked OUTSIDE its `KIT:CONFIG` region. The region is yours; everything
+ * @kit context-budget v3 — tracked OUTSIDE its `KIT:CONFIG` region. The region is yours; everything
  * else is canon's, and `check-kit-drift.mjs` says so if it changes here.
  *
  * Register: settings.json → hooks.UserPromptSubmit, command
@@ -72,9 +72,9 @@
 // @no-twin settings permissions match TOOLS, and this gates no tool — it annotates a prompt with a
 // measurement. There is no permission rule that can express "tell me how big the context is", so
 // the coarse layer has nothing to fall back to and the gap is recorded rather than implied.
-import { openSync, readSync, closeSync, statSync, existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { openSync, readSync, closeSync, statSync, existsSync, readdirSync, readFileSync, realpathSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname, basename } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 // ── thresholds ───────────────────────────────────────────────────────────────────────────────
 // WARN sits deliberately BELOW the 300k --autocompact threshold this hook recommends. If the two
@@ -447,8 +447,10 @@ function adviseAgent(m) {
 // obvious way to find conversion sites — matches NEITHER token and reports this file clean. It
 // converts, it loads, and it throws here at runtime. Found by the life-therapy session hitting
 // exactly this, 2026-09-09 (dev-standards M-KIT-17 / L-94). `process.argv[1]` is a path and
-// `import.meta.url` a URL, so the comparison must go through pathToFileURL rather than string-match.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// `import.meta.url` a URL, so both go back to a path — and both through realpath, because
+// import.meta.url is already resolved through a symlink and argv[1] is not. Comparing them raw made a
+// hook run through a linked directory print nothing at all (pleks CF-25, M-KIT-52).
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   let raw = "";
   process.stdin.on("data", (c) => (raw += c));
   process.stdin.on("end", () => {

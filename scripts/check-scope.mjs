@@ -2,7 +2,7 @@
 /**
  * scripts/check-scope.mjs — the commit gate runs what the STAGED diff can affect; push runs everything.
  *
- * @kit check-scope v3 — tracked OUTSIDE its `KIT:CONFIG` region. The region is yours; everything
+ * @kit check-scope v5 — tracked OUTSIDE its `KIT:CONFIG` region. The region is yours; everything
  * else is canon's, and `check-kit-drift.mjs` says so if it changes here.
  *
  *   node scripts/check-scope.mjs              print the plan for the current index
@@ -46,10 +46,10 @@
  * every deletion count: a deleted file still selects the checkers that guarded it.
  */
 import { execFileSync, spawnSync } from "node:child_process"
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join, posix, resolve } from "node:path"
-import { pathToFileURL } from "node:url"
+import { basename, dirname, join, posix, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
 const SRC = "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"
 const TS = "**/*.{ts,tsx,mts,cts}"
@@ -202,7 +202,7 @@ const sh = (cmd) => spawnSync(cmd, { stdio: "inherit", shell: true }).status ?? 
 const HOOK_CALLS = { "pre-commit": "scripts/check-scope.mjs --commit", "pre-push": "scripts/check-scope.mjs --push" }
 /** The commands of canon's githook rows; canon's selftest proves its shipped files run exactly these. */
 const CANON_HOOKS = {
-  "pre-commit": `#!/bin/sh\nexec node ${HOOK_CALLS["pre-commit"]}\n`,
+  "pre-commit": `#!/bin/sh\nset -e\nnode ${HOOK_CALLS["pre-commit"]}\ngit write-tree > "$(git rev-parse --git-path gate-ok)"\n`,
   "pre-push": `#!/bin/sh\ncat > /dev/null\nexec node ${HOOK_CALLS["pre-push"]}\n`,
 }
 
@@ -232,7 +232,9 @@ export function wiring(hooksPath, read, scripts = {}, push = PUSH, mode = () => 
   return out
 }
 
-const invoked = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+// Both sides realpathed: import.meta.url is already resolved through a symlink and argv[1] is not, so
+// comparing them raw made a linked run exit 0 having checked nothing (pleks CF-25, M-KIT-52).
+const invoked = process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
 const flag = (f) => process.argv.includes(f)
 
 if (invoked && flag("--selftest")) process.exit(selftest())
@@ -453,6 +455,16 @@ function selftest() {
       rmSync(repo, { recursive: true, force: true })
       rmSync(remote, { recursive: true, force: true })
     }
+  }
+
+  const linkDir = mkdtempSync(join(tmpdir(), "check scope link "))
+  try {
+    writeFileSync(join(linkDir, "package.json"), JSON.stringify({ scripts: {} }))
+    symlinkSync(dirname(resolve(process.argv[1])), join(linkDir, "linked"), "junction")
+    const linked = spawnSync(process.execPath, [join(linkDir, "linked", basename(process.argv[1]))], { cwd: linkDir, encoding: "utf8", env })
+    ok(linked.status === 1 && /no "/.test(linked.stdout), "PLANTED: run through a linked directory, it still runs — a missing chain fails, not a silent exit 0 (pleks CF-25)", `exit ${linked.status}, ${linked.stdout.length} bytes`)
+  } finally {
+    rmSync(linkDir, { recursive: true, force: true })
   }
 
   console.log(failed ? `\n❌ ${failed} probe(s) wrong` : "\n✅ check-scope probes green — scopes by the staged diff, whole chain on the gate, config or the unknown")

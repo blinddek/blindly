@@ -2,7 +2,7 @@
 /**
  * scripts/check-handoff-contract.mjs — every handoff artefact carries a well-formed contract block.
  *
- * @kit check-handoff-contract v9 — tracked. Edit it in dev-standards and re-adopt; a local
+ * @kit check-handoff-contract v10 — tracked. Edit it in dev-standards and re-adopt; a local
  * change here is a fork, and `check-kit-drift.mjs` will say so.
  *
  * PORTED FROM `pleks/scripts/check-handoff-contract.mjs`. It arrives because of dev-standards
@@ -71,6 +71,13 @@
  * `.handoff/<other>/01-grounder.md` was told it "names no artefact". Such an entry now meets the
  * cross-task rule above, which still fails it, now for the reason that is true. No verdict passes
  * that failed before.
+ *
+ * v10 (2026-10-11) A STEP IS A WHOLE FILENAME — nortiercupboards CF-7. v9 matched `NN-<agent>.md`
+ * anywhere, so a walker citing canon's dated handover `…/2026-10-11-<name>.md` was told it named step
+ * `11-<name>.md`. A step is now read only after `.handoff/<slug>/` or at the start of a word (line
+ * start, whitespace, a backtick, a quote, `(`, `[` or `*`), so a date or a directory cannot lend it a
+ * prefix. Across the Inputs sections on canon's machine, a step was only ever preceded by
+ * `.handoff/<slug>/` or a backtick.
  *
  * Run: node scripts/check-handoff-contract.mjs             (wired into `npm run check`)
  *      node scripts/check-handoff-contract.mjs --selftest  (probes both directions, and every exit)
@@ -578,12 +585,13 @@ export function inputsSection(text) {
 
 /**
  * Every artefact an Inputs line names: `{ slug, file, line }`, slug null for a bare `NN-agent.md`.
- * Bounded segments, so a pathological line stays linear.
+ * A bare one starts a word, so the tail of `2026-10-11-x.md` or `docs/01-x.md` is not a step (v10).
+ * Bounded segments and a one-character lookbehind, so a pathological line stays linear.
  */
 export function inputsOf(section) {
   const out = [];
   for (const line of section.split("\n")) {
-    for (const m of line.matchAll(/(?:\.handoff\/([^/\s`]{1,120})\/)?\b(\d{2}-[a-z-]{1,40}\.md)\b/g)) {
+    for (const m of line.matchAll(/(?:\.handoff\/([^/\s`]{1,120})\/|(?<![^\s`'"([*]))(\d{2}-[a-z-]{1,40}\.md)\b/g)) {
       out.push({ slug: m[1] ?? null, file: m[2], line });
     }
   }
@@ -953,6 +961,15 @@ if (isEntry && process.argv.includes("--selftest")) {
       `v9: another task's artefact with this one's filename is an input, not this file (pleks CF-20) — got ${JSON.stringify(same)}`);
     ok(inputsSection(`${A1}\n## Inputs\nnone\n## Map\n- 02-census.md`).includes("none") && !inputsSection(`${A1}\n## Inputs\nnone\n## Map\n- 02-census.md`).includes("02-census"),
       "the section stops at the next `## ` — a file named in a later section is not an input");
+    // nortiercupboards CF-7: a dated filename's tail is not a step, whatever directory it sits in.
+    const steps = (l) => inputsOf(l).map((i) => `${i.slug ?? ""}/${i.file}`);
+    ok(steps("- E:/dev/dev-standards/docs/handovers/2026-10-11-nortiercupboards-role-self-assign.md").length === 0,
+      "v10: an absolute path to a dated handover names no step (nortiercupboards CF-7)");
+    ok(steps("- `docs/handovers/01-x.md` · 2026-10-11-x.md").length === 0, "v10: …nor does a step-shaped name under another directory");
+    ok(JSON.stringify(steps("- E:/dev/p/.handoff/t/01-grounder.md · `a`")) === '["t/01-grounder.md"]',
+      "v10: KNOWN-GOOD: an absolute path through .handoff/<slug>/ is still that task's step");
+    ok(JSON.stringify(steps("- `01-grounder.md` and (02-census.md) and 03-walker.md")) === '["/01-grounder.md","/02-census.md","/03-walker.md"]',
+      "v10: KNOWN-GOOD: a bare step after a backtick, a parenthesis or a space is still read");
     const t0 = process.hrtime.bigint();
     inputsOf(`${".handoff/".repeat(50_000)}${"0".repeat(50_000)}`);
     ok(Number(process.hrtime.bigint() - t0) / 1e6 < 1000, "a pathological Inputs line stays linear");

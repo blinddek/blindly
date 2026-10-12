@@ -2,7 +2,7 @@
 /**
  * .claude/hooks/canon-inbox.probe.mjs — canon-inbox.js in both directions, run as Claude Code runs it.
  *
- * @kit canon-inbox-probe v8 — tracked. It has no config region: its cases are the hook's contract.
+ * @kit canon-inbox-probe v9 — tracked. It has no config region: its cases are the hook's contract.
  *
  * Run: `node .claude/hooks/canon-inbox.probe.mjs` — exit 0 only if every case holds.
  *
@@ -32,6 +32,8 @@
  *
  * v7 (2026-10-09, blindly CF-13): `echo git push` and three other prose spellings stay silent; a
  * push after an `echo` segment, and one behind a `VAR=x` assignment, still speak.
+ *
+ * v9 (2026-10-11, pleks CF-26): an apostrophe inside double quotes does not open single quotes.
  */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
@@ -173,7 +175,9 @@ try {
       // v7 (blindly CF-13): prose silences only its own segment, and an assignment is not a command word.
       "echo done && git push origin main", "GIT_TRACE=1 git push",
       // v8 (blindly CF-15): a substitution's body runs, whatever the outer command word is.
-      "echo $( git push origin main )", 'echo "$(git push origin main)"', "echo `git push origin main`", "cat <(git push origin main)"]) {
+      "echo $( git push origin main )", 'echo "$(git push origin main)"', "echo `git push origin main`", "cat <(git push origin main)",
+      // v9 (pleks CF-26): an apostrophe inside double quotes is a letter, before the substitution or a segment earlier.
+      `echo "it's $(git push origin main)"`, `echo "don't" && echo $(git push origin main)`]) {
       const r = run(hook, dir("push-proj"), bashCall(command));
       const args = (() => { try { return JSON.parse(msg(r)); } catch { return null; } })();
       check(`after \`${command}\`: canon is asked with --after-task, and the line is relayed under PostToolUse`,
@@ -196,7 +200,9 @@ try {
       // v7 (blindly CF-13): a prose command's words are text, never run.
       "echo git push", "printf '%s\\n' git push", "X=1 echo git push origin main", "/usr/bin/echo git push",
       // v8: a single-quoted or escaped substitution is text; so is one whose body is not a push.
-      "echo '$(git push)'", "echo \\$(git push)", "echo $(git status)"]) {
+      "echo '$(git push)'", "echo \\$(git push)", "echo $(git status)",
+      // v9: a double-quoted apostrophe does not reopen what single quotes keep literal.
+      `echo "it's" '$(git push origin main)'`]) {
       const r = run(hook, dir("unasked-proj"), bashCall(command));
       check(`KNOWN-GOOD: after \`${command}\` the hook prints nothing and does not ask canon`, r.status === 0 && r.raw === "", r);
     }
